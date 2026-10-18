@@ -88,6 +88,23 @@ void normalisePattern (DrumPattern& p, int minimumLength)
     }
 }
 
+void fitPattern (DrumPattern& p, int length)
+{
+    length = std::max (1, length);
+    for (auto& line : p.lanes)
+    {
+        for (auto& c : line)
+            if (! isHit (c))
+                c = '.';
+        if (line.empty())
+            line.assign ((size_t) length, '.');
+        const std::string base = line;
+        while ((int) line.size() < length)
+            line += base.substr (0, std::min (base.size(), (size_t) length - line.size()));
+        line.resize ((size_t) length);
+    }
+}
+
 namespace
 {
     std::string compact (const char* s)

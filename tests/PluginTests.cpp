@@ -6,6 +6,7 @@
 
 #include "../Source/PluginProcessor.h"
 #include "../Source/Localisation.h"
+#include "../Source/PluginEditor.h"
 
 #include <cstdio>
 #include <set>
@@ -71,7 +72,7 @@ namespace
 
         // The grid of the user pattern is the groove that was showing, plus the edit.
         for (int l = 0; l < fgd::numLanes; ++l)
-            for (int s = 0; s < FaseGrooveDrumsProcessor::gridSteps; ++s)
+            for (int s = 0; s < 32; ++s)
                 CHECK (a.stepSymbol (l, s) == b.stepSymbol (l, s));
 
         // Garbage doesn't crash or change anything.
@@ -95,12 +96,12 @@ namespace
         CHECK (p.stepSymbol (0, 1) == '.');
 
         p.clearLane (0);
-        for (int s = 0; s < FaseGrooveDrumsProcessor::gridSteps; ++s)
+        for (int s = 0; s < 32; ++s)
             CHECK (p.stepSymbol (0, s) == '.');
 
         p.clearGrid();
         for (int l = 0; l < fgd::numLanes; ++l)
-            for (int s = 0; s < FaseGrooveDrumsProcessor::gridSteps; ++s)
+            for (int s = 0; s < 32; ++s)
                 CHECK (p.stepSymbol (l, s) == '.');
 
         // NEW BEAT: the random beat with a new seed.
@@ -275,7 +276,7 @@ namespace
                 CHECK (p.stepSymbol (l, s) == before.lanes[(size_t) l][(size_t) s] || (l == (int) fgd::Lane::kick && (s == 2 || s == 3)));
         p.setSegmentLocked (0, false);
         p.totalRandom();   // never crashes, always a groove
-        CHECK (p.displayedPattern().length() == FaseGrooveDrumsProcessor::gridSteps);
+        CHECK (p.displayedPattern().length() == p.steps());
 
         // Velocity: by hand, shapes, back to automatic; it plays.
         p.clearGrid();
@@ -388,6 +389,20 @@ namespace
         CHECK (p.stepVelocity ((int) fgd::Lane::closedHat, 2) == 40);
         CHECK (p.stepSymbol (0, 1) == '.');
 
+        // Parts of one bar: a 4-bar groove, the grid (and the user pattern) four bars long.
+        FaseGrooveDrumsProcessor four;
+        four.setParameterFromUI (ParamIDs::partLength, 1.0f);
+        CHECK (four.steps() == 64);
+        CHECK (four.displayedPattern().length() == 64);
+        four.editStep (1, 60, 'X');   // bar 4
+        CHECK (four.stepSymbol (1, 60) == 'X');
+        CHECK (four.stepSymbol (1, 28) != 'X' || four.displayedPattern().lanes[1][28] == 'X');
+        four.setSegmentAt (3, 0);     // A A' ... the last bar plays the first
+        CHECK (four.stepSymbol (0, 48) == four.stepSymbol (0, 0));
+        const auto clip4 = four.createMidiClip (0, FaseGrooveDrumsProcessor::ClipPart::all);
+        CHECK (four.clipLengthInBars (0) % 4 == 0);
+        juce::ignoreUnused (clip4);
+
         temp.deleteRecursively();
     }
 }
@@ -452,6 +467,21 @@ namespace
         click ("CLOSE");
         click ("OPTIONS");
         save ("4-about");
+        std::function<void (juce::Component&)> closeOverlays = [&] (juce::Component& c)
+        {
+            for (auto* child : c.getChildren())
+            {
+                if (dynamic_cast<SongOverlay*> (child) != nullptr || dynamic_cast<AboutPanel*> (child) != nullptr
+                    || dynamic_cast<GrooveBrowser*> (child) != nullptr)
+                    child->setVisible (false);
+                closeOverlays (*child);
+            }
+        };
+        closeOverlays (*editor);
+        p.setParameterFromUI (ParamIDs::partLength, 1.0f);
+        p.setParameterFromUI (ParamIDs::pattern, 2.0f);
+        if (auto* e = dynamic_cast<juce::Timer*> (editor.get())) e->timerCallback();
+        save ("5-four-bars");
     }
 }
 

@@ -110,6 +110,7 @@ juce::AudioProcessorValueTreeState::ParameterLayout FaseGrooveDrumsProcessor::cr
                                                           [] (int i) { return String (fgd::grooveCategories()[(size_t) i]); }), 0);
     add (std::make_unique<AudioParameterInt> (ParameterID { ParamIDs::riffSeed, 1 }, "Beat seed", 1, 100000, 1));
     unitFloat (ParamIDs::density, "Density", 0.0f, 1.0f, 0.5f);
+    choice (ParamIDs::partLength, "Part length", { "1/2 bar", "1 bar" }, 0);
     for (int i = 0; i < fgd::numSegments; ++i)
         choice (ParamIDs::segment (i), "Part " + String (i + 1), { "A", "B", "C", "D" }, i);
     group ("groove", "Groove");
@@ -224,6 +225,7 @@ fgd::DrumSettings FaseGrooveDrumsProcessor::currentSettings() const
 {
     fgd::DrumSettings s;
     s.pattern = juce::roundToInt (raw (ParamIDs::pattern));
+    s.grooveBars = juce::roundToInt (raw (ParamIDs::partLength)) == 1 ? 4 : 2;
     s.swing = raw (ParamIDs::swing);
     s.velocity = juce::roundToInt (raw (ParamIDs::velocity));
     s.humanize = raw (ParamIDs::humanize);
@@ -273,14 +275,14 @@ void FaseGrooveDrumsProcessor::setSegmentAt (int position, int part)
 
 int FaseGrooveDrumsProcessor::baseStep (int displayedStep) const
 {
-    constexpr int size = gridSteps / fgd::numSegments;
-    const int step = juce::jlimit (0, gridSteps - 1, displayedStep);
+    const int size = steps() / fgd::numSegments;
+    const int step = juce::jlimit (0, steps() - 1, displayedStep);
     return segmentAt (step / size) * size + step % size;
 }
 
 char FaseGrooveDrumsProcessor::stepSymbol (int lane, int step) const
 {
-    if (! juce::isPositiveAndBelow (lane, fgd::numLanes) || ! juce::isPositiveAndBelow (step, gridSteps))
+    if (! juce::isPositiveAndBelow (lane, fgd::numLanes) || ! juce::isPositiveAndBelow (step, steps()))
         return '.';
     if (juce::roundToInt (raw (ParamIDs::pattern)) == fgd::userPatternIndex())
         return userGrid[(size_t) lane][(size_t) baseStep (step)].load();
@@ -290,7 +292,7 @@ char FaseGrooveDrumsProcessor::stepSymbol (int lane, int step) const
 void FaseGrooveDrumsProcessor::setUserPattern (const fgd::DrumPattern& source)
 {
     auto p = source;
-    fgd::normalisePattern (p, gridSteps);
+    fgd::fitPattern (p, gridSteps);   // a two-bar groove fills the four bars twice
     for (int l = 0; l < fgd::numLanes; ++l)
         for (int i = 0; i < gridSteps; ++i)
         {
@@ -311,7 +313,7 @@ bool FaseGrooveDrumsProcessor::makeUserPattern()
 
 void FaseGrooveDrumsProcessor::editStep (int lane, int step, char symbol)
 {
-    if (! juce::isPositiveAndBelow (lane, fgd::numLanes) || ! juce::isPositiveAndBelow (step, gridSteps))
+    if (! juce::isPositiveAndBelow (lane, fgd::numLanes) || ! juce::isPositiveAndBelow (step, steps()))
         return;
 
     // The first edit of a preset (or random beat) copies it into the user pattern.
@@ -351,8 +353,9 @@ void FaseGrooveDrumsProcessor::randomizeSegment (int part)
         return;
     makeUserPattern();
     const auto settings = currentSettings();
-    const auto fresh = fgd::makeRandomPattern (freshSeed(), settings.density, settings.randomGenre);
-    constexpr int size = gridSteps / fgd::numSegments;
+    auto fresh = fgd::makeRandomPattern (freshSeed(), settings.density, settings.randomGenre);
+    fgd::fitPattern (fresh, steps());
+    const int size = steps() / fgd::numSegments;
     for (int l = 0; l < fgd::numLanes; ++l)
         for (int i = part * size; i < (part + 1) * size; ++i)
         {
@@ -368,18 +371,18 @@ void FaseGrooveDrumsProcessor::randomizeLane (int lane)
     makeUserPattern();
     const auto settings = currentSettings();
     const auto line = fgd::makeRandomLane ((fgd::Lane) lane, freshSeed(), settings.density, settings.randomGenre);
-    constexpr int size = gridSteps / fgd::numSegments;
-    for (int i = 0; i < gridSteps; ++i)
+    const int size = steps() / fgd::numSegments;
+    for (int i = 0; i < steps(); ++i)
         if (! isSegmentLocked (i / size))
         {
-            userGrid[(size_t) lane][(size_t) i] = line[(size_t) i];
+            userGrid[(size_t) lane][(size_t) i] = line[(size_t) (i % (int) line.size())];
             userVelocity[(size_t) lane][(size_t) i] = 0;
         }
 }
 
 int FaseGrooveDrumsProcessor::stepVelocity (int lane, int step) const
 {
-    if (! juce::isPositiveAndBelow (lane, fgd::numLanes) || ! juce::isPositiveAndBelow (step, gridSteps)
+    if (! juce::isPositiveAndBelow (lane, fgd::numLanes) || ! juce::isPositiveAndBelow (step, steps())
         || juce::roundToInt (raw (ParamIDs::pattern)) != fgd::userPatternIndex())
         return 0;
     return userVelocity[(size_t) lane][(size_t) baseStep (step)].load();
@@ -387,7 +390,7 @@ int FaseGrooveDrumsProcessor::stepVelocity (int lane, int step) const
 
 void FaseGrooveDrumsProcessor::setStepVelocity (int lane, int step, int level)
 {
-    if (! juce::isPositiveAndBelow (lane, fgd::numLanes) || ! juce::isPositiveAndBelow (step, gridSteps))
+    if (! juce::isPositiveAndBelow (lane, fgd::numLanes) || ! juce::isPositiveAndBelow (step, steps()))
         return;
     makeUserPattern();
     userVelocity[(size_t) lane][(size_t) baseStep (step)] = juce::jlimit (0, 127, level);
@@ -422,7 +425,7 @@ void FaseGrooveDrumsProcessor::applyVelocityShape (int lane, int shape)
     makeUserPattern();
     auto& r = juce::Random::getSystemRandom();
 
-    for (int step = 0; step < gridSteps; ++step)
+    for (int step = 0; step < steps(); ++step)
     {
         const char symbol = stepSymbol (lane, step);
         if (! fgd::isHit (symbol))
@@ -449,7 +452,7 @@ void FaseGrooveDrumsProcessor::randomizeVelocities (int lane)
 {
     auto& r = juce::Random::getSystemRandom();
     applyVelocityShape (lane, r.nextInt (4));
-    for (int step = 0; step < gridSteps; ++step)
+    for (int step = 0; step < steps(); ++step)
         if (const int v = stepVelocity (lane, step); v > 0)
             setStepVelocity (lane, step, juce::jlimit (1, 127, v + r.nextInt ({ -9, 10 })));
 }
@@ -701,7 +704,8 @@ void FaseGrooveDrumsProcessor::processBlock (juce::AudioBuffer<float>& buffer, j
         expectedNextPpq = internalPpq = startPpq + blockBeats;
 
         const auto step = (long long) std::floor (startPpq / fgd::stepLength);
-        uiStep = (int) (((step % gridSteps) + gridSteps) % gridSteps);
+        const int n = fgd::GrooveEngine::patternLength (settings);
+        uiStep = (int) (((step % n) + n) % n);
         uiPpq = startPpq;
     }
     else
@@ -1181,7 +1185,7 @@ bool FaseGrooveDrumsProcessor::saveGroove (const juce::String& name)
     for (int l = 0; l < fgd::numLanes; ++l)
     {
         juce::String levels;
-        for (int i = 0; i < gridSteps; ++i)
+        for (int i = 0; i < steps(); ++i)
             levels << juce::String::toHexString (stepVelocity (l, i)).paddedLeft ('0', 2);
         auto* lane = xml.createNewChildElement ("Lane");
         lane->setAttribute ("drum", fgd::laneName (l));
@@ -1204,11 +1208,13 @@ bool FaseGrooveDrumsProcessor::loadGroove (const juce::File& file)
             break;
         const auto steps = lane->getStringAttribute ("steps");
         const auto levels = lane->getStringAttribute ("velocity");
-        for (int i = 0; i < gridSteps; ++i)
+        const int length = juce::jmax (1, steps.length());
+        for (int i = 0; i < gridSteps; ++i)   // a two-bar groove fills the four bars twice
         {
-            const char c = i < steps.length() ? (char) steps[i] : '.';
+            const int k = i % length;
+            const char c = k < steps.length() ? (char) steps[k] : '.';
             userGrid[(size_t) l][(size_t) i] = fgd::isHit (c) ? c : '.';
-            userVelocity[(size_t) l][(size_t) i] = juce::jlimit (0, 127, levels.substring (i * 2, i * 2 + 2).getHexValue32());
+            userVelocity[(size_t) l][(size_t) i] = juce::jlimit (0, 127, levels.substring (k * 2, k * 2 + 2).getHexValue32());
         }
         ++l;
     }
@@ -1220,6 +1226,19 @@ bool FaseGrooveDrumsProcessor::loadGroove (const juce::File& file)
 
 namespace
 {
+    /** The first `loopSteps` of a groove (and their levels) repeated until `length`. */
+    template <typename Levels>
+    void repeatLoop (fgd::DrumPattern& p, Levels& levels, int loopSteps, int length)
+    {
+        loopSteps = juce::jlimit (16, length, loopSteps);
+        for (int l = 0; l < fgd::numLanes; ++l)
+            for (int i = loopSteps; i < length; ++i)
+            {
+                p.lanes[(size_t) l][(size_t) i] = p.lanes[(size_t) l][(size_t) (i % loopSteps)];
+                levels[(size_t) l][(size_t) i] = levels[(size_t) l][(size_t) (i % loopSteps)];
+            }
+    }
+
     /** Zero-phase filtering (forwards, then backwards), twice: a steep band without delay. */
     void filterBand (std::vector<float>& y, double sr, double low, double high)
     {
@@ -1363,8 +1382,8 @@ juce::String FaseGrooveDrumsProcessor::importAudioGroove (const juce::File& file
                 continue;
             const double pos = (h.time - offset) / T;
             const int step = (int) std::lround (pos);
-            if (step < 0 || step >= gridSteps)
-                continue;   // the first two bars
+            if (step < 0 || step >= steps())
+                continue;   // the first two (or four) bars
             const float r = h.level / top;
             if (r < 0.12f)
                 continue;
@@ -1382,14 +1401,8 @@ juce::String FaseGrooveDrumsProcessor::importAudioGroove (const juce::File& file
     place (mids, [] (const AudioHit&) { return (int) fgd::Lane::clap; }, 0.28f, false);
     place (highs, [] (const AudioHit& h) { return (int) (h.ring > 0.4f ? fgd::Lane::openHat : fgd::Lane::closedHat); }, 0.0f, true);
 
-    // A one-bar loop plays twice.
-    if (wholeBars == 1)
-        for (int l = 0; l < fgd::numLanes; ++l)
-            for (int i = 0; i < 16; ++i)
-            {
-                p.lanes[(size_t) l][(size_t) (i + 16)] = p.lanes[(size_t) l][(size_t) i];
-                levels[(size_t) l][(size_t) (i + 16)] = levels[(size_t) l][(size_t) i];
-            }
+    // A loop shorter than the groove plays again.
+    repeatLoop (p, levels, juce::jmin (wholeBars * 16, steps()), gridSteps);
 
     setUserPattern (p);
     for (int l = 0; l < fgd::numLanes; ++l)
@@ -1463,7 +1476,7 @@ bool FaseGrooveDrumsProcessor::importMidiGroove (const juce::File& file)
     for (const auto& h : hits)
     {
         const int step = (int) std::lround ((h.beat - start) / fgd::stepLength);
-        if (! juce::isPositiveAndBelow (step, gridSteps))
+        if (! juce::isPositiveAndBelow (step, steps()))
             continue;
         if (h.velocity > levels[(size_t) h.lane][(size_t) step])
         {
@@ -1471,14 +1484,8 @@ bool FaseGrooveDrumsProcessor::importMidiGroove (const juce::File& file)
             p.lanes[(size_t) h.lane][(size_t) step] = h.velocity >= 110 ? 'X' : h.velocity <= 50 ? 'g' : 'x';
         }
     }
-    // A one-bar loop plays twice.
-    if (last < start + 4.0 - fgd::stepLength * 0.5)
-        for (int l = 0; l < fgd::numLanes; ++l)
-            for (int i = 0; i < 16; ++i)
-            {
-                p.lanes[(size_t) l][(size_t) (i + 16)] = p.lanes[(size_t) l][(size_t) i];
-                levels[(size_t) l][(size_t) (i + 16)] = levels[(size_t) l][(size_t) i];
-            }
+    // A loop shorter than the groove plays again (whole bars).
+    repeatLoop (p, levels, juce::jmin ((int) std::ceil ((last - start) / 4.0 + 1.0e-6) * 16, steps()), gridSteps);
 
     setUserPattern (p);
     for (int l = 0; l < fgd::numLanes; ++l)

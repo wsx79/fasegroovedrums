@@ -121,3 +121,7 @@ La prima modifica copia il groove mostrato nello **User pattern**, che si salva 
 ## 11. Lingua
 
 **OPZIONI → Lingua**: English, Italiano, Español, Français, Deutsch o Português. L'interfaccia cambia subito; la scelta vale per ogni progetto.
+
+## 12. Durata delle parti
+
+**DURATA PARTI** (riga GROOVE): *1/2 battuta* = parti A-D di mezza battuta, groove di 2 battute; *1 battuta* = parti di una battuta, groove di 4 battute (la griglia mostra 4 battute).

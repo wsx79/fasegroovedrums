@@ -4,6 +4,13 @@
 
 Tutte le modifiche importanti di **Fase Groove Drums**.
 
+## [0.6.0] - 2026-10-18
+
+- **Durata delle parti** (riga GROOVE): le parti A-D durano mezza battuta ciascuna (groove di 2
+  battute, come prima) oppure **una battuta ciascuna (groove di 4 battute)**. Griglia, vista
+  velocity, schede delle parti, dadi, import e clip seguono la scelta; un groove di 2 battute riempie
+  le quattro battute due volte, così parti da lì e cambi le battute 3 e 4.
+
 ## [0.5.0] - 2026-10-18
 
 - **Interfaccia in 6 lingue**, come in Fase Groove Piano: English, Italiano, Español, Français,

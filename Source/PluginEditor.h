@@ -357,7 +357,7 @@ private:
 };
 
 //==============================================================================
-class FaseGrooveDrumsEditor : public juce::AudioProcessorEditor, public juce::FileDragAndDropTarget, private juce::Timer
+class FaseGrooveDrumsEditor : public juce::AudioProcessorEditor, public juce::FileDragAndDropTarget, public juce::Timer
 {
 public:
     explicit FaseGrooveDrumsEditor (FaseGrooveDrumsProcessor&);
@@ -369,8 +369,9 @@ public:
 
     static constexpr int designWidth = 1180, designHeight = 860;
 
-private:
     void timerCallback() override;
+
+private:
 
     /** Everything is laid out at the design size, then scaled (and centred) in the window. */
     struct Content : public juce::Component
@@ -421,7 +422,7 @@ private:
     std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> tempoAttachment;
 
     // Groove row
-    ParamCombo grooveCombo, genreCombo;
+    ParamCombo grooveCombo, genreCombo, partLengthCombo;
     juce::TextButton grooveButton;
     IconButton prevGroove { IconButton::Icon::left }, nextGroove { IconButton::Icon::right };
     IconButton newBeatButton { IconButton::Icon::dice };

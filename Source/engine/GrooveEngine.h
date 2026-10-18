@@ -22,6 +22,7 @@ struct DrumSettings
     DrumSettings() noexcept;
 
     int pattern = 0;
+    int grooveBars = 2;                    // 2 (parts A-D of half a bar) or 4 (parts of one bar)
     float swing = 0.15f;                   // 0 = straight, 1 = full triplet shuffle
     int velocity = 100;
     float humanize = 0.2f;
@@ -124,6 +125,7 @@ private:
     Section cachedSection = Section::main;
     std::array<std::array<char, userPatternLength>, numLanes> cachedUser {};
     std::array<int, numSegments> cachedOrder {};
+    int cachedBars = 2;
     std::uint32_t cachedSectionVariation = 0;
 };
 

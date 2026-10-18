@@ -119,3 +119,7 @@ project. **CLEAR** empties the grid. The light next to each name flashes when th
 ## 11. Language
 
 **OPTIONS → Language**: English, Italiano, Español, Français, Deutsch or Português. The interface changes at once; the choice is kept for every project.
+
+## 12. Part length
+
+**PART LENGTH** (GROOVE row): *1/2 bar* = parts A-D of half a bar, a 2-bar groove; *1 bar* = parts of one bar, a 4-bar groove (the grid shows 4 bars).

@@ -171,7 +171,7 @@ DrumPattern makeRandomPattern (std::uint32_t seed, float density, int genre)
     p.name = "Random beat";
     p.category = grooveCategories()[(size_t) genre];
     for (auto& line : p.lanes)
-        line.assign ((size_t) userPatternLength, '.');
+        line.assign ((size_t) randomBeatLength, '.');
 
     auto setBar = [&p] (Lane lane, const char* cell)   // one bar, written into both bars
     {
@@ -286,7 +286,7 @@ DrumPattern makeRandomPattern (std::uint32_t seed, float density, int genre)
         else if (genre == funky || genre == gospel)       p[Lane::snare][31] = 'g';
     }
 
-    normalisePattern (p, userPatternLength);
+    normalisePattern (p, randomBeatLength);
     return p;
 }
 

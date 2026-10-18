@@ -112,8 +112,16 @@ DrumPattern GrooveEngine::basePattern (const DrumSettings& s)
 {
     const auto& presets = drumPatterns();
 
+    const int length = patternLength (s);
+
     if (s.pattern == randomPatternIndex())
-        return makeRandomPattern (s.riffSeed, s.density, s.randomGenre);
+    {
+        auto p = makeRandomPattern (s.riffSeed, s.density, s.randomGenre);
+        fitPattern (p, length);
+        if (length > randomBeatLength)   // four bars: the last one turns around
+            p = makeVariation (p, s.riffSeed + 31u);
+        return p;
+    }
 
     if (s.pattern == userPatternIndex())
     {
@@ -121,13 +129,14 @@ DrumPattern GrooveEngine::basePattern (const DrumSettings& s)
         p.name = "User pattern";
         for (int l = 0; l < numLanes; ++l)
             p.lanes[(size_t) l].assign (s.user[(size_t) l].begin(), s.user[(size_t) l].end());
-        normalisePattern (p, userPatternLength);
+        fitPattern (p, length);
         return p;
     }
 
-    // Every groove plays as two bars (a one-bar groove twice), so A-D are always half bars.
+    // Every groove plays as two (or four) bars, a one-bar groove repeated: A-D are always a
+    // quarter of it.
     auto p = presets[(size_t) std::clamp (s.pattern, 0, (int) presets.size() - 1)];
-    normalisePattern (p, userPatternLength);
+    fitPattern (p, length);
     return p;
 }
 
@@ -139,9 +148,9 @@ DrumPattern GrooveEngine::resolvePattern (const DrumSettings& s)
     return applySection (p, s.section);
 }
 
-int GrooveEngine::patternLength (const DrumSettings&) noexcept
+int GrooveEngine::patternLength (const DrumSettings& s) noexcept
 {
-    return userPatternLength;
+    return s.grooveBars >= 4 ? 64 : 32;
 }
 
 int GrooveEngine::loopLengthInSteps (const DrumSettings& s) noexcept
@@ -171,7 +180,7 @@ const DrumPattern& GrooveEngine::patternFor (const DrumSettings& s)
     const bool usesUser = s.pattern == userPatternIndex();
 
     if (s.pattern != cachedIndex || s.section != cachedSection || s.segmentOrder != cachedOrder
-        || s.sectionVariation != cachedSectionVariation
+        || s.sectionVariation != cachedSectionVariation || s.grooveBars != cachedBars
         || (usesSeed && (s.riffSeed != cachedSeed || s.density != cachedDensity || s.randomGenre != cachedGenre))
         || (usesUser && s.user != cachedUser))
     {
@@ -185,6 +194,7 @@ const DrumPattern& GrooveEngine::patternFor (const DrumSettings& s)
         cachedUser = s.user;
         cachedOrder = s.segmentOrder;
         cachedSectionVariation = s.sectionVariation;
+        cachedBars = s.grooveBars;
     }
     return cachedPattern;
 }
@@ -225,11 +235,11 @@ void GrooveEngine::collectStep (long long step, const DrumSettings& s, const Dru
     // they change.
     auto handVelocity = [&] (int lane) -> int
     {
-        if (s.pattern != userPatternIndex() || len != userPatternLength)
+        if (s.pattern != userPatternIndex() || len != patternLength (s))
             return 0;
         if (varied && variation.lanes[(size_t) lane][(size_t) pos] != normal.lanes[(size_t) lane][(size_t) pos])
             return 0;
-        const int segment = userPatternLength / numSegments;
+        const int segment = len / numSegments;
         const int index = std::clamp (s.segmentOrder[(size_t) (pos / segment)], 0, numSegments - 1) * segment + pos % segment;
         return s.userVelocity[(size_t) lane][(size_t) index];
     };

@@ -544,23 +544,23 @@ juce::Rectangle<float> DrumGrid::diceBounds (int lane) const
 juce::Rectangle<float> DrumGrid::cellBounds (int lane, int step) const
 {
     const float rowH = (float) getHeight() / (float) fgd::numLanes;
-    const float cellW = (float) (getWidth() - headerWidth) / (float) FaseGrooveDrumsProcessor::gridSteps;
+    const float cellW = (float) (getWidth() - headerWidth) / (float) processor.steps();
     return { (float) headerWidth + cellW * (float) step, rowH * (float) lane, cellW, rowH };
 }
 
 bool DrumGrid::cellAt (juce::Point<float> p, int& lane, int& step) const
 {
     const float rowH = (float) getHeight() / (float) fgd::numLanes;
-    const float cellW = (float) (getWidth() - headerWidth) / (float) FaseGrooveDrumsProcessor::gridSteps;
+    const float cellW = (float) (getWidth() - headerWidth) / (float) processor.steps();
     lane = (int) std::floor (p.y / rowH);
     step = (int) std::floor ((p.x - (float) headerWidth) / cellW);
     return p.x >= (float) headerWidth && juce::isPositiveAndBelow (lane, fgd::numLanes)
-        && juce::isPositiveAndBelow (step, FaseGrooveDrumsProcessor::gridSteps);
+        && juce::isPositiveAndBelow (step, processor.steps());
 }
 
 void DrumGrid::paint (juce::Graphics& g)
 {
-    const int steps = FaseGrooveDrumsProcessor::gridSteps;
+    const int steps = processor.steps();
 
     // The playhead column under everything.
     if (juce::isPositiveAndBelow (playStep, steps))
@@ -615,7 +615,7 @@ void DrumGrid::paint (juce::Graphics& g)
         const auto& line = pattern.lanes[(size_t) lane];
         for (int step = 0; step < steps; ++step)
         {
-            auto c = cellBounds (lane, step).reduced (1.5f, 1.5f);
+            auto c = cellBounds (lane, step).reduced (steps > 32 ? 0.8f : 1.5f, 1.5f);
             const bool beat = (step / 4) % 2 == 0;
             g.setColour (beat ? Palette::panelEdge.withAlpha (0.55f) : Palette::panelEdge.withAlpha (0.32f));
             g.fillRoundedRectangle (c, 3.0f);
@@ -664,12 +664,14 @@ void DrumGrid::paint (juce::Graphics& g)
         }
     }
 
-    // Lines between the half bars (A B C D) and the two bars.
+    // Lines between the parts (A B C D) and the bars.
+    const int part = steps / fgd::numSegments;
     for (int k = 1; k < fgd::numSegments; ++k)
     {
-        const float x = cellBounds (0, k * 8).getX();
-        g.setColour (k == 2 ? Palette::dim.withAlpha (0.6f) : Palette::panelEdge.brighter (0.2f));
-        g.drawLine (x, 0.0f, x, (float) getHeight(), k == 2 ? 1.2f : 1.0f);
+        const float x = cellBounds (0, k * part).getX();
+        const bool strong = k == 2 || part == 16;
+        g.setColour (strong ? Palette::dim.withAlpha (0.6f) : Palette::panelEdge.brighter (0.2f));
+        g.drawLine (x, 0.0f, x, (float) getHeight(), strong ? 1.2f : 1.0f);
     }
 }
 
@@ -917,7 +919,7 @@ void VelocityView::setLane (int newLane)
 void VelocityView::refresh()
 {
     const auto p = processor.displayedPattern();
-    for (int i = 0; i < FaseGrooveDrumsProcessor::gridSteps; ++i)
+    for (int i = 0; i < processor.steps() && i < p.length(); ++i)
     {
         symbols[(size_t) i] = p.lanes[(size_t) lane][(size_t) i];
         setByHand[(size_t) i] = processor.stepVelocity (lane, i);
@@ -953,22 +955,22 @@ juce::Rectangle<float> VelocityView::laneArea() const
 
 juce::Rectangle<float> VelocityView::column (int step, juce::Rectangle<float> area) const
 {
-    const float w = area.getWidth() / (float) FaseGrooveDrumsProcessor::gridSteps;
+    const float w = area.getWidth() / (float) processor.steps();
     return { area.getX() + w * (float) step, area.getY(), w, area.getHeight() };
 }
 
 int VelocityView::stepAt (float x) const
 {
     const auto area = laneArea();
-    const int step = (int) std::floor ((x - area.getX()) / (area.getWidth() / (float) FaseGrooveDrumsProcessor::gridSteps));
-    return juce::isPositiveAndBelow (step, FaseGrooveDrumsProcessor::gridSteps) ? step : -1;
+    const int step = (int) std::floor ((x - area.getX()) / (area.getWidth() / (float) processor.steps()));
+    return juce::isPositiveAndBelow (step, processor.steps()) ? step : -1;
 }
 
 void VelocityView::paint (juce::Graphics& g)
 {
     const auto colour = laneColour (lane);
     const auto strip = stripArea(), area = laneArea();
-    const int steps = FaseGrooveDrumsProcessor::gridSteps;
+    const int steps = processor.steps();
 
     // Captions on the left.
     g.setColour (Palette::dim);
@@ -1030,10 +1032,10 @@ void VelocityView::paint (juce::Graphics& g)
         }
     }
 
-    // Half-bar lines.
+    // Lines between the parts.
     for (int k = 1; k < fgd::numSegments; ++k)
     {
-        const float x = column (k * 8, area).getX();
+        const float x = column (k * steps / fgd::numSegments, area).getX();
         g.setColour (k == 2 ? Palette::dim.withAlpha (0.6f) : Palette::panelEdge.brighter (0.2f));
         g.drawLine (x, strip.getY(), x, area.getBottom(), 1.0f);
     }
@@ -1676,7 +1678,7 @@ PartCard::PartCard (FaseGrooveDrumsProcessor& p, int pos)
 void PartCard::refresh (const fgd::DrumPattern& shown, int playStep)
 {
     pattern = shown;
-    playing = playStep >= 0 && playStep / 8 == position;
+    playing = playStep >= 0 && playStep / juce::jmax (1, shown.length() / fgd::numSegments) == position;
     locked = processor.isSegmentLocked (processor.segmentAt (position));
     lock.setIcon (locked ? IconButton::Icon::lock : IconButton::Icon::unlock);
     lock.setToggleState (locked, juce::dontSendNotification);
@@ -1708,7 +1710,9 @@ void PartCard::paint (juce::Graphics& g)
     const int part = processor.segmentAt (position);
     g.setColour (Palette::dim);
     g.setFont (font (11.0f, true));
-    g.drawText (juce::String (position + 1) + "   " + Localisation::upper (tr ("Bar")) + " " + (position < 2 ? "1" : "2") + (position % 2 == 0 ? " a" : " b"),
+    const bool wholeBars = pattern.length() > 32;
+    g.drawText (juce::String (position + 1) + "   " + Localisation::upper (tr ("Bar")) + " "
+                    + (wholeBars ? juce::String (position + 1) : juce::String (position < 2 ? "1" : "2") + (position % 2 == 0 ? " a" : " b")),
                 getLocalBounds().reduced (34, 6).removeFromTop (22), juce::Justification::centred);
 
     // The part's letter and a picture of its hits: kick, snare + clap, hats, percussion.
@@ -1717,21 +1721,22 @@ void PartCard::paint (juce::Graphics& g)
     g.setFont (font (24.0f, true));
     g.drawText (juce::String::charToString ((juce::juce_wchar) ('A' + part)), body.removeFromLeft (30.0f), juce::Justification::centred);
 
-    if (pattern.length() < FaseGrooveDrumsProcessor::gridSteps)
+    if (pattern.length() < 32)
         return;
+    const int partSteps = pattern.length() / fgd::numSegments;
     struct Row { std::initializer_list<fgd::Lane> lanes; int colourLane; };
     const Row rows[] { { { fgd::Lane::closedHat, fgd::Lane::openHat, fgd::Lane::ride }, (int) fgd::Lane::closedHat },
                        { { fgd::Lane::shaker, fgd::Lane::tambourine, fgd::Lane::conga, fgd::Lane::cowbell, fgd::Lane::rim, fgd::Lane::tom }, (int) fgd::Lane::shaker },
                        { { fgd::Lane::snare, fgd::Lane::clap }, (int) fgd::Lane::snare },
                        { { fgd::Lane::kick }, (int) fgd::Lane::kick } };
-    const float rowH = body.getHeight() / 4.0f, cellW = body.getWidth() / 8.0f;
+    const float rowH = body.getHeight() / 4.0f, cellW = body.getWidth() / (float) partSteps;
     for (int row = 0; row < 4; ++row)
-        for (int i = 0; i < 8; ++i)
+        for (int i = 0; i < partSteps; ++i)
         {
             char strongest = '.';
             for (auto lane : rows[row].lanes)
             {
-                const char c = pattern[lane][(size_t) (position * 8 + i)];
+                const char c = pattern[lane][(size_t) (position * partSteps + i)];
                 if (c == 'X' || (fgd::isHit (c) && strongest == '.') || (c != 'g' && fgd::isHit (c) && strongest == 'g'))
                     strongest = c;
             }
@@ -2098,6 +2103,7 @@ FaseGrooveDrumsEditor::FaseGrooveDrumsEditor (FaseGrooveDrumsProcessor& p)
     : AudioProcessorEditor (&p), processor (p), tooltips (this, 600),
       grooveCombo (p.apvts, ParamIDs::pattern, "Groove"),
       genreCombo (p.apvts, ParamIDs::genre, "Beat genre"),
+      partLengthCombo (p.apvts, ParamIDs::partLength, "Part length"),
       pads (p),
       sectionCombo (p.apvts, ParamIDs::section, "Song section"),
       fillsCombo (p.apvts, ParamIDs::fills, "Fills"),
@@ -2211,12 +2217,13 @@ FaseGrooveDrumsEditor::FaseGrooveDrumsEditor (FaseGrooveDrumsProcessor& p)
     newBeatButton.iconColour = Palette::accent;
     Localisation::bindTip (newBeatButton, "A brand new random beat in the chosen genre (locked parts stay)");
     newBeatButton.onClick = [this] { processor.rollNewBeat(); };
+    partLengthCombo.setTip ("How long each part A-D is: half a bar (a 2-bar groove) or one bar (a 4-bar groove)");
     densitySlider.setSliderStyle (juce::Slider::LinearBar);
     Localisation::bindTip (densitySlider, "How busy the dice are: from kick, clap and hats to 16ths and percussion");
     densityAttachment = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment> (p.apvts, ParamIDs::density, densitySlider);
     Localisation::bindTip (grooveButton, "The groove: click to open the browser (genres, grooves and the picture of their rhythm)");
     grooveButton.onClick = [this] { browser.show(); };
-    for (juce::Component* c : std::initializer_list<juce::Component*> { &grooveButton, &prevGroove, &nextGroove, &genreCombo, &newBeatButton, &densitySlider })
+    for (juce::Component* c : std::initializer_list<juce::Component*> { &grooveButton, &prevGroove, &nextGroove, &genreCombo, &newBeatButton, &densitySlider, &partLengthCombo })
         show (*c);
     for (int i = 0; i < fgd::numSegments; ++i)
     {
@@ -2385,7 +2392,7 @@ FaseGrooveDrumsEditor::FaseGrooveDrumsEditor (FaseGrooveDrumsProcessor& p)
     content.addChildComponent (browser);
     content.addChildComponent (about);
 
-    combos = { &genreCombo, &sectionCombo, &fillsCombo, &variationCombo, &fillStyleCombo, &kitCombo, &channelCombo };
+    combos = { &partLengthCombo, &genreCombo, &sectionCombo, &fillsCombo, &variationCombo, &fillStyleCombo, &kitCombo, &channelCombo };
 
     lastSnapshot = processor.snapshot();
     // Texts that follow the interface language.
@@ -2542,6 +2549,7 @@ void FaseGrooveDrumsEditor::layout()
     genreCombo.setBounds (34, 178, 150, 46);
     newBeatButton.setBounds (190, 193, 110, 30);
     densitySlider.setBounds (310, 193, 104, 30);
+    partLengthCombo.setBounds (310, 128, 104, 46);
     for (int i = 0; i < fgd::numSegments; ++i)
         partCards[i]->setBounds (430 + i * 182, 122, 174, 104);
 
@@ -2672,7 +2680,7 @@ void FaseGrooveDrumsEditor::paintContent (juce::Graphics& g)
     };
     caption ("Groove (click: browser)", 34, 128, 214);
     caption ("Density", 310, 178);
-    caption ("Parts A-D (each half a bar: play them in any order)", 430, 104, 400);
+    caption (processor.steps() > 32 ? "Parts A-D (one bar each: play them in any order)" : "Parts A-D (each half a bar: play them in any order)", 430, 104, 400);
     caption ("Drum", 34, 274);
     caption ("MIDI note", 34, 328);
     caption ("Level", 186, 326, 54);

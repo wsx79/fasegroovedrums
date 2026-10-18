@@ -72,6 +72,10 @@ int randomPatternIndex() noexcept;
 /** Index of the "User pattern" entry (editable grid), after "Random beat". */
 int userPatternIndex() noexcept;
 
-constexpr int userPatternLength = 32;   // two bars of 16ths
+constexpr int userPatternLength = 64;   // the user pattern: up to four bars of 16ths
+constexpr int randomBeatLength = 32;    // a random beat: two bars
+
+/** Every lane exactly `length` steps: longer lines are cut, shorter ones repeated. */
+void fitPattern (DrumPattern&, int length);
 
 } // namespace fgd

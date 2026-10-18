@@ -233,7 +233,7 @@ static void testRandomBeats()
         for (std::uint32_t seed = 1; seed < 40; ++seed)
         {
             const auto p = makeRandomPattern (seed, (float) (seed % 5) / 4.0f, genre);
-            CHECK (p.length() == userPatternLength);
+            CHECK (p.length() == randomBeatLength);
             CHECK (countHits (p[Lane::kick]) > 0);
             CHECK (countHits (p[Lane::snare]) + countHits (p[Lane::clap]) + countHits (p[Lane::rim]) > 0);
             CHECK (p.category == grooveCategories()[(size_t) genre]);
@@ -365,7 +365,7 @@ static void testPartsSectionsAndLanes()
 {
     // A-D order: A A B C repeats the first half bar.
     auto base = drumPatterns()[0];
-    normalisePattern (base, userPatternLength);
+    normalisePattern (base, randomBeatLength);
     const auto ordered = applySegmentOrder (base, { 0, 0, 1, 2 });
     for (int l = 0; l < numLanes; ++l)
         CHECK (ordered.lanes[(size_t) l].substr (8, 8) == base.lanes[(size_t) l].substr (0, 8));
@@ -381,7 +381,7 @@ static void testPartsSectionsAndLanes()
         for (int l = 0; l < numLanes; ++l)
         {
             const auto line = makeRandomLane ((Lane) l, 3, 0.5f, genre);
-            CHECK ((int) line.size() == userPatternLength);
+            CHECK ((int) line.size() == randomBeatLength);
             CHECK (countHits (line) > 0);
             CHECK (line == makeRandomLane ((Lane) l, 3, 0.5f, genre));
         }
@@ -453,8 +453,36 @@ static void testKickAlwaysOnTheGrid()
     CHECK (countOns (GrooveEngine::renderClip (s, 8.0), 36) == 1);
 }
 
+static void testFourBarGrooves()
+{
+    // Parts of one bar: every groove plays four bars, the parts A-D are bars 1-4.
+    auto s = straight();
+    s.grooveBars = 4;
+    CHECK (GrooveEngine::patternLength (s) == 64);
+    CHECK (GrooveEngine::basePattern (s).length() == 64);
+    s.segmentOrder = { 0, 0, 0, 1 };
+    const auto p = GrooveEngine::resolvePattern (s);
+    for (int l = 0; l < numLanes; ++l)
+        CHECK (p.lanes[(size_t) l].substr (32, 16) == p.lanes[(size_t) l].substr (0, 16));
+
+    // The random beat: bars 1-2 again, then a turnaround.
+    s.pattern = randomPatternIndex();
+    s.segmentOrder = { 0, 1, 2, 3 };
+    const auto r = GrooveEngine::basePattern (s);
+    CHECK (r.length() == 64);
+    CHECK (r[Lane::kick].substr (32, 16) == r[Lane::kick].substr (0, 16));
+
+    // The user pattern uses all four bars.
+    s.pattern = userPatternIndex();
+    s.user[(size_t) Lane::clap][50] = 'X';
+    const auto events = GrooveEngine::renderClip (s, 16.0);
+    CHECK (countOns (events, 39) == 1);
+    CHECK (GrooveEngine::loopLengthInSteps (s) == 64);
+}
+
 int main()
 {
+    testFourBarGrooves();
     testKickAlwaysOnTheGrid();
     testPartsSectionsAndLanes();
     testPresets();

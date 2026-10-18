@@ -30,6 +30,7 @@ namespace ParamIDs
     inline constexpr const char* sequencer   = "sequencer";     // off: the groove doesn't play with the DAW
     inline constexpr const char* riffSeed    = "riffSeed";
     inline constexpr const char* density     = "density";
+    inline constexpr const char* partLength  = "partLength";    // the parts A-D: half a bar (2-bar groove) or 1 bar (4-bar groove)
     inline constexpr const char* genre       = "genre";         // the genre NEW BEAT writes in
     inline constexpr const char* midiChannel = "midiChannel";
     inline constexpr const char* sound       = "sound";         // the guide kit on / off
@@ -87,7 +88,9 @@ public:
     //==============================================================================
     // The grid (message thread). Steps are as displayed (two bars); edits go into the user
     // pattern, which then becomes the groove.
-    static constexpr int gridSteps = fgd::userPatternLength;
+    static constexpr int gridSteps = fgd::userPatternLength;   // the most steps a groove can have (4 bars)
+    /** The steps of the groove now: 32 (parts of half a bar) or 64 (parts of one bar). */
+    int steps() const { return juce::roundToInt (raw (ParamIDs::partLength)) == 1 ? 64 : 32; }
     char stepSymbol (int lane, int step) const;
     void editStep (int lane, int step, char symbol);
     void clearLane (int lane);

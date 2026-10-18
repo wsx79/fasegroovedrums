@@ -4,6 +4,13 @@
 
 All notable changes to **Fase Groove Drums**.
 
+## [0.6.0] - 2026-10-18
+
+- **Part length** (GROOVE row): the parts A-D are half a bar each (a 2-bar groove, as before) or
+  **one bar each (a 4-bar groove)**. The grid, the velocity view, the part cards, the dice, the
+  imports and the clips all follow it; a 2-bar groove fills the four bars twice, so you can start
+  from it and change bars 3 and 4.
+
 ## [0.5.0] - 2026-10-18
 
 - **Interface in 6 languages**, as in Fase Groove Piano: English, Italiano, Español, Français,
