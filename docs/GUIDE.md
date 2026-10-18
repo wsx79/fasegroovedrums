@@ -150,3 +150,21 @@ project. **CLEAR** empties the grid. The light next to each name flashes when th
 - **LINK PIANO** (Groove row): the genre and the swing follow Fase Groove Piano (2.18 or later,
   with its **LINK DRUMS** on) and the other linked Fase Groove instances: change them in either
   one. A groove of another genre brings the first groove of that genre in the other plug-in.
+
+## 14. New in 0.9
+
+- **The feel of house drumming**: on hats, shakers, tambourines and rides the offbeat sings and
+  the other 16ths are much softer (ACCENTS sets how much, 85% by default). Each genre has its own
+  swing: Soulful and Disco almost straight, Chicago (Jackin') the most swung.
+- **The grooves and the random beat** are built as house is programmed: kick, clap on 2 and 4,
+  one hat line, one open hat accent, a few percussion hits. Busier at a higher DENSITY.
+- **Sample browser**: open it from **KIT FOLDER...** (Guide sound), from a drum's right-click
+  menu (*Choose it in the sample browser...*) or by dropping a folder on the window. On the left
+  the drums, with their sample now and how many the folder has for them; on the right the samples
+  of the drum picked, recognised **by name** (kick, bd, snare, clap, ch, oh...), **by folder**
+  (Kicks, Hi Hats, Percussion...) or **by sound**. Click one to hear it (arrows: the next one),
+  **USE** or double-click: that drum plays it. **ALL FILES** shows the other samples too; **AUTO
+  KIT** gives every drum the first sample that suits it. The last folder is saved with the project.
+- **LINK PIANO** (now next to Sequencer, as in Fase Groove Piano): genre, swing, **tempo, SYNC
+  DAW and the play / pause / stop buttons** are shared, and both play the same beat at the same
+  time, also without the DAW.

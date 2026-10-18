@@ -58,7 +58,8 @@ then **drag it into your DAW as a MIDI clip** and play it with your own drums.
   track per drum), save it as `.mid`, or use live MIDI out. General MIDI notes on channel 10 by
   default; every drum's note can be changed.
 - 🔉 **Audio export:** the guide sound as WAV: a clip that loops seamlessly, the whole song, or stems (one file per drum).
-- 🔗 **LINK PIANO:** the same genre and swing as Fase Groove Piano.
+- 🗂️ **Sample browser:** a folder's samples recognised as drums (by name, folder or sound): listen and pick one per drum.
+- 🔗 **LINK PIANO:** the same genre, swing, tempo and play button as Fase Groove Piano, on the same beat.
 - 🌍 **Interface in 6 languages:** English, Italiano, Español, Français, Deutsch, Português (**OPTIONS → Language**).
 - ⏱️ **Tempo:** synced to the DAW or set by hand; ▶ plays without the DAW (space bar).
 

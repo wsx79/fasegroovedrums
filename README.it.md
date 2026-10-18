@@ -59,7 +59,8 @@ interno, poi **trascinalo nella DAW come clip MIDI** e suonalo con la tua batter
   traccia per strumento), salvala come `.mid` o usa l'uscita MIDI dal vivo. Note General MIDI sul
   canale 10 di default; la nota di ogni strumento si può cambiare.
 - 🔉 **Export audio:** il suono guida in WAV: una clip che va in loop senza stacchi, il brano intero o gli stem (un file per strumento).
-- 🔗 **LINK PIANO:** stesso genere e stesso swing di Fase Groove Piano.
+- 🗂️ **Sample browser:** i sample di una cartella riconosciuti come strumenti (dal nome, dalla cartella o dal suono): ascoltali e scegline uno per strumento.
+- 🔗 **LINK PIANO:** stesso genere, swing, tempo e play di Fase Groove Piano, sullo stesso beat.
 - 🌍 **Interfaccia in 6 lingue:** English, Italiano, Español, Français, Deutsch, Português (**OPZIONI → Lingua**).
 - ⏱️ **Tempo:** sincronizzato con la DAW o impostato a mano; ▶ suona senza la DAW (barra spaziatrice).
 

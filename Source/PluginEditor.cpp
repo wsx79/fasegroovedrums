@@ -2250,7 +2250,17 @@ void SampleBrowser::scan (const juce::File& f)
     rebuildList();
     repaint();
 
-    // Reading the samples (and listening to the unnamed ones) takes a moment: in the background.
+    // Reading the samples (and listening to the unnamed ones) takes a moment: in the background,
+    // unless the folder is small.
+    if (f.getNumberOfChildFiles (juce::File::findFiles) + f.getNumberOfChildFiles (juce::File::findDirectories) < 40
+        && f.findChildFiles (juce::File::findFiles, true, "*.wav;*.aif;*.aiff;*.flac;*.mp3;*.ogg").size() < 40)
+    {
+        found = FaseGrooveDrumsProcessor::scanSampleFolder (f);
+        scanning = false;
+        rebuildList();
+        repaint();
+        return;
+    }
     juce::Component::SafePointer<SampleBrowser> safe (this);
     juce::Thread::launch ([f, safe]
     {
@@ -2723,7 +2733,7 @@ FaseGrooveDrumsEditor::FaseGrooveDrumsEditor (FaseGrooveDrumsProcessor& p)
     grooveButton.onClick = [this] { browser.show(); };
     linkButton.setClickingTogglesState (true);
     linkButton.setColour (juce::TextButton::buttonOnColourId, Palette::accent2.darker (0.3f));
-    Localisation::bindTip (linkButton, "Link with Fase Groove Piano: the same genre and swing in both (change it in either one)");
+    Localisation::bindTip (linkButton, "Link with Fase Groove Piano: the same genre, swing, tempo and play button in both, on the same beat (change it in either one)");
     linkButton.onClick = [this] { processor.setLinked (linkButton.getToggleState()); };
     for (juce::Component* c : std::initializer_list<juce::Component*> { &grooveButton, &prevGroove, &nextGroove, &genreCombo, &newBeatButton, &densitySlider,
                                                                         &partLengthCombo, &linkButton })
@@ -3085,7 +3095,7 @@ void FaseGrooveDrumsEditor::layout()
     newBeatButton.setBounds (190, 193, 110, 30);
     densitySlider.setBounds (310, 193, 104, 30);
     partLengthCombo.setBounds (310, 128, 104, 46);
-    linkButton.setBounds (310, 103, 104, 20);
+    linkButton.setBounds (668, 19, 72, 20);
     for (int i = 0; i < fgd::numSegments; ++i)
         partCards[i]->setBounds (430 + i * 182, 122, 174, 104);
 
@@ -3175,7 +3185,7 @@ void FaseGrooveDrumsEditor::paintContent (juce::Graphics& g)
     g.fillRoundedRectangle (572.0f, 23.0f, 3.0f, 12.0f, 1.0f);
     g.setColour (Palette::text.withAlpha (0.92f));
     g.setFont (font (11.5f, true));
-    g.drawText (Localisation::upper (tr ("Transport & tempo")), 581, 19, 160, 20, juce::Justification::centredLeft);
+    g.drawFittedText (Localisation::upper (tr ("Transport & tempo")), { 581, 19, 84, 20 }, juce::Justification::centredLeft, 1, 0.55f);
 
     // The display: the groove playing, its genre, the section and where the playhead is.
     box (displayArea);

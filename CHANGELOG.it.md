@@ -4,6 +4,23 @@
 
 Tutte le modifiche importanti di **Fase Groove Drums**.
 
+## [0.9.0] - 2026-10-18
+
+- **Groove che hanno groove.** Hi-hat, shaker, tambourine e ride seguono la curva degli accenti
+  della batteria house: il controtempo forte, tutto il resto a meno della metà (il 16esimo dopo il
+  beat il più piano); conga e cowbell una curva più dolce. Gli accenti sono all'85% di default.
+- **Lo swing di ogni genere**, da quasi dritto (Soulful 53%, Funky & Disco 55%) a Chicago
+  (Jackin' 63%); Deep e Piano House circa 58%.
+- **I groove house sono ricostruiti**, e con loro il beat casuale, come si programma la house: il
+  kick, il clap su 2 e 4 (ogni tanto con la sua anticipazione), UNA sola linea di hi-hat (quasi
+  sempre in controtempo), un solo accento di open hat e poche percussioni rade. Basta beat affollati.
+- **Sample browser** (Suono guida -> CARTELLA KIT..., il menu col tasto destro di uno strumento, o
+  trascina una cartella sulla finestra): ogni sample della cartella viene riconosciuto come
+  strumento dal nome, dal nome della cartella o dal suono. Scegli lo strumento, clicca un sample
+  per ascoltarlo, USA; KIT AUTO fa tutto il kit.
+- **LINK** ora condivide anche tempo, SYNC DAW e i pulsanti play / pausa / stop, sullo stesso
+  beat; il pulsante LINK PIANO è accanto a Sequencer (come in Fase Groove Piano 2.19).
+
 ## [0.8.1] - 2026-10-18
 
 - **LINK PIANO** funziona con Fase Groove Piano 2.18 (il suo pulsante **LINK DRUMS**): quando il

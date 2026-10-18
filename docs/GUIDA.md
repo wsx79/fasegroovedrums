@@ -153,3 +153,22 @@ La prima modifica copia il groove mostrato nello **User pattern**, che si salva 
 - **LINK PIANO** (riga Groove): genere e swing seguono Fase Groove Piano (dalla 2.18, con il suo
   **LINK DRUMS** acceso) e le altre istanze Fase Groove collegate: cambiali in una qualsiasi. Un
   groove di un altro genere porta il primo groove di quel genere nell'altro plug-in.
+
+## 14. Novità della 0.9
+
+- **Il feel della batteria house**: su hi-hat, shaker, tambourine e ride il controtempo canta e
+  gli altri 16esimi sono molto più piano (ACCENTS decide quanto, 85% di default). Ogni genere ha il
+  suo swing: Soulful e Disco quasi dritti, Chicago (Jackin') il più swingato.
+- **I groove e il beat casuale** sono costruiti come si programma la house: kick, clap su 2 e 4,
+  una linea di hi-hat, un accento di open hat, poche percussioni. Più pieni con DENSITY più alta.
+- **Sample browser**: aprilo da **CARTELLA KIT...** (Suono guida), dal menu col tasto destro di
+  uno strumento (*Sceglilo nel sample browser...*) o trascinando una cartella sulla finestra. A
+  sinistra gli strumenti, con il sample attuale e quanti ne ha la cartella per loro; a destra i
+  sample dello strumento scelto, riconosciuti **dal nome** (kick, bd, snare, clap, ch, oh...),
+  **dalla cartella** (Kicks, Hi Hats, Percussion...) o **dal suono**. Cliccane uno per ascoltarlo
+  (frecce: il successivo), **USA** o doppio clic: lo suona quello strumento. **TUTTI I FILE**
+  mostra anche gli altri sample; **KIT AUTO** dà a ogni strumento il primo sample adatto.
+  L'ultima cartella si salva con il progetto.
+- **LINK PIANO** (ora accanto a Sequencer, come in Fase Groove Piano): genere, swing, **tempo,
+  SYNC DAW e i pulsanti play / pausa / stop** sono condivisi, e suonano lo stesso beat nello
+  stesso momento, anche senza la DAW.

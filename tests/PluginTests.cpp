@@ -450,6 +450,38 @@ namespace
         p.customFillFromStyle ((int) fgd::FillStyle::tomRun);
         p.editCustomFill ((int) fgd::Lane::crash, 15, 'X');
         save ("2d-fill");
+        {
+            // The sample browser on a small folder.
+            auto lib = juce::File::getSpecialLocation (juce::File::tempDirectory).getChildFile ("fgd-shot-samples");
+            lib.deleteRecursively();
+            for (const auto* name : { "Kicks/909 Kick", "Kicks/Deep Kick 02", "Kicks/Punchy BD", "Claps/Clap Dry", "Hats/CH Tight", "Hats/OH Long", "Perc/Conga Hi" })
+            {
+                auto f = lib.getChildFile (juce::String (name) + ".wav");
+                f.getParentDirectory().createDirectory();
+                juce::WavAudioFormat format;
+                std::unique_ptr<juce::AudioFormatWriter> w (format.createWriterFor (new juce::FileOutputStream (f), 44100.0, 1, 16, {}, 0));
+                juce::AudioBuffer<float> b (1, 2205);
+                for (int i = 0; i < 2205; ++i) b.setSample (0, i, 0.5f * std::sin ((float) i * 0.02f) * (1.0f - (float) i / 2205.0f));
+                w->writeFromAudioSampleBuffer (b, 0, 2205);
+            }
+            p.loadSample (0, lib.getChildFile ("Kicks/Deep Kick 02.wav"));
+            std::function<SampleBrowser* (juce::Component&)> findBrowser = [&] (juce::Component& c) -> SampleBrowser*
+            {
+                for (auto* child : c.getChildren())
+                {
+                    if (auto* b = dynamic_cast<SampleBrowser*> (child)) return b;
+                    if (auto* found = findBrowser (*child)) return found;
+                }
+                return nullptr;
+            };
+            if (auto* b = findBrowser (*editor))
+            {
+                b->show (lib, 0);
+                save ("2e-samples");
+                b->setVisible (false);
+            }
+            p.clearSample (0);
+        }
         click ("STEP GRID");
         p.setParameterFromUI (ParamIDs::pattern, 5.0f);
         std::function<juce::Button* (juce::Component&)> grooveButton = [&] (juce::Component& c) -> juce::Button*
@@ -675,6 +707,33 @@ namespace
         CHECK (juce::roundToInt (value (b, ParamIDs::genre)) == 4);
         CHECK (fgd::drumPatterns()[(size_t) juce::roundToInt (value (b, ParamIDs::pattern))].category == "Jackin'");
         CHECK (std::abs (value (b, ParamIDs::swing) - 1.2f) < 0.01f);
+        // ...and the tempo and the play button, on the same beat.
+        a.setParameterFromUI (ParamIDs::tempoSync, 0.0f);
+        a.setParameterFromUI (ParamIDs::tempo, 100.0f);
+        a.updateLink();
+        b.updateLink();
+        CHECK (value (b, ParamIDs::tempoSync) < 0.5f);
+        CHECK (std::abs (value (b, ParamIDs::tempo) - 100.0f) < 0.01f);
+        for (auto* q : { &a, &b })
+        {
+            q->setRateAndBufferSizeDetails (44100.0, 512);
+            q->prepareToPlay (44100.0, 512);
+        }
+        a.previewPlay();
+        b.updateLink();
+        CHECK (b.previewOn.load());
+        juce::Thread::sleep (120);
+        {
+            juce::AudioBuffer<float> out (2, 512);
+            juce::MidiBuffer none;
+            a.processBlock (out, none);
+            b.processBlock (out, none);
+        }
+        CHECK (a.uiPpq.load() > 0.1 && std::abs (a.uiPpq.load() - b.uiPpq.load()) < 0.02);
+        a.previewStop();
+        b.updateLink();
+        CHECK (! b.previewOn.load());
+
         if (existed) link.replaceWithText (backup); else link.deleteFile();
 
         temp.deleteRecursively();

@@ -4,6 +4,22 @@
 
 All notable changes to **Fase Groove Drums**.
 
+## [0.9.0] - 2026-10-18
+
+- **Grooves that groove.** Hats, shakers, tambourines and rides now follow the accent curve of
+  house drumming: a loud offbeat, everything else less than half as loud (the 16th after the beat
+  the softest); congas and cowbells a gentler one. Accents are at 85% by default.
+- **The swing of each genre**, from almost straight (Soulful 53%, Funky & Disco 55%) to Chicago
+  (Jackin' 63%); Deep and Piano House about 58%.
+- **The house grooves are rebuilt**, and the random beat with them, as house is programmed: the
+  kick, the clap on 2 and 4 (now and then with its pick-up), ONE hat line (mostly on the offbeat),
+  a single open hat accent, and only a few sparse percussion hits. No more crowded beats.
+- **Sample browser** (Guide sound -> KIT FOLDER..., a drum's right-click menu, or drop a folder on
+  the window): every sample of a folder is recognised as a drum by its name, its folder's name or
+  its sound. Pick a drum, click a sample to hear it, USE it; AUTO KIT does the whole kit.
+- **LINK** now shares the tempo, SYNC DAW and the play / pause / stop buttons too, on the same
+  beat; the LINK PIANO button moved next to Sequencer (as in Fase Groove Piano 2.19).
+
 ## [0.8.1] - 2026-10-18
 
 - **LINK PIANO** works with Fase Groove Piano 2.18 (its **LINK DRUMS** button): when the piano picks
