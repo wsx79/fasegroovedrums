@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256">
+  <!-- Fase Groove Drums: a slanted drum-machine grid playing a house beat (four on the
+       floor, claps on 2 and 4, offbeat hats) under a speed bar that echoes the FS / Pitch logo. -->
+  <defs>
+    <linearGradient id="warm" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#f2a65a"/>
+      <stop offset="1" stop-color="#e85d75"/>
+    </linearGradient>
+  </defs>
+
+  <rect x="0" y="0" width="256" height="256" rx="56" ry="56" fill="#17111c"/>
+
+  <g transform="translate(27 0) skewX(-12)">
+    <!-- top rail, sharp angled ends like the F of the FS logo -->
+    <path d="M 58 40 L 214 40 L 204 52 L 46 52 Z" fill="#ffffff"/>
+
+    <!-- hats: the offbeats -->
+    <rect x="46" y="64" width="36" height="36" rx="7" fill="#2c2433"/>
+    <rect x="88" y="64" width="36" height="36" rx="7" fill="url(#warm)" opacity="0.75"/>
+    <rect x="130" y="64" width="36" height="36" rx="7" fill="#2c2433"/>
+    <rect x="172" y="64" width="36" height="36" rx="7" fill="url(#warm)" opacity="0.75"/>
+
+    <!-- clap: 2 and 4 -->
+    <rect x="46" y="108" width="36" height="36" rx="7" fill="#2c2433"/>
+    <rect x="88" y="108" width="36" height="36" rx="7" fill="url(#warm)"/>
+    <rect x="130" y="108" width="36" height="36" rx="7" fill="#2c2433"/>
+    <rect x="172" y="108" width="36" height="36" rx="7" fill="url(#warm)"/>
+
+    <!-- kick: four on the floor -->
+    <rect x="46" y="152" width="36" height="36" rx="7" fill="url(#warm)"/>
+    <rect x="88" y="152" width="36" height="36" rx="7" fill="url(#warm)"/>
+    <rect x="130" y="152" width="36" height="36" rx="7" fill="url(#warm)"/>
+    <rect x="172" y="152" width="36" height="36" rx="7" fill="url(#warm)"/>
+
+    <!-- floor line -->
+    <path d="M 46 200 L 208 200 L 200 210 L 38 210 Z" fill="#ffffff" opacity="0.9"/>
+  </g>
+</svg>
