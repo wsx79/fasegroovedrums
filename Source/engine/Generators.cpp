@@ -324,6 +324,66 @@ DrumPattern makeRandomPattern (std::uint32_t seed, float density, int genre)
             default: break;
         }
 
+    // ---- Each genre's signature ----
+    switch (genre)
+    {
+        case deep:
+            // A syncopated rim every three 16ths, soft ghost kicks between the beats, the shaker
+            // as the closed hat.
+            if (r.chance (0.55f))
+                setBar (Lane::rim, pickCell ({ "..x. .x.. x..x ..x.", "...x ..x. .x.. ..x." }));
+            if (density > 0.35f && r.chance (0.4f))
+                p[Lane::kick][7] = p[Lane::kick][23] = 'g';
+            if (hat == openOff && density > 0.4f && r.chance (0.5f))
+                setBar (Lane::shaker, "gxxx gxxx gxxx gxxx");
+            break;
+        case soulful:
+            // A tambourine with gaps, congas, a soft snare answering the clap.
+            if (density > 0.45f && r.chance (0.45f) && ! std::any_of (p[Lane::shaker].begin(), p[Lane::shaker].end(), isHit))
+                setBar (Lane::tambourine, pickCell ({ "x.xx x.x. x.xx x.x.", "..x. x.xx ..x. x.x." }));
+            if (density > 0.4f && r.chance (0.5f))
+                p[Lane::snare][14] = p[Lane::snare][30] = 'g';
+            break;
+        case funky:
+            // Disco: the open hat on the offbeat and closed 16ths around it, none on the snare.
+            if (hat == openOff && density > 0.45f && r.chance (0.6f))
+            {
+                setBar (Lane::closedHat, "xx.x .x.x xx.x .x.x");
+                if (r.chance (0.6f))
+                    setBar (Lane::snare, ".... X... .... X...");
+            }
+            break;
+        case garage:
+            // The rim shuffling around the backbeat, a snare ghost pushing into it.
+            if (density > 0.4f && r.chance (0.5f))
+                setBar (Lane::rim, pickCell ({ "...x ..x. ...x ..x.", ".x.. ...x .x.. ..x." }));
+            if (r.chance (0.4f))
+                p[Lane::snare][11] = p[Lane::snare][27] = 'g';
+            break;
+        case afro:
+            // The son clave over two bars, a low tom loop under the kick, 16th shakers.
+            if (r.chance (0.6f))
+                setLoop (Lane::rim, pickCell ({ "x... ..x. .... x... .... x... x... ....", "x... ..x. .... ...x .... x... x... ...." }));
+            if (density > 0.45f && r.chance (0.45f))
+                setBar (Lane::tom, pickCell ({ "..x. .x.. ..x. x...", "...x ..x. ...x .x.." }));
+            if (density > 0.35f && ! std::any_of (p[Lane::shaker].begin(), p[Lane::shaker].end(), isHit))
+                setBar (Lane::shaker, "gxXx gxXx gxXx gxXx");
+            break;
+        case nineties:
+            // Jersey / Italo: a syncopated third hat, one extra offbeat kick in bar 2.
+            if (density > 0.4f && r.chance (0.5f) && hat == openOff)
+                setBar (Lane::closedHat, pickCell ({ "...x ..x. ...x .x..", "x..x ..x. x..x ..x." }));
+            if (r.chance (0.35f))
+                p[Lane::kick][30] = 'x';
+            break;
+        case pianoHouse: case gospel:
+            if (density > 0.5f && r.chance (0.35f))
+                p[Lane::snare][15] = p[Lane::snare][31] = 'g';
+            break;
+        default:
+            break;
+    }
+
     // ---- Ghost notes (only where the genre has them), one per bar ----
     if ((genre == gospel || genre == funky || genre == neoSoul) && density > 0.45f)
     {
@@ -502,7 +562,8 @@ void copySegment (DrumPattern& into, const DrumPattern& from, int segment)
 //==============================================================================
 const char* fillStyleName (int style) noexcept
 {
-    static const char* names[] { "Snare roll", "Tom run", "Clap build", "Hat lift", "Drop out", "Conga run", "Mix" };
+    static const char* names[] { "Snare roll", "Tom run", "Clap build", "Hat lift", "Drop out", "Conga run", "Mix",
+                                 "Kick build", "Rim shuffle", "Open hat run", "Clap stutter", "Percussion break", "Custom" };
     return style >= 0 && style < numFillStyles ? names[style] : "";
 }
 
@@ -511,7 +572,11 @@ int fillStartStep (FillStyle style) noexcept
     switch (style)
     {
         case FillStyle::snareRoll:
-        case FillStyle::clapBuild: return 8;
+        case FillStyle::clapBuild:
+        case FillStyle::rimShuffle:
+        case FillStyle::openHatRun:
+        case FillStyle::percBreak: return 8;
+        case FillStyle::custom:    return 0;   // from its first written step (see the engine)
         case FillStyle::tomRun:
         case FillStyle::hatLift:
         case FillStyle::dropOut:

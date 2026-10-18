@@ -44,13 +44,15 @@ namespace ParamIDs
     inline juce::String note (int lane)  { return "note" + juce::String (lane + 1); }
     inline juce::String level (int lane) { return "level" + juce::String (lane + 1); }
     inline juce::String laneVolume (int lane) { return "volume" + juce::String (lane + 1); }   // the guide sound's volume of a drum, in dB
+    inline juce::String push (int lane) { return "push" + juce::String (lane + 1); }             // ms ahead (< 0) or behind (> 0) the beat
+    inline juce::String laneSwing (int lane) { return "laneSwing" + juce::String (lane + 1); }   // the share of the swing a drum takes
 }
 
 class FaseGrooveDrumsProcessor : public juce::AudioProcessor
 {
 public:
     FaseGrooveDrumsProcessor();
-    ~FaseGrooveDrumsProcessor() override = default;
+    ~FaseGrooveDrumsProcessor() override;
 
     //==============================================================================
     void prepareToPlay (double sampleRate, int samplesPerBlock) override;
@@ -115,6 +117,51 @@ public:
     bool hasStepVelocities() const;
     /** The velocity a displayed step plays at (set by hand, or automatic from its symbol). */
     int effectiveVelocity (int lane, int step) const;
+
+    /** The chance a displayed step plays (100 = always) and its roll (1 = one hit, 2-4 quick hits). */
+    int stepChance (int lane, int step) const;
+    void setStepChance (int lane, int step, int percent);
+    int stepRoll (int lane, int step) const;
+    void setStepRoll (int lane, int step, int hits);
+
+    // The fill drawn by hand (Fill style: Custom): one bar of 16ths.
+    char customFillSymbol (int lane, int step) const;
+    void editCustomFill (int lane, int step, char symbol);
+    void clearCustomFill();
+    /** Starts the custom fill from what a fill style plays (and makes Custom the fill style). */
+    void customFillFromStyle (int style);
+    bool hasCustomFill() const;
+
+    // The feel of each drum (MIXER): its push / pull and its share of the swing.
+    static juce::StringArray timingFeelNames();
+    void applyTimingFeel (int feel);
+
+    // Groove templates: the timing and accents of every 16th of the bar, taken from an audio
+    // loop or a MIDI file and applied to any groove. Returns a short report, empty on failure.
+    juce::String grooveTemplateFromAudio (const juce::File&);
+    juce::String grooveTemplateFromMidi (const juce::File&);
+    void clearGrooveTemplate();
+    bool hasGrooveTemplate() const { return templateActive.load(); }
+    juce::String grooveTemplateName() const { return templateName; }
+    void setGrooveTemplateActive (bool on) { templateActive = on && templateName.isNotEmpty(); }
+
+    /** A whole kit at once: the samples of a folder, matched to the drums by their names
+        (kick / bd, snare / sd, clap, rim, closed hat / ch, open hat / oh...). Returns the drums loaded. */
+    juce::StringArray loadKitFolder (const juce::File&);
+    void clearAllSamples();
+
+    // Audio export of the guide sound (the built-in kit or your samples).
+    enum class AudioExport { clip = 0, song, stems };
+    /** Writes WAV file(s) into `target` (a file, or a folder for the stems); returns the files written. */
+    juce::Array<juce::File> writeAudio (AudioExport, int bars, const juce::File& target) const;
+    juce::String audioFileName (AudioExport, int bars) const;
+
+    // LINK: genre and swing shared with Fase Groove Piano (and other Fase Groove instances).
+    bool isLinked() const { return linkOn.load(); }
+    void setLinked (bool on);
+    static juce::File linkFile();
+    /** Writes the genre and swing for the others, or takes theirs (message thread, a few times a second). */
+    void updateLink();
 
     /** Velocity shapes for one drum (what makes hats groove): the levels of its hits are set by hand. */
     static juce::StringArray velocityShapeNames();
@@ -232,11 +279,33 @@ public:
 
 private:
     void setUserPattern (const fgd::DrumPattern&);
+    void resetStepExtras (int lane, int index) { userChance[(size_t) lane][(size_t) index] = 0; userRoll[(size_t) lane][(size_t) index] = 0; }
+    struct LoopAnalysis;
+    std::unique_ptr<LoopAnalysis> analyseLoop (const juce::File&) const;
+    void renderGuideAudio (const std::vector<fgd::NoteEvent>&, double beats, juce::AudioBuffer<float>&, double sampleRate, int onlyLane) const;
     static std::uint32_t freshSeed();
 
     // The user pattern, readable from the audio thread without locks.
     std::array<std::array<std::atomic<char>, fgd::userPatternLength>, fgd::numLanes> userGrid;
     std::array<std::array<std::atomic<int>, fgd::userPatternLength>, fgd::numLanes> userVelocity;   // 0 = automatic
+    std::array<std::array<std::atomic<int>, fgd::userPatternLength>, fgd::numLanes> userChance, userRoll;   // 0 = always / one hit
+    std::array<std::array<std::atomic<char>, 16>, fgd::numLanes> customFill;
+    std::atomic<bool> templateActive { false };
+    std::array<std::atomic<float>, 16> templateTiming, templateLevel;
+    juce::String templateName;
+    void setTemplate (const juce::String& name, const std::array<float, 16>& timing, const std::array<float, 16>& level);
+
+    std::atomic<bool> linkOn { false };
+    juce::Time linkSeen;            // the link file's time when last read or written
+    int linkGenre = -1;             // what was last shared
+    float linkSwing = -1.0f;
+    struct LinkTimer : juce::Timer
+    {
+        explicit LinkTimer (FaseGrooveDrumsProcessor& p) : owner (p) {}
+        void timerCallback() override { owner.updateLink(); }
+        FaseGrooveDrumsProcessor& owner;
+    };
+    LinkTimer linkTimer { *this };
     int baseStep (int displayedStep) const;   // the step of the user pattern shown at a displayed step
     /** Makes the groove showing the user pattern (as written: before the A-D order); true if it already was. */
     bool makeUserPattern();

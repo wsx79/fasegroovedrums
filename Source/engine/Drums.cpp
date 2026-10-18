@@ -346,6 +346,26 @@ const std::vector<DrumPattern>& drumPatterns()
         groove ("Rim Jack", "Jackin'",
                 { { K, fourFloor }, { C, backbeat }, { OH, offbeats }, { CH, "x..x x..x x..x x..X" },
                   { R, ".x.. ...x .x.. .x.. .x.. ...x ...x .x.." } }),
+
+        // ---- v0.8: a signature groove for more genres ----
+        groove ("Deep Three-Step Rim", "Deep",
+                { { K, "x... x... x..g x... x... x... x..g x..." }, { C, ".... x... .... x..." }, { OH, "..x. ..x. ..x. ..x." },
+                  { R, "..x. .x.. x..x ..x." }, { SH, "gxxx gxxx gxxx gxxx" } }),
+        groove ("Soulful Tamb & Congas", "Soulful",
+                { { K, fourFloor }, { C, backbeat }, { S, ".... .... .... ..g. .... .... .... ..g." }, { OH, offbeats },
+                  { T, "x.xx x.x. x.xx x.x." }, { CG, "..x. .x.. x.x. ..x." } }),
+        groove ("Disco Sixteenths", "Funky & Disco",
+                { { K, fourFloor }, { S, backbeat }, { OH, offbeats }, { CH, "xx.x .x.x xx.x .x.x" },
+                  { T, ".... x... .... x..." } }),
+        groove ("2-Step Rim Shuffle", "Garage & UK",
+                { { K, "X... .... ..x. .... X... .... ..x. ...x" }, { S, ".... X... ...g X... .... X... ...g X..." },
+                  { CH, "x.xx x.xx x.xx x.xx" }, { R, "...x ..x. ...x ..x." } }),
+        groove ("Afro Son Clave", "Afro & Latin",
+                { { K, fourFloor }, { R, "x... ..x. .... x... .... x... x... ...." }, { SH, "gxXx gxXx gxXx gxXx" },
+                  { OH, "..x. ..x. ..x. ..x." }, { TM, "..x. .x.. ..x. x..." }, { CG, ".... ..x. .... x.x." } }),
+        groove ("Jersey 909", "'90s Piano House",
+                { { K, "X... X... X... X... X... X... X... X.x." }, { C, backbeat }, { S, ".... x... .... x..." },
+                  { OH, offbeats }, { CH, "...x ..x. ...x .x.." } }),
     };
     return patterns;
 }
@@ -369,7 +389,8 @@ int categoryIndex (const std::string& category) noexcept
 
 float genreSwing (int category) noexcept
 {
-    static const float swing[] { 0.15f, 0.25f, 0.3f, 0.35f, 0.9f, 0.75f, 0.6f, 0.2f, 0.3f, 0.1f, 0.55f, 0.25f, 0.0f };
+    // In 16th shuffle: 0.3 is a drum machine's 55%, 0.9 its 65%, 1.2 its 70%.
+    static const float swing[] { 0.3f, 0.45f, 0.5f, 0.45f, 1.2f, 0.9f, 0.75f, 0.35f, 0.45f, 0.45f, 0.9f, 0.3f, 0.0f };
     return category >= 0 && category < (int) std::size (swing) ? swing[category] : 0.2f;
 }
 

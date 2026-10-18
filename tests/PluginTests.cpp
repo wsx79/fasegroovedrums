@@ -446,6 +446,10 @@ namespace
         save ("2-velocity");
         click ("MIXER");
         save ("2b-mixer");
+        click ("FILL");
+        p.customFillFromStyle ((int) fgd::FillStyle::tomRun);
+        p.editCustomFill ((int) fgd::Lane::crash, 15, 'X');
+        save ("2d-fill");
         click ("STEP GRID");
         p.setParameterFromUI (ParamIDs::pattern, 5.0f);
         std::function<juce::Button* (juce::Component&)> grooveButton = [&] (juce::Component& c) -> juce::Button*
@@ -508,6 +512,146 @@ namespace
         CHECK (std::abs (p.raw (ParamIDs::swing) - fgd::genreSwing (jackin)) < 0.01f);
     }
 
+    void writeTestWav (const juce::File& file, float frequency)
+    {
+        juce::WavAudioFormat format;
+        std::unique_ptr<juce::AudioFormatWriter> writer (format.createWriterFor (new juce::FileOutputStream (file), 44100.0, 1, 16, {}, 0));
+        juce::AudioBuffer<float> b (1, 4410);
+        for (int i = 0; i < 4410; ++i)
+            b.setSample (0, i, 0.8f * std::sin ((float) i * frequency) * (1.0f - (float) i / 4410.0f));
+        writer->writeFromAudioSampleBuffer (b, 0, 4410);
+    }
+
+    void testV080()
+    {
+        auto temp = juce::File::getSpecialLocation (juce::File::tempDirectory).getChildFile ("fgd-tests-080");
+        temp.deleteRecursively();
+        temp.createDirectory();
+
+        FaseGrooveDrumsProcessor p;
+        p.setRateAndBufferSizeDetails (44100.0, 256);
+        p.prepareToPlay (44100.0, 256);
+
+        // The swing goes up to the heaviest shuffle, shown as drum machines show it.
+        auto* swing = p.apvts.getParameter (ParamIDs::swing);
+        CHECK (swing->getText (swing->convertTo0to1 (0.0f), 10) == "50%");
+        CHECK (swing->getText (swing->convertTo0to1 (1.0f), 10) == "67%");
+        CHECK (swing->getText (swing->convertTo0to1 (1.5f), 10) == "75%");
+
+        // Timing feels: the kick never moves.
+        p.applyTimingFeel (3);
+        CHECK (value (p, ParamIDs::push ((int) fgd::Lane::clap)) < 0.0f);
+        CHECK (value (p, ParamIDs::push ((int) fgd::Lane::kick)) == 0.0f);
+        CHECK (p.currentSettings().laneShift[(size_t) fgd::Lane::clap] < 0.0f);
+
+        // Chance and roll on a step, saved with the project; none on the kick.
+        p.clearGrid();
+        p.editStep ((int) fgd::Lane::closedHat, 2, 'x');
+        p.editStep ((int) fgd::Lane::kick, 0, 'X');
+        p.setStepChance ((int) fgd::Lane::closedHat, 2, 50);
+        p.setStepRoll ((int) fgd::Lane::closedHat, 2, 3);
+        p.setStepRoll ((int) fgd::Lane::kick, 0, 3);
+        CHECK (p.stepChance ((int) fgd::Lane::closedHat, 2) == 50);
+        CHECK (p.stepRoll ((int) fgd::Lane::closedHat, 2) == 3);
+        CHECK (p.stepRoll ((int) fgd::Lane::kick, 0) == 1);
+
+        // The custom fill, from a style.
+        p.customFillFromStyle ((int) fgd::FillStyle::tomRun);
+        CHECK (p.hasCustomFill());
+        CHECK (juce::roundToInt (value (p, ParamIDs::fillStyle)) == (int) fgd::FillStyle::custom);
+        CHECK (fgd::isHit (p.customFillSymbol ((int) fgd::Lane::tom, 12)));
+
+        // A groove template from a swung MIDI file.
+        {
+            juce::MidiMessageSequence seq;
+            for (int i = 0; i < 32; ++i)
+                seq.addEvent (juce::MidiMessage::noteOn (10, 42, (juce::uint8) (i % 2 == 0 ? 110 : 60)), i * 240.0 + (i % 2 == 1 ? 60.0 : 0.0));
+            juce::MidiFile midi;
+            midi.setTicksPerQuarterNote (960);
+            midi.addTrack (seq);
+            juce::FileOutputStream out (temp.getChildFile ("swung.mid"));
+            midi.writeTo (out);
+        }
+        CHECK (p.grooveTemplateFromMidi (temp.getChildFile ("swung.mid")).isNotEmpty());
+        CHECK (p.hasGrooveTemplate());
+        const auto s = p.currentSettings();
+        CHECK (s.grooveTemplate.active);
+        CHECK (std::abs (s.grooveTemplate.timing[1] - 0.25f) < 0.01f);
+        CHECK (std::abs (s.grooveTemplate.timing[0]) < 0.01f);
+        CHECK (s.grooveTemplate.level[1] < s.grooveTemplate.level[0]);
+
+        // All of it comes back with the project.
+        juce::MemoryBlock data;
+        p.getStateInformation (data);
+        FaseGrooveDrumsProcessor q;
+        q.setStateInformation (data.getData(), (int) data.getSize());
+        CHECK (q.stepChance ((int) fgd::Lane::closedHat, 2) == 50);
+        CHECK (q.stepRoll ((int) fgd::Lane::closedHat, 2) == 3);
+        CHECK (q.customFillSymbol ((int) fgd::Lane::tom, 12) == p.customFillSymbol ((int) fgd::Lane::tom, 12));
+        CHECK (q.hasGrooveTemplate() && q.grooveTemplateName() == "swung");
+        CHECK (std::abs (q.currentSettings().grooveTemplate.timing[1] - s.grooveTemplate.timing[1]) < 0.001f);
+        q.clearGrooveTemplate();
+        CHECK (! q.hasGrooveTemplate());
+
+        // A kit folder: samples matched to the drums by their names.
+        auto kit = temp.getChildFile ("My Kit");
+        kit.createDirectory();
+        writeTestWav (kit.getChildFile ("BD_Punchy 01.wav"), 0.01f);
+        writeTestWav (kit.getChildFile ("Snare Tight.wav"), 0.2f);
+        writeTestWav (kit.getChildFile ("Open Hat 3.wav"), 0.9f);
+        writeTestWav (kit.getChildFile ("hh closed.wav"), 1.1f);
+        writeTestWav (kit.getChildFile ("chord stab.wav"), 0.3f);
+        const auto loaded = p.loadKitFolder (kit);
+        CHECK (loaded.size() == 4);
+        CHECK (p.samplePath ((int) fgd::Lane::kick).endsWith ("BD_Punchy 01.wav"));
+        CHECK (p.samplePath ((int) fgd::Lane::snare).endsWith ("Snare Tight.wav"));
+        CHECK (p.samplePath ((int) fgd::Lane::openHat).endsWith ("Open Hat 3.wav"));
+        CHECK (p.samplePath ((int) fgd::Lane::closedHat).endsWith ("hh closed.wav"));
+        p.clearAllSamples();
+        CHECK (p.samplePath ((int) fgd::Lane::kick).isEmpty());
+
+        // Audio export: a loop exactly as long as the clip, the song, and the stems.
+        p.selectGroove (0);
+        p.setParameterFromUI (ParamIDs::tempoSync, 0.0f);
+        p.setParameterFromUI (ParamIDs::tempo, 120.0f);
+        const auto clip = temp.getChildFile ("clip.wav");
+        CHECK (p.writeAudio (FaseGrooveDrumsProcessor::AudioExport::clip, 1, clip).size() == 1);
+        {
+            juce::AudioFormatManager formats;
+            formats.registerBasicFormats();
+            std::unique_ptr<juce::AudioFormatReader> reader (formats.createReaderFor (clip));
+            CHECK (reader != nullptr);
+            if (reader != nullptr)
+            {
+                CHECK (std::abs ((double) reader->lengthInSamples - 2.0 * 44100.0) < 2.0);   // one bar at 120 BPM
+                juce::AudioBuffer<float> b (2, (int) reader->lengthInSamples);
+                reader->read (&b, 0, b.getNumSamples(), 0, true, true);
+                CHECK (b.getMagnitude (0, b.getNumSamples()) > 0.05f);
+            }
+        }
+        const auto stems = p.writeAudio (FaseGrooveDrumsProcessor::AudioExport::stems, 1, temp.getChildFile ("stems"));
+        CHECK (stems.size() >= 3);
+        CHECK (p.writeAudio (FaseGrooveDrumsProcessor::AudioExport::song, 0, temp.getChildFile ("song.wav")).size() == 1);
+
+        // LINK: genre and swing through the shared file.
+        const auto link = FaseGrooveDrumsProcessor::linkFile();
+        const auto backup = link.loadFileAsString();
+        const bool existed = link.existsAsFile();
+        FaseGrooveDrumsProcessor a, b;
+        a.setLinked (true);
+        b.setLinked (true);
+        a.setParameterFromUI (ParamIDs::genre, 4.0f);
+        a.setParameterFromUI (ParamIDs::swing, 1.2f);
+        a.updateLink();
+        link.setLastModificationTime (juce::Time::getCurrentTime() + juce::RelativeTime::seconds (5.0));
+        b.updateLink();
+        CHECK (juce::roundToInt (value (b, ParamIDs::genre)) == 4);
+        CHECK (std::abs (value (b, ParamIDs::swing) - 1.2f) < 0.01f);
+        if (existed) link.replaceWithText (backup); else link.deleteFile();
+
+        temp.deleteRecursively();
+    }
+
     void testTranslations()
     {
         const auto before = Localisation::current();
@@ -559,6 +703,7 @@ int main (int argc, char** argv)
     testV020();
     testTranslations();
     testGenreSwing();
+    testV080();
 
     if (failures == 0)
         std::printf ("All plug-in tests passed.\n");

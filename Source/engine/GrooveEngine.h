@@ -23,7 +23,7 @@ struct DrumSettings
 
     int pattern = 0;
     int grooveBars = 2;                    // 2 (parts A-D of half a bar) or 4 (parts of one bar)
-    float swing = 0.15f;                   // 0 = straight, 1 = full triplet shuffle
+    float swing = 0.15f;                   // 0 = straight, 1 = triplet shuffle, up to 1.5 (a dotted 16th: the heaviest)
     int velocity = 100;
     float humanize = 0.2f;
     float accentGroove = 0.6f;             // hats, shaker, ride, tambourine: louder on the offbeat, softer 16ths (0 = flat)
@@ -45,10 +45,34 @@ struct DrumSettings
     std::array<float, numLanes> levels {}; // velocity scale of each lane (1 = as written)
     std::array<bool, numLanes> muted {};
 
+    // The feel of each drum: how much of the swing it takes (1 = as the Swing control) and how
+    // far it sits ahead (< 0) or behind (> 0) the beat, in milliseconds. The kick takes neither.
+    std::array<float, numLanes> laneSwing {};
+    std::array<float, numLanes> laneShift {};
+    double tempo = 120.0;                  // turns the milliseconds into beats
+
+    // A groove template (e.g. taken from an audio loop): when active, the timing and the level of
+    // every 16th of the bar come from it instead of the swing and the accent groove.
+    struct Template
+    {
+        bool active = false;
+        std::array<float, 16> timing {};   // in 16ths, < 0 early, > 0 late
+        std::array<float, 16> level {};    // 1 = as written
+    };
+    Template grooveTemplate;
+
     // Used when pattern == userPatternIndex(): the hand-edited grid, and the velocity set by
     // hand on each of its steps (0 = automatic, from the symbol).
     std::array<std::array<char, userPatternLength>, numLanes> user {};
     std::array<std::array<unsigned char, userPatternLength>, numLanes> userVelocity {};
+    // ...and the chance each of those steps plays (0 or 100 = always) and its roll (0 or 1 = one
+    // hit, 2-4 = that many quick hits in the 16th; never on the kick).
+    std::array<std::array<unsigned char, userPatternLength>, numLanes> userChance {};
+    std::array<std::array<unsigned char, userPatternLength>, numLanes> userRoll {};
+
+    // The fill drawn by hand (Fill style: Custom): one bar. It takes over from its first written
+    // step; the drums it doesn't use keep playing the groove.
+    std::array<std::array<char, 16>, numLanes> customFill {};
 
     std::array<int, numSegments> segmentOrder { 0, 1, 2, 3 };   // A B C D
     std::uint32_t sectionVariation = 0;    // a song section's own version of the groove (0: as it is)

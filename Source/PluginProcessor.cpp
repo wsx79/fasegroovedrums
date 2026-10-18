@@ -14,6 +14,7 @@ namespace
     const int variationBars[] { 0, 4, 8 };
 
     juce::String percent (float v, int) { return juce::String (juce::roundToInt (v * 100.0f)) + "%"; }
+    int swingPercent (float v) { return juce::roundToInt (50.0f + v * 50.0f / 3.0f); }
 
     juce::StringArray patternNames()
     {
@@ -116,7 +117,10 @@ juce::AudioProcessorValueTreeState::ParameterLayout FaseGrooveDrumsProcessor::cr
     group ("groove", "Groove");
 
     // Feel
-    unitFloat (ParamIDs::swing, "Swing", 0.0f, 1.0f, fgd::genreSwing (0));
+    // The swing, shown as drum machines show it: 50% straight, 67% a triplet shuffle, 75% the heaviest.
+    add (std::make_unique<AudioParameterFloat> (ParameterID { ParamIDs::swing, 1 }, "Swing", NormalisableRange<float> (0.0f, 1.5f), fgd::genreSwing (0),
+                                                AudioParameterFloatAttributes().withStringFromValueFunction ([] (float v, int)
+                                                    { return String (swingPercent (v)) + "%"; })));
     add (std::make_unique<AudioParameterInt> (ParameterID { ParamIDs::velocity, 1 }, "Velocity", 1, 127, 100));
     unitFloat (ParamIDs::humanize, "Humanize", 0.0f, 1.0f, 0.15f);
     add (std::make_unique<AudioParameterInt> (ParameterID { ParamIDs::humanizeSeed, 1 }, "Feel seed", 0, 100000, 0));
@@ -161,6 +165,11 @@ juce::AudioProcessorValueTreeState::ParameterLayout FaseGrooveDrumsProcessor::cr
                                                     NormalisableRange<float> (-48.0f, 12.0f, 0.1f, 2.0f), 0.0f,
                                                     AudioParameterFloatAttributes().withStringFromValueFunction ([] (float v, int)
                                                         { return v <= -47.9f ? String ("-inf") : String (v, 1) + " dB"; })));
+        add (std::make_unique<AudioParameterFloat> (ParameterID { ParamIDs::push (l), 1 }, name + " push",
+                                                    NormalisableRange<float> (-40.0f, 40.0f, 0.5f), 0.0f,
+                                                    AudioParameterFloatAttributes().withStringFromValueFunction ([] (float v, int)
+                                                        { return std::abs (v) < 0.25f ? String ("0 ms") : (v < 0.0f ? "-" : "+") + String (std::abs (v), 1) + " ms"; })));
+        unitFloat (ParamIDs::laneSwing (l), name + " swing", 0.0f, 2.0f, 1.0f);
     }
     group ("kit", "Kit");
 
@@ -174,12 +183,27 @@ FaseGrooveDrumsProcessor::FaseGrooveDrumsProcessor()
     for (auto& lane : userGrid)
         for (auto& c : lane)
             c = '.';
-    for (auto& lane : userVelocity)
-        for (auto& v : lane)
-            v = 0;
+    for (auto* grid : { &userVelocity, &userChance, &userRoll })
+        for (auto& lane : *grid)
+            for (auto& v : lane)
+                v = 0;
+    for (auto& lane : customFill)
+        for (auto& c : lane)
+            c = '.';
+    for (int i = 0; i < 16; ++i)
+    {
+        templateTiming[(size_t) i] = 0.0f;
+        templateLevel[(size_t) i] = 1.0f;
+    }
     for (auto& f : laneFlash)
         f = 0.0f;
     resetSong();
+    linkTimer.startTimer (400);
+}
+
+FaseGrooveDrumsProcessor::~FaseGrooveDrumsProcessor()
+{
+    linkTimer.stopTimer();
 }
 
 bool FaseGrooveDrumsProcessor::isBusesLayoutSupported (const BusesLayout& layouts) const
@@ -245,11 +269,24 @@ fgd::DrumSettings FaseGrooveDrumsProcessor::currentSettings() const
         s.notes[(size_t) l] = juce::roundToInt (raw (ParamIDs::note (l)));
         s.levels[(size_t) l] = raw (ParamIDs::level (l));
         s.muted[(size_t) l] = raw (ParamIDs::mute (l)) > 0.5f;
+        s.laneShift[(size_t) l] = raw (ParamIDs::push (l));
+        s.laneSwing[(size_t) l] = raw (ParamIDs::laneSwing (l));
         for (int i = 0; i < fgd::userPatternLength; ++i)
         {
             s.user[(size_t) l][(size_t) i] = userGrid[(size_t) l][(size_t) i].load();
             s.userVelocity[(size_t) l][(size_t) i] = (unsigned char) juce::jlimit (0, 127, userVelocity[(size_t) l][(size_t) i].load());
+            s.userChance[(size_t) l][(size_t) i] = (unsigned char) juce::jlimit (0, 100, userChance[(size_t) l][(size_t) i].load());
+            s.userRoll[(size_t) l][(size_t) i] = (unsigned char) juce::jlimit (0, 4, userRoll[(size_t) l][(size_t) i].load());
         }
+        for (int i = 0; i < 16; ++i)
+            s.customFill[(size_t) l][(size_t) i] = customFill[(size_t) l][(size_t) i].load();
+    }
+    s.tempo = lastBpm.load();
+    s.grooveTemplate.active = templateActive.load();
+    for (int i = 0; i < 16; ++i)
+    {
+        s.grooveTemplate.timing[(size_t) i] = templateTiming[(size_t) i].load();
+        s.grooveTemplate.level[(size_t) i] = templateLevel[(size_t) i].load();
     }
     for (int i = 0; i < fgd::numSegments; ++i)
         s.segmentOrder[(size_t) i] = segmentAt (i);
@@ -298,6 +335,7 @@ void FaseGrooveDrumsProcessor::setUserPattern (const fgd::DrumPattern& source)
         {
             userGrid[(size_t) l][(size_t) i] = p.lanes[(size_t) l][(size_t) i];
             userVelocity[(size_t) l][(size_t) i] = 0;
+            resetStepExtras (l, i);
         }
     setParameterFromUI (ParamIDs::pattern, (float) fgd::userPatternIndex());
 }
@@ -321,7 +359,10 @@ void FaseGrooveDrumsProcessor::editStep (int lane, int step, char symbol)
     const int at = baseStep (step);
     userGrid[(size_t) lane][(size_t) at] = fgd::isHit (symbol) ? symbol : '.';
     if (! fgd::isHit (symbol))
+    {
         userVelocity[(size_t) lane][(size_t) at] = 0;
+        resetStepExtras (lane, at);
+    }
 }
 
 void FaseGrooveDrumsProcessor::clearLane (int lane)
@@ -333,6 +374,7 @@ void FaseGrooveDrumsProcessor::clearLane (int lane)
     {
         userGrid[(size_t) lane][(size_t) i] = '.';
         userVelocity[(size_t) lane][(size_t) i] = 0;
+        resetStepExtras (lane, i);
     }
 }
 
@@ -343,6 +385,7 @@ void FaseGrooveDrumsProcessor::clearGrid()
         {
             userGrid[(size_t) l][(size_t) i] = '.';
             userVelocity[(size_t) l][(size_t) i] = 0;
+            resetStepExtras (l, i);
         }
     setParameterFromUI (ParamIDs::pattern, (float) fgd::userPatternIndex());
 }
@@ -361,6 +404,7 @@ void FaseGrooveDrumsProcessor::randomizeSegment (int part)
         {
             userGrid[(size_t) l][(size_t) i] = fresh.lanes[(size_t) l][(size_t) i];
             userVelocity[(size_t) l][(size_t) i] = 0;
+            resetStepExtras (l, i);
         }
 }
 
@@ -377,6 +421,7 @@ void FaseGrooveDrumsProcessor::randomizeLane (int lane)
         {
             userGrid[(size_t) lane][(size_t) i] = line[(size_t) (i % (int) line.size())];
             userVelocity[(size_t) lane][(size_t) i] = 0;
+            resetStepExtras (lane, i);
         }
 }
 
@@ -411,6 +456,134 @@ int FaseGrooveDrumsProcessor::effectiveVelocity (int lane, int step) const
     const char symbol = stepSymbol (lane, step);
     const double level = symbol == 'X' ? 1.0 : symbol == 'f' ? 0.9 : symbol == 'g' ? 0.42 : 0.8;
     return juce::jlimit (1, 127, juce::roundToInt (100.0 * level));
+}
+
+int FaseGrooveDrumsProcessor::stepChance (int lane, int step) const
+{
+    if (! juce::isPositiveAndBelow (lane, fgd::numLanes) || ! juce::isPositiveAndBelow (step, steps())
+        || juce::roundToInt (raw (ParamIDs::pattern)) != fgd::userPatternIndex())
+        return 100;
+    const int c = userChance[(size_t) lane][(size_t) baseStep (step)].load();
+    return c <= 0 || c >= 100 ? 100 : c;
+}
+
+void FaseGrooveDrumsProcessor::setStepChance (int lane, int step, int percent)
+{
+    if (! juce::isPositiveAndBelow (lane, fgd::numLanes) || ! juce::isPositiveAndBelow (step, steps()))
+        return;
+    makeUserPattern();
+    userChance[(size_t) lane][(size_t) baseStep (step)] = percent >= 100 ? 0 : juce::jlimit (1, 99, percent);
+}
+
+int FaseGrooveDrumsProcessor::stepRoll (int lane, int step) const
+{
+    if (! juce::isPositiveAndBelow (lane, fgd::numLanes) || ! juce::isPositiveAndBelow (step, steps())
+        || juce::roundToInt (raw (ParamIDs::pattern)) != fgd::userPatternIndex())
+        return 1;
+    return juce::jmax (1, userRoll[(size_t) lane][(size_t) baseStep (step)].load());
+}
+
+void FaseGrooveDrumsProcessor::setStepRoll (int lane, int step, int hits)
+{
+    if (! juce::isPositiveAndBelow (lane, fgd::numLanes) || lane == (int) fgd::Lane::kick || ! juce::isPositiveAndBelow (step, steps()))
+        return;
+    makeUserPattern();
+    userRoll[(size_t) lane][(size_t) baseStep (step)] = hits <= 1 ? 0 : juce::jmin (4, hits);
+}
+
+char FaseGrooveDrumsProcessor::customFillSymbol (int lane, int step) const
+{
+    if (! juce::isPositiveAndBelow (lane, fgd::numLanes) || ! juce::isPositiveAndBelow (step, 16))
+        return '.';
+    return customFill[(size_t) lane][(size_t) step].load();
+}
+
+void FaseGrooveDrumsProcessor::editCustomFill (int lane, int step, char symbol)
+{
+    if (! juce::isPositiveAndBelow (lane, fgd::numLanes) || ! juce::isPositiveAndBelow (step, 16))
+        return;
+    customFill[(size_t) lane][(size_t) step] = fgd::isHit (symbol) ? symbol : '.';
+    if (juce::roundToInt (raw (ParamIDs::fillStyle)) != (int) fgd::FillStyle::custom)
+        setParameterFromUI (ParamIDs::fillStyle, (float) (int) fgd::FillStyle::custom);
+}
+
+void FaseGrooveDrumsProcessor::clearCustomFill()
+{
+    for (auto& lane : customFill)
+        for (auto& c : lane)
+            c = '.';
+}
+
+bool FaseGrooveDrumsProcessor::hasCustomFill() const
+{
+    for (const auto& lane : customFill)
+        for (const auto& c : lane)
+            if (fgd::isHit (c.load()))
+                return true;
+    return false;
+}
+
+void FaseGrooveDrumsProcessor::customFillFromStyle (int style)
+{
+    if (! juce::isPositiveAndBelow (style, fgd::numFillStyles) || style == (int) fgd::FillStyle::custom)
+        return;
+
+    // What the style plays on an empty groove: the fill alone.
+    fgd::DrumSettings s;
+    s.pattern = fgd::userPatternIndex();
+    s.swing = 0.0f;
+    s.humanize = 0.0f;
+    s.accentGroove = 0.0f;
+    s.crashAfterFill = false;
+    s.fillEveryBars = 1;
+    s.fillStyle = (fgd::FillStyle) style;
+    if (style == (int) fgd::FillStyle::mix)
+        s.fillStyle = fgd::GrooveEngine::effectiveFillStyle (fgd::FillStyle::mix, 0);
+
+    clearCustomFill();
+    for (const auto& e : fgd::GrooveEngine::renderClip (s, 4.0))
+    {
+        if (! e.isNoteOn())
+            continue;
+        const int step = juce::roundToInt (e.ppq / fgd::stepLength);
+        if (! juce::isPositiveAndBelow (step, 16) || ! juce::isPositiveAndBelow (e.lane, fgd::numLanes))
+            continue;
+        auto& c = customFill[(size_t) e.lane][(size_t) step];
+        if (c.load() == '.')
+            c = e.velocity >= 100 ? 'X' : e.velocity <= 50 ? 'g' : 'x';
+    }
+    setParameterFromUI (ParamIDs::fillStyle, (float) (int) fgd::FillStyle::custom);
+}
+
+juce::StringArray FaseGrooveDrumsProcessor::timingFeelNames()
+{
+    return { "On the grid", "Laid-back snare & clap", "Pushed hats", "Jackin' (claps ahead, hats swing)",
+             "Drunk hats (heavy swing on the hats only)", "Straight percussion" };
+}
+
+void FaseGrooveDrumsProcessor::applyTimingFeel (int feel)
+{
+    // push (ms) and share of the swing per drum; the kick always stays on the grid.
+    for (int l = 0; l < fgd::numLanes; ++l)
+    {
+        const auto lane = (fgd::Lane) l;
+        const bool hats = lane == fgd::Lane::closedHat || lane == fgd::Lane::openHat || lane == fgd::Lane::shaker || lane == fgd::Lane::tambourine;
+        const bool backbeat = lane == fgd::Lane::snare || lane == fgd::Lane::clap || lane == fgd::Lane::rim;
+        const bool percussion = lane == fgd::Lane::conga || lane == fgd::Lane::cowbell || lane == fgd::Lane::tom;
+        float push = 0.0f, share = 1.0f;
+        switch (feel)
+        {
+            case 1: push = backbeat ? 12.0f : 0.0f; break;
+            case 2: push = hats ? -6.0f : 0.0f; break;
+            case 3: push = backbeat ? -6.0f : hats ? 3.0f : 0.0f; share = hats ? 1.2f : backbeat ? 0.6f : 1.0f; break;
+            case 4: share = hats ? 1.5f : 0.4f; break;
+            case 5: share = percussion || lane == fgd::Lane::shaker ? 0.0f : 1.0f; break;
+            case 0:
+            default: break;
+        }
+        setParameterFromUI (ParamIDs::push (l), lane == fgd::Lane::kick ? 0.0f : push);
+        setParameterFromUI (ParamIDs::laneSwing (l), share);
+    }
 }
 
 juce::StringArray FaseGrooveDrumsProcessor::velocityShapeNames()
@@ -508,6 +681,71 @@ juce::String FaseGrooveDrumsProcessor::samplePath (int lane) const
         return {};
     const auto s = std::atomic_load (&samples[(size_t) lane]);
     return s != nullptr ? s->path : juce::String();
+}
+
+juce::StringArray FaseGrooveDrumsProcessor::loadKitFolder (const juce::File& folder)
+{
+    juce::StringArray loaded;
+    if (! folder.isDirectory())
+        return loaded;
+
+    // The words drum sample names use, most specific first (an "open hat" is not a closed one).
+    struct Rule { fgd::Lane lane; std::initializer_list<const char*> words; };
+    static const Rule rules[] {
+        { fgd::Lane::openHat,    { "openhat", "open", "oh", "ohh", "ophat", "hho" } },
+        { fgd::Lane::closedHat,  { "closedhat", "closed", "ch", "chh", "hhc", "hihat", "hat", "hh" } },
+        { fgd::Lane::kick,       { "kick", "bd", "kik", "bassdrum", "kck" } },
+        { fgd::Lane::clap,       { "clap", "cp", "clp", "handclap" } },
+        { fgd::Lane::rim,        { "rimshot", "rim", "rs", "stick" } },
+        { fgd::Lane::snare,      { "snare", "sd", "snr", "sn" } },
+        { fgd::Lane::ride,       { "ride", "rd" } },
+        { fgd::Lane::crash,      { "crash", "cr", "cym", "cymbal", "splash" } },
+        { fgd::Lane::shaker,     { "shaker", "shk", "shake", "maraca", "cabasa" } },
+        { fgd::Lane::tambourine, { "tambourine", "tamborine", "tamb", "tmb" } },
+        { fgd::Lane::cowbell,    { "cowbell", "bell", "cb", "agogo" } },
+        { fgd::Lane::conga,      { "conga", "bongo", "cga", "perc", "timbale" } },
+        { fgd::Lane::tom,        { "tom", "tm", "floortom" } },
+    };
+
+    auto files = folder.findChildFiles (juce::File::findFiles, true, "*.wav;*.aif;*.aiff;*.flac;*.mp3;*.ogg");
+    files.sort();
+    std::array<bool, fgd::numLanes> taken {};
+    juce::Array<juce::File> used;   // a file is one drum only
+    for (const auto& rule : rules)
+        for (const auto& file : files)
+        {
+            if (taken[(size_t) rule.lane])
+                break;
+            if (used.contains (file))
+                continue;
+            const auto name = file.getFileNameWithoutExtension().toLowerCase();
+            const auto squashed = name.removeCharacters (" _-.()[]0123456789");
+            juce::StringArray tokens;
+            tokens.addTokens (name.replaceCharacters ("_-.()[]0123456789", "                 "), " ", {});
+            tokens.removeEmptyStrings();
+            bool match = false;
+            for (const auto* word : rule.words)
+            {
+                const juce::String w (word);
+                // Short words must be a word of their own ("ch", not "chord"); long ones anywhere.
+                match = w.length() <= 3 ? tokens.contains (w) : squashed.contains (w);
+                if (match)
+                    break;
+            }
+            if (match && loadSample ((int) rule.lane, file))
+            {
+                taken[(size_t) rule.lane] = true;
+                used.add (file);
+                loaded.add (fgd::laneName ((int) rule.lane));
+            }
+        }
+    return loaded;
+}
+
+void FaseGrooveDrumsProcessor::clearAllSamples()
+{
+    for (int l = 0; l < fgd::numLanes; ++l)
+        clearSample (l);
 }
 
 std::uint32_t FaseGrooveDrumsProcessor::freshSeed()
@@ -617,6 +855,12 @@ void FaseGrooveDrumsProcessor::resetToDefaults()
         for (auto& c : lane)
             c = '.';
     resetStepVelocities();
+    for (auto* grid : { &userChance, &userRoll })
+        for (auto& lane : *grid)
+            for (auto& v : lane)
+                v = 0;
+    clearCustomFill();
+    clearGrooveTemplate();
     segmentLocked.fill (false);
     resetSong();
 }
@@ -936,6 +1180,198 @@ juce::File FaseGrooveDrumsProcessor::writeMidiClip (int bars, ClipPart part) con
 }
 
 //==============================================================================
+void FaseGrooveDrumsProcessor::renderGuideAudio (const std::vector<fgd::NoteEvent>& clipEvents, double beats,
+                                                 juce::AudioBuffer<float>& out, double sampleRate, int onlyLane) const
+{
+    const double samplesPerBeat = sampleRate * 60.0 / exportBpm();
+    const int total = juce::jmax (1, (int) std::ceil (beats * samplesPerBeat));
+    out.setSize (2, total);
+    out.clear();
+
+    GuideDrums kit;
+    kit.prepare (sampleRate);
+    kit.setKit (juce::roundToInt (raw (ParamIDs::kit)));
+    kit.setTone (raw (ParamIDs::tone));
+    const auto settings = currentSettings();
+    std::array<float, fgd::numLanes> gains {};
+    DrumSamples current;
+    for (int l = 0; l < fgd::numLanes; ++l)
+    {
+        const float db = raw (ParamIDs::laneVolume (l));
+        gains[(size_t) l] = (onlyLane >= 0 && l != onlyLane) || db <= -47.9f ? 0.0f : juce::Decibels::decibelsToGain (db);
+        current[(size_t) l] = std::atomic_load (&samples[(size_t) l]);
+    }
+
+    juce::Reverb reverb;
+    reverb.setSampleRate (sampleRate);
+    const float amount = raw (ParamIDs::reverb);
+    juce::Reverb::Parameters rp;
+    rp.roomSize = 0.45f;
+    rp.damping = 0.5f;
+    rp.width = 1.0f;
+    rp.wetLevel = amount * 0.4f;
+    rp.dryLevel = 1.0f - amount * 0.25f;
+    reverb.setParameters (rp);
+    const float gain = juce::Decibels::decibelsToGain (raw (ParamIDs::volume));
+
+    constexpr int renderBlock = 256;
+    juce::AudioBuffer<float> block (2, renderBlock);
+    size_t next = 0;
+    for (int start = 0; start < total; start += renderBlock)
+    {
+        const int n = juce::jmin (renderBlock, total - start);
+        juce::MidiBuffer midi;
+        while (next < clipEvents.size() && clipEvents[next].ppq * samplesPerBeat < start + n)
+        {
+            const auto& e = clipEvents[next++];
+            const int at = juce::jlimit (0, n - 1, (int) std::floor (e.ppq * samplesPerBeat) - start);
+            if (onlyLane >= 0 && e.lane != onlyLane)
+                continue;
+            midi.addEvent (e.isNoteOn() ? juce::MidiMessage::noteOn (1, e.note, (juce::uint8) e.velocity) : juce::MidiMessage::noteOff (1, e.note), at);
+        }
+        block.setSize (2, n, false, false, true);
+        block.clear();
+        kit.render (block, midi, settings.notes, gains, current);
+        if (amount > 0.001f)
+            reverb.processStereo (block.getWritePointer (0), block.getWritePointer (1), n);
+        for (int ch = 0; ch < 2; ++ch)
+            out.addFrom (ch, start, block, ch, 0, n, gain);
+    }
+}
+
+juce::String FaseGrooveDrumsProcessor::audioFileName (AudioExport mode, int bars) const
+{
+    const auto midiName = clipFileName (mode == AudioExport::song ? songArrangement : bars, ClipPart::all);
+    return midiName.upToLastOccurrenceOf (".mid", false, false) + (mode == AudioExport::stems ? " (stems)" : ".wav");
+}
+
+juce::Array<juce::File> FaseGrooveDrumsProcessor::writeAudio (AudioExport mode, int bars, const juce::File& target) const
+{
+    const double sampleRate = getSampleRate() >= 44100.0 ? getSampleRate() : 44100.0;
+    const auto settings = currentSettings();
+    juce::Array<juce::File> written;
+
+    auto write = [&] (const juce::File& file, const juce::AudioBuffer<float>& audio)
+    {
+        file.deleteFile();
+        juce::WavAudioFormat wav;
+        std::unique_ptr<juce::OutputStream> stream (file.createOutputStream());
+        if (stream == nullptr)
+            return;
+        const auto options = juce::AudioFormatWriterOptions().withSampleRate (sampleRate).withNumChannels (2).withBitsPerSample (24);
+        if (auto writer = wav.createWriterFor (stream, options))
+        {
+            writer->writeFromAudioSampleBuffer (audio, 0, audio.getNumSamples());
+            written.add (file);
+        }
+    };
+
+    if (mode == AudioExport::song)
+    {
+        // The whole song, with two seconds for the last sounds to ring out.
+        const double beats = clipLengthInBars (songArrangement) * 4.0;
+        const auto songEvents = fgd::GrooveEngine::renderArrangement (settings, songArrangementParts());
+        juce::AudioBuffer<float> audio;
+        renderGuideAudio (songEvents, beats + exportBpm() / 30.0, audio, sampleRate, -1);
+        write (target, audio);
+        return written;
+    }
+
+    // A clip that loops seamlessly: rendered twice, the second time (with the tails of the first
+    // ringing into it) is the one kept.
+    const double beats = clipLengthInBars (bars) * 4.0;
+    auto twice = fgd::GrooveEngine::renderClip (settings, beats * 2.0);
+    auto loopOf = [&] (int lane)
+    {
+        juce::AudioBuffer<float> both, audio;
+        renderGuideAudio (twice, beats * 2.0, both, sampleRate, lane);
+        const int half = both.getNumSamples() / 2;
+        audio.setSize (2, half);
+        for (int ch = 0; ch < 2; ++ch)
+            audio.copyFrom (ch, 0, both, ch, both.getNumSamples() - half, half);
+        return audio;
+    };
+
+    if (mode == AudioExport::clip)
+    {
+        write (target, loopOf (-1));
+        return written;
+    }
+
+    // Stems: one file per drum that plays.
+    if (! target.createDirectory())
+        return written;
+    for (int l = 0; l < fgd::numLanes; ++l)
+        if (std::any_of (twice.begin(), twice.end(), [l] (const fgd::NoteEvent& e) { return e.lane == l && e.isNoteOn(); }))
+            write (target.getChildFile (juce::String (l + 1).paddedLeft ('0', 2) + " " + fgd::laneName (l) + ".wav"), loopOf (l));
+    return written;
+}
+
+//==============================================================================
+juce::File FaseGrooveDrumsProcessor::linkFile()
+{
+    // Shared by every Fase Groove plug-in on this computer.
+    return juce::File::getSpecialLocation (juce::File::userApplicationDataDirectory)
+#if JUCE_MAC
+        .getChildFile ("Application Support")
+#endif
+        .getChildFile ("Fase Groove").getChildFile ("Link.xml");
+}
+
+void FaseGrooveDrumsProcessor::setLinked (bool on)
+{
+    if (on == linkOn.load())
+        return;
+    linkOn = on;
+    linkSeen = {};
+    linkGenre = -1;
+    linkSwing = -1.0f;
+}
+
+void FaseGrooveDrumsProcessor::updateLink()
+{
+    if (! linkOn.load())
+        return;
+
+    const auto file = linkFile();
+    const int genre = juce::roundToInt (raw (ParamIDs::genre));
+    const float swing = raw (ParamIDs::swing);
+
+    // Someone else changed it: take their genre and swing.
+    if (file.existsAsFile() && file.getLastModificationTime() != linkSeen)
+    {
+        linkSeen = file.getLastModificationTime();
+        if (auto xml = juce::parseXML (file))
+            if (xml->getStringAttribute ("from") != JucePlugin_Name || xml->getStringAttribute ("instance") != juce::String::toHexString ((juce::pointer_sized_int) this))
+            {
+                const int theirs = fgd::categoryIndex (xml->getStringAttribute ("genre").toStdString());
+                if (theirs >= 0)
+                    setParameterFromUI (ParamIDs::genre, (float) theirs);
+                if (xml->hasAttribute ("swing"))
+                    setParameterFromUI (ParamIDs::swing, juce::jlimit (0.0f, 1.5f, (float) xml->getDoubleAttribute ("swing")));
+                linkGenre = juce::roundToInt (raw (ParamIDs::genre));
+                linkSwing = raw (ParamIDs::swing);
+                return;
+            }
+    }
+
+    // We changed it: tell the others.
+    if (genre != linkGenre || std::abs (swing - linkSwing) > 0.001f)
+    {
+        juce::XmlElement xml ("FaseGrooveLink");
+        xml.setAttribute ("from", JucePlugin_Name);
+        xml.setAttribute ("instance", juce::String::toHexString ((juce::pointer_sized_int) this));
+        xml.setAttribute ("genre", fgd::grooveCategories()[(size_t) juce::jlimit (0, (int) fgd::grooveCategories().size() - 1, genre)]);
+        xml.setAttribute ("swing", swing);   // 0 straight, 1 a triplet shuffle (as Fase Groove Piano)
+        file.getParentDirectory().createDirectory();
+        if (xml.writeTo (file))
+            linkSeen = file.getLastModificationTime();
+        linkGenre = genre;
+        linkSwing = swing;
+    }
+}
+
+//==============================================================================
 juce::ValueTree FaseGrooveDrumsProcessor::stateTree() const
 {
     auto state = const_cast<juce::AudioProcessorValueTreeState&> (apvts).copyState();   // copyState() locks, it changes nothing
@@ -943,15 +1379,50 @@ juce::ValueTree FaseGrooveDrumsProcessor::stateTree() const
     juce::ValueTree grid ("Grid");
     for (int l = 0; l < fgd::numLanes; ++l)
     {
-        juce::String line, levels;
+        juce::String line, levels, chances, rolls;
+        bool extras = false;
         for (int i = 0; i < gridSteps; ++i)
         {
             line << juce::String::charToString ((juce::juce_wchar) (unsigned char) userGrid[(size_t) l][(size_t) i].load());
             levels << juce::String::toHexString (juce::jlimit (0, 127, userVelocity[(size_t) l][(size_t) i].load())).paddedLeft ('0', 2);
+            chances << juce::String::toHexString (juce::jlimit (0, 100, userChance[(size_t) l][(size_t) i].load())).paddedLeft ('0', 2);
+            rolls << juce::String (juce::jlimit (0, 4, userRoll[(size_t) l][(size_t) i].load()));
+            extras = extras || userChance[(size_t) l][(size_t) i].load() > 0 || userRoll[(size_t) l][(size_t) i].load() > 1;
         }
         grid.setProperty ("lane" + juce::String (l + 1), line, nullptr);
         grid.setProperty ("velocity" + juce::String (l + 1), levels, nullptr);
+        if (extras)
+        {
+            grid.setProperty ("chance" + juce::String (l + 1), chances, nullptr);
+            grid.setProperty ("roll" + juce::String (l + 1), rolls, nullptr);
+        }
     }
+
+    juce::ValueTree fill ("Fill");
+    for (int l = 0; l < fgd::numLanes; ++l)
+    {
+        juce::String line;
+        for (int i = 0; i < 16; ++i)
+            line << juce::String::charToString ((juce::juce_wchar) (unsigned char) customFill[(size_t) l][(size_t) i].load());
+        fill.setProperty ("lane" + juce::String (l + 1), line, nullptr);
+    }
+
+    juce::ValueTree groove ("Template");
+    if (templateName.isNotEmpty())
+    {
+        juce::String timing, level;
+        for (int i = 0; i < 16; ++i)
+        {
+            timing << juce::String (templateTiming[(size_t) i].load(), 4) << " ";
+            level << juce::String (templateLevel[(size_t) i].load(), 4) << " ";
+        }
+        groove.setProperty ("name", templateName, nullptr);
+        groove.setProperty ("active", templateActive.load(), nullptr);
+        groove.setProperty ("timing", timing.trim(), nullptr);
+        groove.setProperty ("level", level.trim(), nullptr);
+    }
+    juce::ValueTree link ("Link");
+    link.setProperty ("on", linkOn.load(), nullptr);
     juce::String locks;
     for (bool b : segmentLocked)
         locks << (b ? "1" : "0");
@@ -972,11 +1443,10 @@ juce::ValueTree FaseGrooveDrumsProcessor::stateTree() const
         if (const auto path = samplePath (l); path.isNotEmpty())
             sounds.setProperty ("lane" + juce::String (l + 1), path, nullptr);
 
-    for (const auto* name : { "Grid", "Song", "Samples" })
+    for (const auto* name : { "Grid", "Song", "Samples", "Fill", "Template", "Link" })
         state.removeChild (state.getChildWithName (name), nullptr);
-    state.appendChild (grid, nullptr);
-    state.appendChild (song, nullptr);
-    state.appendChild (sounds, nullptr);
+    for (auto& child : { grid, song, sounds, fill, groove, link })
+        state.appendChild (child, nullptr);
     return state;
 }
 
@@ -991,13 +1461,45 @@ void FaseGrooveDrumsProcessor::applyStateTree (const juce::ValueTree& source)
     {
         const auto line = grid.getProperty ("lane" + juce::String (l + 1)).toString();
         const auto levels = grid.getProperty ("velocity" + juce::String (l + 1)).toString();
+        const auto chances = grid.getProperty ("chance" + juce::String (l + 1)).toString();
+        const auto rolls = grid.getProperty ("roll" + juce::String (l + 1)).toString();
         for (int i = 0; i < gridSteps; ++i)
         {
             const char c = i < line.length() ? (char) line[i] : '.';
             userGrid[(size_t) l][(size_t) i] = fgd::isHit (c) ? c : '.';
             userVelocity[(size_t) l][(size_t) i] = juce::jlimit (0, 127, levels.substring (i * 2, i * 2 + 2).getHexValue32());
+            userChance[(size_t) l][(size_t) i] = juce::jlimit (0, 100, chances.substring (i * 2, i * 2 + 2).getHexValue32());
+            userRoll[(size_t) l][(size_t) i] = juce::jlimit (0, 4, rolls.substring (i, i + 1).getIntValue());
         }
     }
+
+    const auto fill = state.getChildWithName ("Fill");
+    for (int l = 0; l < fgd::numLanes; ++l)
+    {
+        const auto line = fill.getProperty ("lane" + juce::String (l + 1)).toString();
+        for (int i = 0; i < 16; ++i)
+        {
+            const char c = i < line.length() ? (char) line[i] : '.';
+            customFill[(size_t) l][(size_t) i] = fgd::isHit (c) ? c : '.';
+        }
+    }
+
+    const auto groove = state.getChildWithName ("Template");
+    {
+        std::array<float, 16> timing {}, level {};
+        level.fill (1.0f);
+        const auto t = juce::StringArray::fromTokens (groove.getProperty ("timing").toString(), " ", {});
+        const auto v = juce::StringArray::fromTokens (groove.getProperty ("level").toString(), " ", {});
+        for (int i = 0; i < 16; ++i)
+        {
+            if (i < t.size()) timing[(size_t) i] = juce::jlimit (-0.5f, 0.5f, t[i].getFloatValue());
+            if (i < v.size()) level[(size_t) i] = juce::jlimit (0.2f, 1.6f, v[i].getFloatValue());
+        }
+        setTemplate (groove.getProperty ("name").toString(), timing, level);
+        templateActive = templateName.isNotEmpty() && (bool) groove.getProperty ("active", true);
+    }
+    if (const auto link = state.getChildWithName ("Link"); link.isValid())
+        setLinked ((bool) link.getProperty ("on", false));
     const auto locks = grid.getProperty ("locks").toString();
     for (int i = 0; i < fgd::numSegments; ++i)
         segmentLocked[(size_t) i] = locks.substring (i, i + 1) == "1";
@@ -1023,7 +1525,7 @@ void FaseGrooveDrumsProcessor::applyStateTree (const juce::ValueTree& source)
             clearSample (l);
     }
 
-    for (const auto* name : { "Grid", "Song", "Samples" })
+    for (const auto* name : { "Grid", "Song", "Samples", "Fill", "Template", "Link" })
         state.removeChild (state.getChildWithName (name), nullptr);
     state.removeProperty ("editorScale", nullptr);
     apvts.replaceState (state);
@@ -1198,13 +1700,19 @@ bool FaseGrooveDrumsProcessor::saveGroove (const juce::String& name)
     xml.setAttribute ("name", clean);
     for (int l = 0; l < fgd::numLanes; ++l)
     {
-        juce::String levels;
+        juce::String levels, chances, rolls;
         for (int i = 0; i < steps(); ++i)
+        {
             levels << juce::String::toHexString (stepVelocity (l, i)).paddedLeft ('0', 2);
+            chances << juce::String::toHexString (stepChance (l, i) >= 100 ? 0 : stepChance (l, i)).paddedLeft ('0', 2);
+            rolls << juce::String (stepRoll (l, i) > 1 ? stepRoll (l, i) : 0);
+        }
         auto* lane = xml.createNewChildElement ("Lane");
         lane->setAttribute ("drum", fgd::laneName (l));
         lane->setAttribute ("steps", juce::String (p.lanes[(size_t) l]));
         lane->setAttribute ("velocity", levels);
+        lane->setAttribute ("chance", chances);
+        lane->setAttribute ("roll", rolls);
     }
     return xml.writeTo (grooveFolder().getChildFile (clean + ".fgdgroove"));
 }
@@ -1222,6 +1730,8 @@ bool FaseGrooveDrumsProcessor::loadGroove (const juce::File& file)
             break;
         const auto steps = lane->getStringAttribute ("steps");
         const auto levels = lane->getStringAttribute ("velocity");
+        const auto chances = lane->getStringAttribute ("chance");
+        const auto rolls = lane->getStringAttribute ("roll");
         const int length = juce::jmax (1, steps.length());
         for (int i = 0; i < gridSteps; ++i)   // a two-bar groove fills the four bars twice
         {
@@ -1229,6 +1739,8 @@ bool FaseGrooveDrumsProcessor::loadGroove (const juce::File& file)
             const char c = k < steps.length() ? (char) steps[k] : '.';
             userGrid[(size_t) l][(size_t) i] = fgd::isHit (c) ? c : '.';
             userVelocity[(size_t) l][(size_t) i] = juce::jlimit (0, 127, levels.substring (k * 2, k * 2 + 2).getHexValue32());
+            userChance[(size_t) l][(size_t) i] = juce::jlimit (0, 100, chances.substring (k * 2, k * 2 + 2).getHexValue32());
+            userRoll[(size_t) l][(size_t) i] = l == (int) fgd::Lane::kick ? 0 : juce::jlimit (0, 4, rolls.substring (k, k + 1).getIntValue());
         }
         ++l;
     }
@@ -1323,7 +1835,18 @@ namespace
     }
 }
 
-juce::String FaseGrooveDrumsProcessor::importAudioGroove (const juce::File& file)
+struct FaseGrooveDrumsProcessor::LoopAnalysis
+{
+    fgd::DrumPattern pattern;
+    std::array<std::array<int, gridSteps>, fgd::numLanes> levels {};
+    double bpm = 120.0;
+    int bars = 1;
+    struct Hit { double position; int lane; float level; };   // position in 16ths from the loop's grid
+    std::vector<Hit> hits;
+    std::vector<double> oddDelays, evenDelays;
+};
+
+std::unique_ptr<FaseGrooveDrumsProcessor::LoopAnalysis> FaseGrooveDrumsProcessor::analyseLoop (const juce::File& file) const
 {
     juce::AudioFormatManager formats;
     formats.registerBasicFormats();
@@ -1379,11 +1902,13 @@ juce::String FaseGrooveDrumsProcessor::importAudioGroove (const juce::File& file
             offset = std::arg (sum) / juce::MathConstants<double>::twoPi * T;
     }
 
-    fgd::DrumPattern p;
+    auto result = std::make_unique<LoopAnalysis>();
+    result->bpm = bpm;
+    result->bars = wholeBars;
+    auto& p = result->pattern;
     for (auto& line : p.lanes)
         line.assign ((size_t) gridSteps, '.');
-    std::array<std::array<int, gridSteps>, fgd::numLanes> levels {};
-    std::vector<double> oddDelays, evenDelays;
+    auto& levels = result->levels;
 
     auto place = [&] (const std::vector<AudioHit>& hits, std::function<int (const AudioHit&)> laneFor, float minBody, bool measureSwing)
     {
@@ -1395,20 +1920,22 @@ juce::String FaseGrooveDrumsProcessor::importAudioGroove (const juce::File& file
             if (h.body < minBody || top <= 0.0f)
                 continue;
             const double pos = (h.time - offset) / T;
-            const int step = (int) std::lround (pos);
-            if (step < 0 || step >= steps())
-                continue;   // the first two (or four) bars
             const float r = h.level / top;
             if (r < 0.12f)
                 continue;
             const int lane = laneFor (h);
+            if (pos > -0.5)
+                result->hits.push_back ({ pos, lane, r });
+            const int step = (int) std::lround (pos);
+            if (step < 0 || step >= steps())
+                continue;   // the first two (or four) bars
             const int v = juce::jlimit (1, 127, (int) std::lround (35.0 + 92.0 * r));
             if (v <= levels[(size_t) lane][(size_t) step])
                 continue;
             levels[(size_t) lane][(size_t) step] = v;
             p.lanes[(size_t) lane][(size_t) step] = r > 0.75f ? 'X' : r > 0.38f ? 'x' : 'g';
             if (measureSwing && r > 0.38f)
-                (step % 2 == 1 ? oddDelays : evenDelays).push_back (pos - step);
+                (step % 2 == 1 ? result->oddDelays : result->evenDelays).push_back (pos - step);
         }
     };
     place (kicks, [] (const AudioHit&) { return (int) fgd::Lane::kick; }, 0.0f, false);
@@ -1417,24 +1944,134 @@ juce::String FaseGrooveDrumsProcessor::importAudioGroove (const juce::File& file
 
     // A loop shorter than the groove plays again.
     repeatLoop (p, levels, juce::jmin (wholeBars * 16, steps()), gridSteps);
+    return result;
+}
 
-    setUserPattern (p);
+juce::String FaseGrooveDrumsProcessor::importAudioGroove (const juce::File& file)
+{
+    const auto loop = analyseLoop (file);
+    if (loop == nullptr)
+        return {};
+
+    setUserPattern (loop->pattern);
     for (int l = 0; l < fgd::numLanes; ++l)
         for (int i = 0; i < gridSteps; ++i)
-            userVelocity[(size_t) l][(size_t) i] = levels[(size_t) l][(size_t) i];
+            userVelocity[(size_t) l][(size_t) i] = loop->levels[(size_t) l][(size_t) i];
     for (int i = 0; i < fgd::numSegments; ++i)
         setSegmentAt (i, i);
 
     // The swing: how late the odd 16ths are, as the Swing control measures it.
-    juce::String report = juce::String (wholeBars) + " " + tr (wholeBars == 1 ? "bar" : "bars") + ", " + juce::String (bpm, 1) + " BPM";
-    if (oddDelays.size() >= 2)
+    juce::String report = juce::String (loop->bars) + " " + tr (loop->bars == 1 ? "bar" : "bars") + ", " + juce::String (loop->bpm, 1) + " BPM";
+    if (loop->oddDelays.size() >= 2)
     {
         auto median = [] (std::vector<double> v) { std::sort (v.begin(), v.end()); return v.empty() ? 0.0 : v[v.size() / 2]; };
-        const double swingAmount = juce::jlimit (0.0, 1.0, (median (oddDelays) - median (evenDelays)) * 3.0);
+        const double swingAmount = juce::jlimit (0.0, 1.5, (median (loop->oddDelays) - median (loop->evenDelays)) * 3.0);
         setParameterFromUI (ParamIDs::swing, (float) swingAmount);
-        report << ", " << tr ("Swing").toLowerCase() << " " << juce::roundToInt (swingAmount * 100.0) << "%";
+        report << ", " << tr ("Swing").toLowerCase() << " " << swingPercent ((float) swingAmount) << "%";
     }
     return report;
+}
+
+namespace
+{
+    /** A groove template from hits on a 16th grid (position in 16ths, level 0..1): the median
+        timing and the average level of each 16th of the bar. */
+    bool templateFrom (const std::vector<std::pair<double, float>>& hits, std::array<float, 16>& timing, std::array<float, 16>& level)
+    {
+        std::array<std::vector<double>, 16> offsets;
+        std::array<std::vector<double>, 16> levels;
+        for (const auto& [position, l] : hits)
+        {
+            const auto step = (long long) std::llround (position);
+            const int inBar = (int) (((step % 16) + 16) % 16);
+            offsets[(size_t) inBar].push_back (position - (double) step);
+            levels[(size_t) inBar].push_back (l);
+        }
+        auto median = [] (std::vector<double> v) { std::sort (v.begin(), v.end()); return v[v.size() / 2]; };
+        auto mean = [] (const std::vector<double>& v) { double sum = 0.0; for (double x : v) sum += x; return sum / (double) v.size(); };
+
+        // The 16ths the loop doesn't play take the timing of their kind (even / odd).
+        std::vector<double> even, odd;
+        int filled = 0;
+        double top = 0.0;
+        for (int i = 0; i < 16; ++i)
+            if (! offsets[(size_t) i].empty())
+            {
+                ++filled;
+                (i % 2 == 0 ? even : odd).push_back (median (offsets[(size_t) i]));
+                top = std::max (top, mean (levels[(size_t) i]));
+            }
+        if (filled < 3 || top <= 0.0)
+            return false;
+        const double evenTiming = even.empty() ? 0.0 : median (even);
+        const double oddTiming = odd.empty() ? 0.0 : median (odd);
+        for (int i = 0; i < 16; ++i)
+        {
+            // Relative to the downbeats: a loop that is late everywhere is just late.
+            const double t = offsets[(size_t) i].empty() ? (i % 2 == 0 ? evenTiming : oddTiming) : median (offsets[(size_t) i]);
+            timing[(size_t) i] = (float) juce::jlimit (-0.5, 0.5, t - evenTiming);
+            level[(size_t) i] = levels[(size_t) i].empty() ? 1.0f : (float) juce::jlimit (0.4, 1.2, 0.45 + 0.75 * mean (levels[(size_t) i]) / top);
+        }
+        return true;
+    }
+}
+
+void FaseGrooveDrumsProcessor::setTemplate (const juce::String& name, const std::array<float, 16>& timing, const std::array<float, 16>& level)
+{
+    templateName = name;
+    for (int i = 0; i < 16; ++i)
+    {
+        templateTiming[(size_t) i] = timing[(size_t) i];
+        templateLevel[(size_t) i] = level[(size_t) i];
+    }
+}
+
+void FaseGrooveDrumsProcessor::clearGrooveTemplate()
+{
+    templateActive = false;
+    std::array<float, 16> timing {}, level {};
+    level.fill (1.0f);
+    setTemplate ({}, timing, level);
+}
+
+juce::String FaseGrooveDrumsProcessor::grooveTemplateFromAudio (const juce::File& file)
+{
+    const auto loop = analyseLoop (file);
+    if (loop == nullptr)
+        return {};
+
+    // The hands make the groove: hats, claps and snares (the kick is the grid).
+    std::vector<std::pair<double, float>> hits;
+    for (const auto& h : loop->hits)
+        if (h.lane != (int) fgd::Lane::kick && h.level > 0.2f)
+            hits.push_back ({ h.position, h.level });
+    std::array<float, 16> timing {}, level {};
+    if (! templateFrom (hits, timing, level))
+        return {};
+    setTemplate (file.getFileNameWithoutExtension(), timing, level);
+    templateActive = true;
+    return file.getFileNameWithoutExtension() + " (" + juce::String (loop->bpm, 1) + " BPM)";
+}
+
+juce::String FaseGrooveDrumsProcessor::grooveTemplateFromMidi (const juce::File& file)
+{
+    juce::FileInputStream in (file);
+    juce::MidiFile midi;
+    if (! in.openedOk() || ! midi.readFrom (in) || midi.getTimeFormat() <= 0)
+        return {};
+    const double ticks = midi.getTimeFormat();
+
+    std::vector<std::pair<double, float>> hits;
+    for (int t = 0; t < midi.getNumTracks(); ++t)
+        for (const auto* e : *midi.getTrack (t))
+            if (e->message.isNoteOn() && fgd::laneForGeneralMidiNote (e->message.getNoteNumber()) != (int) fgd::Lane::kick)
+                hits.push_back ({ e->message.getTimeStamp() / ticks / fgd::stepLength, e->message.getFloatVelocity() });
+    std::array<float, 16> timing {}, level {};
+    if (! templateFrom (hits, timing, level))
+        return {};
+    setTemplate (file.getFileNameWithoutExtension(), timing, level);
+    templateActive = true;
+    return file.getFileNameWithoutExtension();
 }
 
 bool FaseGrooveDrumsProcessor::importMidiGroove (const juce::File& file)

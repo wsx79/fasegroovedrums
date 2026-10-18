@@ -508,8 +508,113 @@ static void testJackinGroove()
         }
 }
 
+static void testDrumFeel()
+{
+    auto onsets = [] (const std::vector<NoteEvent>& events, int note)
+    {
+        std::vector<double> t;
+        for (const auto& e : events)
+            if (e.isNoteOn() && e.note == note)
+                t.push_back (e.ppq);
+        return t;
+    };
+
+    // A clap pushed 20 ms ahead at 120 BPM lands 0.04 beats early; the kick never moves.
+    auto s = straight();
+    s.pattern = userPatternIndex();
+    s.user[(size_t) Lane::kick][0] = s.user[(size_t) Lane::kick][4] = 'X';
+    s.user[(size_t) Lane::clap][4] = 'X';
+    s.user[(size_t) Lane::closedHat][1] = 'x';
+    s.tempo = 120.0;
+    s.laneShift[(size_t) Lane::clap] = -20.0f;
+    s.laneShift[(size_t) Lane::kick] = 30.0f;
+    auto e = GrooveEngine::renderClip (s, 4.0);
+    CHECK (std::abs (onsets (e, 39)[0] - (1.0 - 0.04)) < 1.0e-9);
+    CHECK (std::abs (onsets (e, 36)[1] - 1.0) < 1.0e-9);
+
+    // The heaviest swing: a dotted 16th (half a step late). A drum can take none of it.
+    s.swing = 1.5f;
+    e = GrooveEngine::renderClip (s, 4.0);
+    CHECK (std::abs (onsets (e, 42)[0] - 1.5 * stepLength) < 1.0e-9);
+    s.laneSwing[(size_t) Lane::closedHat] = 0.0f;
+    e = GrooveEngine::renderClip (s, 4.0);
+    CHECK (std::abs (onsets (e, 42)[0] - stepLength) < 1.0e-9);
+
+    // A groove template: its timing and levels instead of the swing.
+    s.laneSwing[(size_t) Lane::closedHat] = 1.0f;
+    s.grooveTemplate.active = true;
+    s.grooveTemplate.timing[1] = 0.25f;
+    s.grooveTemplate.level[1] = 0.5f;
+    e = GrooveEngine::renderClip (s, 4.0);
+    CHECK (std::abs (onsets (e, 42)[0] - 1.25 * stepLength) < 1.0e-9);
+    CHECK (std::abs (onsets (e, 36)[0]) < 1.0e-9);
+    s.grooveTemplate.active = false;
+    const int loud = [&] { for (const auto& n : GrooveEngine::renderClip (s, 4.0)) if (n.isNoteOn() && n.note == 42) return n.velocity; return 0; }();
+    s.grooveTemplate.active = true;
+    const int soft = [&] { for (const auto& n : GrooveEngine::renderClip (s, 4.0)) if (n.isNoteOn() && n.note == 42) return n.velocity; return 0; }();
+    CHECK (soft < loud);
+    s.grooveTemplate.active = false;
+
+    // A roll of three on a hat; never on the kick.
+    s.userRoll[(size_t) Lane::closedHat][1] = 3;
+    s.userRoll[(size_t) Lane::kick][0] = 4;
+    e = GrooveEngine::renderClip (s, 4.0);
+    CHECK (countOns (e, 42) == 3);
+    CHECK (countOns (e, 36) == 2);
+    CHECK (wellFormed (e));
+
+    // A step with a 50% chance plays about half the time, the same way every time.
+    auto c = straight();
+    c.pattern = userPatternIndex();
+    for (int i = 0; i < 32; ++i)
+    {
+        c.user[(size_t) Lane::closedHat][(size_t) i] = 'x';
+        c.userChance[(size_t) Lane::closedHat][(size_t) i] = 50;
+    }
+    const int played = countOns (GrooveEngine::renderClip (c, 64.0), 42);
+    CHECK (played > 80 && played < 176);
+    CHECK (played == countOns (GrooveEngine::renderClip (c, 64.0), 42));
+}
+
+static void testNewFills()
+{
+    // Every fill style plays something, and the kick stays on the grid.
+    for (int style = 0; style < numFillStyles; ++style)
+    {
+        auto s = straight();
+        s.pattern = 0;
+        s.fillEveryBars = 1;
+        s.fillStyle = (FillStyle) style;
+        s.customFill[(size_t) Lane::tom][12] = 'X';
+        s.customFill[(size_t) Lane::tom][14] = 'x';
+        const auto e = GrooveEngine::renderClip (s, 4.0);
+        CHECK (wellFormed (e));
+        for (const auto& n : e)
+            if (n.isNoteOn() && n.lane == (int) Lane::kick)
+                CHECK (std::abs (n.ppq / stepLength - std::round (n.ppq / stepLength)) < 1.0e-9);
+    }
+
+    // The custom fill: the toms drawn, the drums it doesn't use keep the groove.
+    auto s = straight();
+    s.pattern = 0;
+    s.fillEveryBars = 1;
+    s.fillStyle = FillStyle::custom;
+    s.customFill[(size_t) Lane::tom][12] = 'X';
+    s.customFill[(size_t) Lane::tom][14] = 'x';
+    auto e = GrooveEngine::renderClip (s, 4.0);
+    CHECK (countOns (e, 45) == 2);
+    CHECK (countOns (e, 36) == 4);
+
+    // Kick build: 16th kicks on the last beat.
+    s.fillStyle = FillStyle::kickBuild;
+    e = GrooveEngine::renderClip (s, 4.0);
+    CHECK (countOns (e, 36) == 7);
+}
+
 int main()
 {
+    testDrumFeel();
+    testNewFills();
     testJackinGroove();
     testFourBarGrooves();
     testKickAlwaysOnTheGrid();

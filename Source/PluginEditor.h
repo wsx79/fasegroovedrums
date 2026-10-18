@@ -197,6 +197,30 @@ private:
 };
 
 //==============================================================================
+/** The fill drawn by hand (Fill style: Custom): one bar, every drum. It takes over from its first
+    written step; the drums left empty keep playing the groove. */
+class FillView : public juce::Component, public juce::SettableTooltipClient
+{
+public:
+    explicit FillView (FaseGrooveDrumsProcessor&);
+    void paint (juce::Graphics&) override;
+    void resized() override;
+    void mouseDown (const juce::MouseEvent&) override;
+    void mouseDrag (const juce::MouseEvent&) override;
+    void mouseUp (const juce::MouseEvent&) override { paintSymbol = 0; }
+
+private:
+    juce::Rectangle<float> gridArea() const;
+    bool cellAt (juce::Point<float>, int& lane, int& step) const;
+    void paintCell (int lane, int step, char symbol);
+
+    FaseGrooveDrumsProcessor& processor;
+    juce::TextButton startButton { "START FROM..." }, clearButton { "CLEAR FILL" };
+    char paintSymbol = 0;
+    int lastLane = -1, lastStep = -1;
+};
+
+//==============================================================================
 /** Drag me into the DAW: writes the MIDI clip(s) and starts an external file drag. */
 class DragTile : public juce::Component, public juce::SettableTooltipClient
 {
@@ -331,9 +355,9 @@ public:
 private:
     juce::Rectangle<int> strip (int lane) const;
     FaseGrooveDrumsProcessor& processor;
-    juce::OwnedArray<juce::Slider> faders;
+    juce::OwnedArray<juce::Slider> faders, pushKnobs, swingKnobs;
     juce::OwnedArray<juce::TextButton> mutes;
-    juce::OwnedArray<juce::AudioProcessorValueTreeState::SliderAttachment> faderAttachments;
+    juce::OwnedArray<juce::AudioProcessorValueTreeState::SliderAttachment> faderAttachments, knobAttachments;
     juce::OwnedArray<juce::AudioProcessorValueTreeState::ButtonAttachment> muteAttachments;
     std::array<float, fgd::numLanes> lights {};
 };
@@ -395,7 +419,11 @@ private:
     void importMidi();
     void importAudio();
     void importFile (const juce::File&);
-    void setView (int mode);   // 0 step grid, 1 velocity, 2 mixer
+    void setView (int mode);   // 0 step grid, 1 velocity, 2 mixer, 3 fill
+    void showTemplateMenu();
+    void showKitMenu();
+    void showAudioExportMenu();
+    void loadKitFolder (const juce::File&);
     void stepGroove (int delta);
     void selectLane (int lane);
     void refreshKitPanel();
@@ -453,18 +481,20 @@ private:
     Knob tone, reverb, volume;
 
     // Edit
-    juce::TextButton gridTab { "STEP GRID" }, velocityTab { "VELOCITY" }, mixerTab { "MIXER" }, clearButton { "CLEAR" }, myGroovesButton { "MY GROOVES" },
-                     importButton { "IMPORT MIDI" };
+    juce::TextButton gridTab { "STEP GRID" }, velocityTab { "VELOCITY" }, mixerTab { "MIXER" }, fillTab { "FILL" }, clearButton { "CLEAR" },
+                     myGroovesButton { "MY GROOVES" }, importButton { "IMPORT MIDI" }, templateButton { "TEMPLATE..." }, timingButton { "TIMING..." };
     IconButton newRhythmButton { IconButton::Icon::dice };
     DrumGrid grid;
     VelocityView velocityView;
     MixerView mixerView;
+    FillView fillView;
     int viewMode = 0;
 
     // Export
     juce::ComboBox notesBox, lengthBox;
     DragTile dragTile;
-    juce::TextButton saveButton { "SAVE .MID..." }, songButton { "FULL SONG..." };
+    juce::TextButton saveButton { "SAVE .MID..." }, songButton { "FULL SONG..." }, wavButton { "SAVE .WAV..." };
+    juce::TextButton kitFolderButton { "KIT FOLDER..." }, linkButton { "LINK PIANO" };
     std::unique_ptr<juce::FileChooser> chooser;
 
     SongOverlay songOverlay { processor };

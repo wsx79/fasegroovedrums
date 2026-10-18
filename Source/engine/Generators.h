@@ -57,8 +57,9 @@ void copySegment (DrumPattern& into, const DrumPattern& from, int segment);
 
 //==============================================================================
 /** What the end of a fill bar plays. */
-enum class FillStyle { snareRoll = 0, tomRun, clapBuild, hatLift, dropOut, congaRun, mix };
-constexpr int numFillStyles = 7;
+enum class FillStyle { snareRoll = 0, tomRun, clapBuild, hatLift, dropOut, congaRun, mix,
+                       kickBuild, rimShuffle, openHatRun, clapStutter, percBreak, custom };
+constexpr int numFillStyles = 13;
 const char* fillStyleName (int style) noexcept;
 /** First 16th (in the bar) a fill style takes over. */
 int fillStartStep (FillStyle style) noexcept;
