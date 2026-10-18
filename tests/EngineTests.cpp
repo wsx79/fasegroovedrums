@@ -339,8 +339,61 @@ static void testArrangement()
     CHECK (events.back().ppq <= 60 * 4.0 + 1.0e-9);
 }
 
+static void testPartsSectionsAndLanes()
+{
+    // A-D order: A A B C repeats the first half bar.
+    auto base = drumPatterns()[0];
+    normalisePattern (base, userPatternLength);
+    const auto ordered = applySegmentOrder (base, { 0, 0, 1, 2 });
+    for (int l = 0; l < numLanes; ++l)
+        CHECK (ordered.lanes[(size_t) l].substr (8, 8) == base.lanes[(size_t) l].substr (0, 8));
+
+    // A section's own version keeps the kick and is repeatable.
+    const auto a = makeSectionVariation (base, 5), b = makeSectionVariation (base, 5);
+    CHECK (a.lanes == b.lanes);
+    CHECK (a.lanes != base.lanes);
+    CHECK (countHits (a[Lane::kick]) >= countHits (base[Lane::kick]));
+
+    // A single drum: never empty, the right length, repeatable.
+    for (int genre = 0; genre < (int) grooveCategories().size(); ++genre)
+        for (int l = 0; l < numLanes; ++l)
+        {
+            const auto line = makeRandomLane ((Lane) l, 3, 0.5f, genre);
+            CHECK ((int) line.size() == userPatternLength);
+            CHECK (countHits (line) > 0);
+            CHECK (line == makeRandomLane ((Lane) l, 3, 0.5f, genre));
+        }
+
+    // Velocity set by hand on a step of the user pattern.
+    auto s = straight();
+    s.pattern = userPatternIndex();
+    s.user[(size_t) Lane::kick][0] = 'x';
+    s.userVelocity[(size_t) Lane::kick][0] = 50;
+    for (const auto& e : GrooveEngine::renderClip (s, 4.0))
+        if (e.isNoteOn())
+            CHECK (e.velocity == 50);
+
+    // A section's own fill: only on its last bar, or none.
+    std::vector<ArrangementPart> parts { { Section::main, 4, 0, (int) FillStyle::tomRun } };
+    auto f = straight();
+    f.pattern = 2;
+    f.fillEveryBars = 1;
+    int toms = 0;
+    for (const auto& e : GrooveEngine::renderArrangement (f, parts))
+        if (e.isNoteOn() && e.lane == (int) Lane::tom)
+        {
+            ++toms;
+            CHECK (e.ppq >= 12.0);
+        }
+    CHECK (toms == 4);
+    parts[0].endFill = -2;
+    for (const auto& e : GrooveEngine::renderArrangement (f, parts))
+        CHECK (! (e.isNoteOn() && (e.lane == (int) Lane::crash || e.lane == (int) Lane::snare)));
+}
+
 int main()
 {
+    testPartsSectionsAndLanes();
     testPresets();
     testLanes();
     testRenderBasics();

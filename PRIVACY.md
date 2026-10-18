@@ -13,7 +13,7 @@ Fase Groove Drums respects your privacy in the simplest possible way: **it colle
 
 | What | Where | Why |
 |---|---|---|
-| Plug-in settings and your grid | Inside your DAW project | So you get them back when you reopen the project (saved by the DAW). |
+| Plug-in settings, your grid and the paths of your samples | Inside your DAW project | So you get them back when you reopen the project (saved by the DAW). |
 | Dragged MIDI clips | `Documents/Fase Groove Drums/MIDI clips/` | Dragging to the DAW needs a real file. You can delete them at any time. |
 | `.mid` files saved with *SAVE .MID* | Wherever you choose | At your request. |
 | Audio/MIDI settings of the Standalone app | Your system's user settings folder | Handled by the JUCE framework to remember your audio interface. |

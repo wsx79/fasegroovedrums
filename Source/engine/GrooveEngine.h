@@ -43,11 +43,18 @@ struct DrumSettings
     std::array<float, numLanes> levels {}; // velocity scale of each lane (1 = as written)
     std::array<bool, numLanes> muted {};
 
-    // Used when pattern == userPatternIndex(): the hand-edited grid.
+    // Used when pattern == userPatternIndex(): the hand-edited grid, and the velocity set by
+    // hand on each of its steps (0 = automatic, from the symbol).
     std::array<std::array<char, userPatternLength>, numLanes> user {};
+    std::array<std::array<unsigned char, userPatternLength>, numLanes> userVelocity {};
 
-    long long forcedFillBar = -1;          // a fill played on this bar only (live keys)...
-    int forcedFillStyle = -1;              // ...in this style
+    std::array<int, numSegments> segmentOrder { 0, 1, 2, 3 };   // A B C D
+    std::uint32_t sectionVariation = 0;    // a song section's own version of the groove (0: as it is)
+
+    // A song section with its own fill: when forcedFillBar >= 0 that is the only bar with a fill,
+    // in forcedFillStyle (< 0: no fill at all).
+    long long forcedFillBar = -1;
+    int forcedFillStyle = -1;
 };
 
 struct NoteEvent
@@ -76,7 +83,8 @@ public:
     /** The groove before the section is applied: a preset, the random beat or the user pattern. */
     static DrumPattern basePattern (const DrumSettings& s);
 
-    /** The groove actually played: the base pattern rewritten for the song section. */
+    /** The groove actually played: the base pattern, in the A-D order, its section's own
+        version, then rewritten for the song section. */
     static DrumPattern resolvePattern (const DrumSettings& s);
     static int patternLength (const DrumSettings& s) noexcept;
 
@@ -114,6 +122,8 @@ private:
     int cachedGenre = -1;
     Section cachedSection = Section::main;
     std::array<std::array<char, userPatternLength>, numLanes> cachedUser {};
+    std::array<int, numSegments> cachedOrder {};
+    std::uint32_t cachedSectionVariation = 0;
 };
 
 } // namespace fgd

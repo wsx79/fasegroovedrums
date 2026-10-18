@@ -328,6 +328,42 @@ DrumPattern makeRandomPattern (std::uint32_t seed, float density, int genre)
     return p;
 }
 
+std::string makeRandomLane (Lane lane, std::uint32_t seed, float density, int genre)
+{
+    // The genre's own idea of this drum first, from a few beats...
+    for (std::uint32_t attempt = 0; attempt < 12; ++attempt)
+    {
+        const auto beat = makeRandomPattern (seed * 31u + attempt * 7919u + (std::uint32_t) lane, density, genre);
+        const auto& line = beat[lane];
+        if (std::any_of (line.begin(), line.end(), isHit))
+            return line;
+    }
+
+    // ...otherwise a light part that fits any house groove.
+    Random r (seed + 99u);
+    static const char* cells[numLanes][3] {
+        { "X... X... X... X...", "X... ..x. X... ....", "X... X... X... X..x" },        // kick
+        { ".... X... .... X...", ".... X..g .... X...", "...g X... ..g. X..." },        // snare
+        { ".... X... .... X...", ".... X... .... X..x", ".... f... .... X..." },        // clap
+        { "...x ..x. ...x ....", "..x. ...x .x.. ..x.", "x..x ..x. ..x. x..." },        // rim
+        { "xg.g xg.g xg.g xg.g", "x.x. x.x. x.x. x.x.", "xx.x xx.x xx.x xx.x" },        // closed hat
+        { "..x. ..x. ..x. ..x.", ".... ..x. .... ..x.", "..X. ..X. ..X. ..X." },        // open hat
+        { "x.x. x.x. x.x. x.x.", "x.X. x.X. x.X. x.X.", "x... x... x... x..." },        // ride
+        { "xgxg xgxg xgxg xgxg", "gxXx gxXx gxXx gxXx", "g.x. g.x. g.x. g.x." },        // shaker
+        { ".... x... .... x...", "..x. X.x. ..x. X.x.", "g.X. g.X. g.X. g.X." },        // tambourine
+        { "..x. .x.. x.x. ..x.", ".... ..x. .... x.x.", "x..x ..x. x..x ..x." },        // conga
+        { "..x. ..x. ..x. ..x.", "x..x ..x. ..x. x...", ".... .... ..x. ...." },        // cowbell
+        { ".... .... .... ..x.", "..x. .x.. ..x. x.x.", ".... .... .... XxXx" },        // tom
+        { "X... .... .... ....", "X... .... .... ....", "X... .... .... ...." },        // crash
+    };
+    const int choice = std::clamp ((int) (density * 2.99f) + (r.chance (0.3f) ? (r.chance (0.5f) ? -1 : 1) : 0), 0, 2);
+    auto line = compact (cells[(int) lane][choice]);
+    line += lane == Lane::crash ? std::string (16, '.') : line;
+    if (density > 0.5f && lane != Lane::kick && lane != Lane::crash)
+        line[(size_t) (16 + r.pick ({ 11, 13, 14, 15 }))] = 'g';
+    return line;
+}
+
 DrumPattern makeVariation (const DrumPattern& source, std::uint32_t seed)
 {
     Random r (seed * 2654435761u + 17u);
@@ -369,6 +405,83 @@ DrumPattern makeVariation (const DrumPattern& source, std::uint32_t seed)
         }
     }
     return p;
+}
+
+DrumPattern makeSectionVariation (const DrumPattern& source, std::uint32_t seed)
+{
+    Random r (seed * 747796405u + 2891336453u);
+    DrumPattern p = source;
+    const int len = p.length();
+    auto hits = [] (const std::string& line) { return std::any_of (line.begin(), line.end(), isHit); };
+
+    // The closed hats: a few 16th ghosts added or taken away.
+    auto& hats = p[Lane::closedHat];
+    if (hits (hats))
+        for (int n = 2 + r.nextInt (3); n > 0; --n)
+        {
+            const int i = r.nextInt (len);
+            if (p[Lane::openHat][(size_t) i] == '.' && i % 4 != 0)
+                hats[(size_t) i] = hats[(size_t) i] == '.' ? 'g' : '.';
+        }
+
+    // A new answer on a percussion line that plays (or a light one where none does).
+    static constexpr Lane percussion[] { Lane::rim, Lane::conga, Lane::tambourine, Lane::cowbell, Lane::shaker };
+    bool moved = false;
+    for (auto lane : percussion)
+        if (hits (p[lane]) && ! moved && r.chance (0.7f))
+        {
+            auto& line = p[lane];
+            for (int bar = 0; bar < len / 16; ++bar)
+            {
+                const int from = bar * 16 + r.nextInt (16), to = bar * 16 + r.nextInt (16);
+                if (to % 4 != 0)
+                    std::swap (line[(size_t) from], line[(size_t) to]);
+            }
+            moved = true;
+        }
+    if (! moved)
+    {
+        const auto lane = r.chance (0.5f) ? Lane::rim : Lane::shaker;
+        for (int bar = 0; bar < len / 16; ++bar)
+            p[lane][(size_t) (bar * 16 + r.pick ({ 3, 7, 11, 14 }))] = 'g';
+    }
+
+    // Ghost notes on the snare now and then.
+    if (r.chance (0.5f))
+        p[Lane::snare][(size_t) (r.nextInt (len / 16) * 16 + r.pick ({ 7, 10, 15 }))] = 'g';
+
+    // And the turnaround of the last bar.
+    return makeVariation (p, seed + 7);
+}
+
+DrumPattern applySegmentOrder (const DrumPattern& source, const std::array<int, numSegments>& order)
+{
+    const int len = source.length();
+    if (len % numSegments != 0 || order == std::array<int, numSegments> { 0, 1, 2, 3 })
+        return source;
+
+    DrumPattern p = source;
+    const int segment = len / numSegments;
+    for (int k = 0; k < numSegments; ++k)
+    {
+        const int from = std::clamp (order[(size_t) k], 0, numSegments - 1);
+        for (int l = 0; l < numLanes; ++l)
+            for (int i = 0; i < segment; ++i)
+                p.lanes[(size_t) l][(size_t) (k * segment + i)] = source.lanes[(size_t) l][(size_t) (from * segment + i)];
+    }
+    return p;
+}
+
+void copySegment (DrumPattern& into, const DrumPattern& from, int segment)
+{
+    const int len = into.length();
+    if (from.length() != len || len % numSegments != 0)
+        return;
+    const int size = len / numSegments;
+    segment = std::clamp (segment, 0, numSegments - 1);
+    for (int l = 0; l < numLanes; ++l)
+        for (int i = segment * size; i < (segment + 1) * size; ++i)
+            into.lanes[(size_t) l][(size_t) i] = from.lanes[(size_t) l][(size_t) i];
 }
 
 //==============================================================================

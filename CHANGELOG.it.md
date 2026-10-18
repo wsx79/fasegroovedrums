@@ -4,6 +4,27 @@
 
 Tutte le modifiche importanti di **Fase Groove Drums**.
 
+## [0.2.0] - 2026-10-18
+
+L'interfaccia di Fase Groove Piano, per la batteria.
+
+- **Dadi ovunque:** TOTAL RANDOM in alto, NEW BEAT, un dado su **ogni strumento** (una nuova linea solo
+  per quello strumento, nel genere scelto), un dado e un lucchetto su ogni parte A-D.
+- **Parti A-D:** le quattro mezze battute del groove in qualsiasi ordine (es. A A A B), ognuna con dado e lucchetto.
+- **Vista VELOCITY:** un piano roll per le velocity, uno strumento alla volta (scelto da un menu): i
+  colpi sopra, una barra per colpo da trascinare; forme (offbeat push, on the beat, shuffle 16ths,
+  crescendo, humanize, flat), un dado per le velocity, ritorno all'automatico. Doppio clic sul nome di
+  uno strumento per aprirla.
+- **I tuoi campioni:** carica un WAV / AIFF / FLAC / MP3 per qualsiasi strumento (tasto destro sul nome,
+  o trascina il file sulla sua riga); salvato con il progetto.
+- **Finestra del brano (SONG):** battute di ogni sezione, sua variazione, suo fill; trascina il brano
+  intero, una sezione o tutte le sezioni come clip separate; salva il brano o un .mid per sezione.
+- **Trasporto** ⏮ ▶/❚❚ ■, **annulla / ripeti** (Ctrl+Z / Ctrl+Shift+Z), **schermo intero**.
+- **PRESETS** (salva / carica tutto) e **MY GROOVES** (salva / carica la griglia, con le velocity).
+- **Importa la batteria di un file MIDI** (MY GROOVES, o trascina il .mid sulla finestra): due battute
+  sulla griglia, con le loro velocity.
+- ◀ ▶ per scorrere i groove; un segno su ogni cella con velocity impostata a mano.
+
 ## [0.1.0] - 2026-10-18
 
 La prima versione: il compagno di batteria di Fase Groove Piano.

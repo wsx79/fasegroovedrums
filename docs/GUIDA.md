@@ -88,3 +88,19 @@ La prima modifica copia il groove mostrato nello **User pattern**, che si salva 
 
 - **Barra spaziatrice:** play / pausa senza DAW.
 - Clicca il **logo** o **ABOUT** per crediti, link e donazioni.
+
+## 9. Novità della 0.2
+
+- **Dadi:** il dado in alto è TOTAL RANDOM; ogni riga ha il suo dado (una nuova linea solo per quello
+  strumento); ogni parte A-D ha un dado e un lucchetto (i dadi non toccano le parti bloccate).
+- **PARTS A-D** (sopra la griglia): quale mezza battuta suona dove, es. A A A B.
+- **VELOCITY** (accanto a GRID): scegli uno strumento dal menu, trascina le barre; SHAPE applica un
+  groove (Offbeat push è il classico hat house), RANDOM ne tira uno, AUTO torna ai livelli automatici.
+  Doppio clic sul nome di uno strumento nella griglia per aprirlo lì.
+- **Il tuo campione:** tasto destro sul nome → *Load your own sample...*, oppure trascina un WAV /
+  AIFF / FLAC / MP3 sulla sua riga. *Back to the built-in sound* lo toglie. Il file resta dov'è: il
+  progetto ne ricorda il percorso.
+- **SONG:** la finestra del brano (battute, variazione e fill per sezione; trascina o salva il brano o le sezioni).
+- **PRESETS / MY GROOVES:** salva e carica; MY GROOVES importa anche la batteria di un file MIDI (o
+  trascina il .mid sulla finestra).
+- ⏮ ▶ ■, annulla / ripeti (frecce, Ctrl+Z), schermo intero (in alto a destra).

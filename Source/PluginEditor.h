@@ -54,6 +54,27 @@ private:
 };
 
 //==============================================================================
+/** A flat button with a drawn icon (and optional text): transport, dice, undo, locks... */
+class IconButton : public juce::Button
+{
+public:
+    enum class Icon { none, play, pause, stop, rewind, dice, undo, redo, gear, close, fullScreen, exitFullScreen,
+                      lock, unlock, left, right, song, folder };
+
+    explicit IconButton (Icon i = Icon::none) : juce::Button ({}), icon (i) {}
+    void setIcon (Icon i) { if (i != icon) { icon = i; repaint(); } }
+    void paintButton (juce::Graphics&, bool highlighted, bool down) override;
+    static void drawIcon (juce::Graphics&, Icon, juce::Rectangle<float>, juce::Colour);
+
+    juce::Colour onColour { Palette::accent };
+    juce::Colour iconColour;   // when set: the icon's own colour while off (the dice are amber)
+    bool primary = false;      // filled with onColour even when off (the main action of a panel)
+
+private:
+    Icon icon;
+};
+
+//==============================================================================
 /** Rotary knob with a caption under it. */
 class Knob : public juce::Component
 {
@@ -68,8 +89,8 @@ private:
     juce::AudioProcessorValueTreeState::SliderAttachment attachment;
 };
 
-/** A drop-down menu for a parameter, with a caption above it. The items can be grouped under
-    headings in any order: an item's id is always "parameter index + 1". */
+/** A drop-down menu for a parameter, with a caption above it (or none). The items can be grouped
+    under headings in any order: an item's id is always "parameter index + 1". */
 class ParamCombo : public juce::Component
 {
 public:
@@ -85,11 +106,12 @@ private:
     juce::ComboBox box;
     juce::Label label;
     juce::RangedAudioParameter* parameter = nullptr;
+    bool hasCaption = true;
 };
 
 //==============================================================================
-/** The rhythm grid: one row per drum, 32 steps (two bars). */
-class DrumGrid : public juce::Component
+/** The rhythm grid: one row per drum (with its die), 32 steps (two bars). */
+class DrumGrid : public juce::Component, public juce::SettableTooltipClient
 {
 public:
     explicit DrumGrid (FaseGrooveDrumsProcessor&);
@@ -105,10 +127,16 @@ public:
     void refresh();
 
     static constexpr int headerWidth = 112;
+    /** Called when a drum's name is double-clicked: show it in the velocity view. */
+    std::function<void (int lane)> onShowVelocity;
+    /** The drum row at a point (-1 outside), e.g. where a sample is dropped. */
+    int laneAt (juce::Point<int>) const;
+    void chooseSample (int lane);
 
 private:
     juce::Rectangle<float> cellBounds (int lane, int step) const;
     juce::Rectangle<float> headerBounds (int lane) const;
+    juce::Rectangle<float> diceBounds (int lane) const;
     bool cellAt (juce::Point<float>, int& lane, int& step) const;
     void showCellMenu (int lane, int step);
     void showLaneMenu (int lane);
@@ -120,26 +148,107 @@ private:
     std::array<float, fgd::numLanes> lights {};
     int playStep = -1;
     int hoverLane = -1, hoverStep = -1;
+    bool hoverDice = false;
     char paintSymbol = 0;
     int lastPaintLane = -1, lastPaintStep = -1;
+    std::unique_ptr<juce::FileChooser> chooser;
 };
 
 //==============================================================================
-/** Drag me into the DAW: writes the MIDI clip and starts an external file drag. */
-class DragTile : public juce::Component
+/** The velocity piano roll: one drum at a time (chosen from a menu), its hits on top and a
+    velocity bar under each one, to drag up and down. */
+class VelocityView : public juce::Component
 {
 public:
-    std::function<juce::File()> createFile;
+    explicit VelocityView (FaseGrooveDrumsProcessor&);
+
+    void paint (juce::Graphics&) override;
+    void resized() override;
+    void mouseDown (const juce::MouseEvent&) override;
+    void mouseDrag (const juce::MouseEvent&) override;
+    void mouseDoubleClick (const juce::MouseEvent&) override;
+    void mouseMove (const juce::MouseEvent&) override;
+    void mouseExit (const juce::MouseEvent&) override;
+
+    void refresh();
+    void setLane (int lane);
+    int getLane() const noexcept { return lane; }
+
+private:
+    juce::Rectangle<float> stripArea() const;
+    juce::Rectangle<float> laneArea() const;
+    juce::Rectangle<float> column (int step, juce::Rectangle<float> area) const;
+    int stepAt (float x) const;
+    void setFromMouse (juce::Point<float>);
+
+    FaseGrooveDrumsProcessor& processor;
+    int lane = (int) fgd::Lane::closedHat;
+    juce::ComboBox drumBox, shapeBox;
+    IconButton diceButton { IconButton::Icon::dice };
+    juce::TextButton autoButton { "AUTO" }, autoAllButton { "ALL AUTO" };
+    std::array<char, FaseGrooveDrumsProcessor::gridSteps> symbols {};
+    std::array<int, FaseGrooveDrumsProcessor::gridSteps> levels {}, setByHand {};
+    int playStep = -1, hoverStep = -1;
+    bool painting = false;
+};
+
+//==============================================================================
+/** Drag me into the DAW: writes the MIDI clip(s) and starts an external file drag. */
+class DragTile : public juce::Component, public juce::SettableTooltipClient
+{
+public:
+    DragTile (juce::String titleText = "DRAG MIDI TO YOUR DAW", juce::String subtitleText = "drag this tile onto a track")
+        : title (std::move (titleText)), subtitle (std::move (subtitleText)) {}
+    std::function<juce::StringArray()> createFiles;
+    void setSubtitle (const juce::String& s) { if (s != subtitle) { subtitle = s; repaint(); } }
     void paint (juce::Graphics&) override;
     void mouseDrag (const juce::MouseEvent&) override;
     void mouseUp (const juce::MouseEvent&) override { dragging = false; repaint(); }
+    void mouseEnter (const juce::MouseEvent&) override { repaint(); }
+    void mouseExit (const juce::MouseEvent&) override { repaint(); }
 
 private:
+    juce::String title, subtitle;
     bool dragging = false;
 };
 
 //==============================================================================
-/** Credits, links and licence: OPTIONS -> ABOUT, or a click on the logo. */
+/** The song window: bars, own variation and fill of each section; drag or save the whole song,
+    one section, or every section as its own clip. */
+class SongOverlay : public juce::Component
+{
+public:
+    explicit SongOverlay (FaseGrooveDrumsProcessor&);
+    void paint (juce::Graphics&) override;
+    void resized() override;
+    void mouseDown (const juce::MouseEvent&) override;
+    void show();
+    void refresh();
+
+    FaseGrooveDrumsProcessor::ClipPart clipPart() const;
+
+private:
+    juce::Rectangle<float> card() const;
+    juce::Rectangle<float> timelineArea() const;
+    juce::Rectangle<int> rowArea (int part) const;
+    void saveSong();
+    void saveSections();
+
+    FaseGrooveDrumsProcessor& processor;
+    juce::OwnedArray<juce::ComboBox> barBoxes, fillBoxes;
+    juce::OwnedArray<IconButton> newButtons;
+    juce::OwnedArray<juce::TextButton> originalButtons;
+    juce::TextButton allButton { "ONE TRACK" }, tracksButton { "ONE TRACK PER DRUM" };
+    juce::TextButton saveSongButton { "SAVE SONG .MID..." }, saveSectionsButton { "ONE .MID PER SECTION..." }, closeButton { "CLOSE" };
+    juce::TextButton resetButton { "RESET SONG" };
+    DragTile sectionTile { "DRAG THIS SECTION" }, sectionsTile { "DRAG ALL SECTIONS", "one clip per section" },
+             songTile { "DRAG THE WHOLE SONG", "every section, with markers" };
+    std::unique_ptr<juce::FileChooser> chooser;
+    int selected = 1;   // the section the tile drags (part index)
+};
+
+//==============================================================================
+/** Credits, links, shortcuts and licence: the gear, or a click on the logo. */
 class AboutPanel : public juce::Component
 {
 public:
@@ -156,20 +265,22 @@ private:
 };
 
 //==============================================================================
-class FaseGrooveDrumsEditor : public juce::AudioProcessorEditor, private juce::Timer
+class FaseGrooveDrumsEditor : public juce::AudioProcessorEditor, public juce::FileDragAndDropTarget, private juce::Timer
 {
 public:
     explicit FaseGrooveDrumsEditor (FaseGrooveDrumsProcessor&);
     ~FaseGrooveDrumsEditor() override;
 
     void resized() override;
+    bool isInterestedInFileDrag (const juce::StringArray&) override;
+    void filesDropped (const juce::StringArray&, int, int) override;
 
-    static constexpr int designWidth = 1180, designHeight = 720;
+    static constexpr int designWidth = 1180, designHeight = 760;
 
 private:
     void timerCallback() override;
 
-    /** Everything is laid out at the design size, then scaled to the window. */
+    /** Everything is laid out at the design size, then scaled (and centred) in the window. */
     struct Content : public juce::Component
     {
         explicit Content (FaseGrooveDrumsEditor& e) : editor (e) {}
@@ -185,6 +296,17 @@ private:
     int selectedClipBars() const;
     FaseGrooveDrumsProcessor::ClipPart selectedClipPart() const;
     void saveMidiFile();
+    void showPresetsMenu();
+    void showGroovesMenu();
+    void askName (const juce::String& title, const juce::String& suggestion, std::function<void (const juce::String&)> onName);
+    void importMidi();
+    void setView (bool velocity);
+    void stepGroove (int delta);
+    void undo();
+    void redo();
+    bool isFullScreen() const;
+    void toggleFullScreen();
+    void showMessage (const juce::String& text);
 
     FaseGrooveDrumsProcessor& processor;
     GrooveLookAndFeel lookAndFeel;
@@ -192,17 +314,22 @@ private:
     Content content { *this };
 
     // Header
+    IconButton optionsButton { IconButton::Icon::gear }, undoButton { IconButton::Icon::undo }, redoButton { IconButton::Icon::redo },
+               totalRandomButton { IconButton::Icon::dice };
     juce::ComboBox styleBox;
-    juce::TextButton resetButton { "RESET" }, playButton, stopButton, aboutButton { "ABOUT" };
-    juce::TextButton syncButton { "SYNC DAW" }, soundButton { "SOUND" };
+    juce::TextButton presetsButton { "PRESETS" }, resetButton { "RESET" };
+    IconButton rewindButton { IconButton::Icon::rewind }, playButton { IconButton::Icon::play }, stopButton { IconButton::Icon::stop };
+    juce::TextButton syncButton { "SYNC DAW" };
     juce::Slider tempoSlider;
-    std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment> syncAttachment, soundAttachment, crashAttachment,
-                                                                         sequencerAttachment;
+    IconButton songButton { IconButton::Icon::song }, fullScreenButton { IconButton::Icon::fullScreen };
+    std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment> syncAttachment, soundAttachment, crashAttachment, sequencerAttachment;
     std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> tempoAttachment;
 
     // Groove
     ParamCombo grooveCombo, genreCombo;
-    juce::TextButton newBeatButton { "NEW BEAT" }, clearButton { "CLEAR" };
+    IconButton prevGroove { IconButton::Icon::left }, nextGroove { IconButton::Icon::right };
+    IconButton newBeatButton { IconButton::Icon::dice };
+    juce::TextButton myGroovesButton { "MY GROOVES" };
     Knob density;
 
     // Feel
@@ -213,13 +340,18 @@ private:
     ParamCombo sectionCombo, fillsCombo, fillStyleCombo, variationCombo;
     juce::TextButton crashButton { "CRASH AFTER FILLS" };
 
-    // Grid
+    // Grid / velocity
+    juce::TextButton gridTab { "GRID" }, velocityTab { "VELOCITY" }, clearButton { "CLEAR" };
+    std::unique_ptr<ParamCombo> segmentCombos[fgd::numSegments];
+    IconButton segmentDice[fgd::numSegments], segmentLocks[fgd::numSegments];
     DrumGrid grid;
+    VelocityView velocityView;
+    bool velocityShown = false;
 
     // Sound
     ParamCombo kitCombo, channelCombo;
     Knob tone, reverb, volume;
-    juce::TextButton sequencerButton { "SEQUENCER" };
+    juce::TextButton sequencerButton { "SEQUENCER" }, soundButton { "GUIDE SOUND" };
 
     // Export
     juce::ComboBox lengthBox;
@@ -227,9 +359,19 @@ private:
     DragTile dragTile;
     std::unique_ptr<juce::FileChooser> chooser;
 
+    SongOverlay songOverlay { processor };
     AboutPanel about;
     std::vector<ParamCombo*> combos;
     juce::Rectangle<int> logoArea;
+
+    // Undo history: a snapshot twice a second; a change pushes the previous one.
+    juce::StringArray undoStack, redoStack;
+    juce::String lastSnapshot;
+    int snapshotTicks = 0;
+
+    juce::Rectangle<int> sizeBeforeFullScreen;
+    juce::String message;
+    int messageTicks = 0;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (FaseGrooveDrumsEditor)
 };

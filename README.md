@@ -36,6 +36,10 @@ then **drag it into your DAW as a MIDI clip** and play it with your own drums.
 - 🎚️ **STYLE:** one-click setups by genre (groove, swing, feel, fills, kit) and **RESET**.
 - ✏️ **Editable grid:** 13 drums × 32 steps (two bars). Hit, accent, ghost note and flam; drag to
   paint; click a drum's name to mute it; right-click it to change its MIDI note or level.
+- 🎲 **Dice everywhere:** total random, new beat, one die per drum, one per part A-D (with locks).
+- 🎚️ **VELOCITY view:** a piano roll of velocities, one drum at a time, with shapes and a die: hats that groove.
+- 🔊 **Your own samples:** any drum can play your WAV / AIFF / FLAC / MP3 in the guide kit.
+- 🎬 **Song window**, ⏮ ▶ ■ transport, undo / redo, full screen, presets, my grooves, MIDI drum import.
 - 🎛️ **Feel:** swing, humanize (the kick stays tight, the hands drift) and **NEW FEEL**.
 - 🥁 **Fills** every 1, 2, 4 or 8 bars (snare roll, tom run, clap build, hat lift, drop out,
   conga run, mix), a crash after every fill, and a **variation** every 4 or 8 bars.

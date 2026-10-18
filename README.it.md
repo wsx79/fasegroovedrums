@@ -37,6 +37,10 @@ interno, poi **trascinalo nella DAW come clip MIDI** e suonalo con la tua batter
 - ✏️ **Griglia modificabile:** 13 strumenti × 32 step (due battute). Colpo, accento, ghost note e
   flam; trascina per disegnare; clic sul nome di uno strumento per metterlo in muto; tasto destro
   per cambiarne nota MIDI o livello.
+- 🎲 **Dadi ovunque:** random totale, nuovo beat, un dado per strumento, uno per parte A-D (con lucchetti).
+- 🎚️ **Vista VELOCITY:** un piano roll delle velocity, uno strumento alla volta, con forme e dado: hat che hanno groove.
+- 🔊 **I tuoi campioni:** ogni strumento può suonare il tuo WAV / AIFF / FLAC / MP3 nel kit guida.
+- 🎬 **Finestra del brano**, trasporto ⏮ ▶ ■, annulla / ripeti, schermo intero, preset, my grooves, import della batteria da MIDI.
 - 🎛️ **Feel:** swing, humanize (la cassa resta precisa, le mani "respirano") e **NEW FEEL**.
 - 🥁 **Fill** ogni 1, 2, 4 o 8 battute (rullata di rullante, giro di tom, clap in crescendo, hat
   aperto, stop, giro di conga, mix), un crash dopo ogni fill e una **variazione** ogni 4 o 8 battute.

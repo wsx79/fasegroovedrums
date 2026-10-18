@@ -244,6 +244,151 @@ namespace
         CHECK (notes > 0);
         p.setPlayHead (nullptr);
     }
+
+    void testV020()
+    {
+        auto temp = juce::File::getSpecialLocation (juce::File::tempDirectory).getChildFile ("fgd-tests");
+        temp.deleteRecursively();
+        temp.createDirectory();
+
+        FaseGrooveDrumsProcessor p;
+
+        // A-D parts: the grid shows the order you hear; an edit lands in the part shown.
+        p.editStep (0, 2, 'X');
+        p.setSegmentAt (1, 0);   // A A C D
+        CHECK (p.stepSymbol (0, 10) == 'X');
+        p.editStep (0, 11, 'g');   // shown in the second half bar = part A
+        CHECK (p.stepSymbol (0, 3) == 'g');
+        p.setSegmentAt (1, 1);
+
+        // Dice: one drum, one part; locked parts stay.
+        const auto before = p.displayedPattern();
+        p.setSegmentLocked (0, true);
+        for (int i = 0; i < 5; ++i)
+            p.randomizeLane ((int) fgd::Lane::conga);
+        for (int s = 0; s < 8; ++s)
+            CHECK (p.stepSymbol ((int) fgd::Lane::conga, s) == before.lanes[(size_t) fgd::Lane::conga][(size_t) s]);
+        p.randomizeSegment (0);
+        for (int l = 0; l < fgd::numLanes; ++l)
+            for (int s = 0; s < 8; ++s)
+                CHECK (p.stepSymbol (l, s) == before.lanes[(size_t) l][(size_t) s] || (l == (int) fgd::Lane::kick && (s == 2 || s == 3)));
+        p.setSegmentLocked (0, false);
+        p.totalRandom();   // never crashes, always a groove
+        CHECK (p.displayedPattern().length() == FaseGrooveDrumsProcessor::gridSteps);
+
+        // Velocity: by hand, shapes, back to automatic; it plays.
+        p.clearGrid();
+        for (int s = 0; s < 32; s += 2)
+            p.editStep ((int) fgd::Lane::closedHat, s, 'x');
+        p.applyVelocityShape ((int) fgd::Lane::closedHat, 0);
+        CHECK (p.stepVelocity ((int) fgd::Lane::closedHat, 2) > p.stepVelocity ((int) fgd::Lane::closedHat, 0));
+        p.setStepVelocity ((int) fgd::Lane::closedHat, 0, 33);
+        CHECK (p.effectiveVelocity ((int) fgd::Lane::closedHat, 0) == 33);
+        p.setParameterFromUI (ParamIDs::humanize, 0.0f);
+        p.setParameterFromUI (ParamIDs::velocity, 100.0f);
+        const auto clip = p.createMidiClip (1, FaseGrooveDrumsProcessor::ClipPart::all);
+        bool found = false;
+        for (const auto* e : *clip.getTrack (0))
+            if (e->message.isNoteOn() && e->message.getTimeStamp() < 1.0)
+                found = e->message.getVelocity() == 33;
+        CHECK (found);
+        p.resetStepVelocities ((int) fgd::Lane::closedHat);
+        CHECK (! p.hasStepVelocities());
+
+        // Undo snapshots bring everything back.
+        const auto snap = p.snapshot();
+        p.editStep (5, 5, 'X');
+        p.setSongBars (2, 0);
+        p.restoreSnapshot (snap);
+        CHECK (p.stepSymbol (5, 5) == '.');
+        CHECK (p.songArrangementParts()[2].bars == 8);
+
+        // The song: bars, own variation, own fill; saved with the project.
+        p.setSongBars (0, 4);
+        p.regenerateSongPart (1);
+        p.setSongFill (1, (int) fgd::FillStyle::tomRun);
+        juce::MemoryBlock data;
+        p.getStateInformation (data);
+        FaseGrooveDrumsProcessor q;
+        q.setStateInformation (data.getData(), (int) data.getSize());
+        CHECK (q.songArrangementParts()[0].bars == 4);
+        CHECK (q.songArrangementParts()[1].variation == p.songArrangementParts()[1].variation);
+        CHECK (q.songArrangementParts()[1].endFill == (int) fgd::FillStyle::tomRun);
+        CHECK (q.clipLengthInBars (FaseGrooveDrumsProcessor::songArrangement) == 56);
+        CHECK (q.saveSongSections (temp.getChildFile ("sections"), FaseGrooveDrumsProcessor::ClipPart::all) == 6);
+
+        // Your own sample: loaded, played by the guide kit, saved with the project.
+        auto wav = temp.getChildFile ("kick.wav");
+        {
+            juce::WavAudioFormat format;
+            std::unique_ptr<juce::AudioFormatWriter> writer (format.createWriterFor (new juce::FileOutputStream (wav), 44100.0, 1, 16, {}, 0));
+            juce::AudioBuffer<float> b (1, 4410);
+            for (int i = 0; i < 4410; ++i)
+                b.setSample (0, i, 0.8f * std::sin ((float) i * 0.05f));
+            writer->writeFromAudioSampleBuffer (b, 0, 4410);
+        }
+        CHECK (p.loadSample (0, wav));
+        CHECK (p.samplePath (0) == wav.getFullPathName());
+        CHECK (! p.loadSample (0, temp.getChildFile ("missing.wav")));
+        juce::MemoryBlock withSample;
+        p.getStateInformation (withSample);
+        FaseGrooveDrumsProcessor r;
+        r.setStateInformation (withSample.getData(), (int) withSample.getSize());
+        CHECK (r.samplePath (0) == wav.getFullPathName());
+        r.setRateAndBufferSizeDetails (44100.0, 256);
+        r.prepareToPlay (44100.0, 256);
+        juce::AudioBuffer<float> audio (2, 256);
+        juce::MidiBuffer in;
+        in.addEvent (juce::MidiMessage::noteOn (10, 36, (juce::uint8) 120), 0);
+        r.processBlock (audio, in);
+        CHECK (audio.getMagnitude (0, 256) > 0.1f);
+        r.clearSample (0);
+        CHECK (r.samplePath (0).isEmpty());
+
+        // Presets and saved grooves.
+        p.setParameterFromUI (ParamIDs::swing, 0.33f);
+        const auto presetFile = FaseGrooveDrumsProcessor::presetFolder().getChildFile ("fgd test preset.fgdpreset");
+        CHECK (p.savePreset ("fgd test preset"));
+        p.setParameterFromUI (ParamIDs::swing, 0.0f);
+        CHECK (p.loadPreset (presetFile));
+        CHECK (std::abs (value (p, ParamIDs::swing) - 0.33f) < 1.0e-3f);
+        presetFile.deleteFile();
+
+        p.editStep (2, 7, 'f');
+        const auto shown = p.displayedPattern();
+        const auto grooveFile = FaseGrooveDrumsProcessor::grooveFolder().getChildFile ("fgd test groove.fgdgroove");
+        CHECK (p.saveGroove ("fgd test groove"));
+        p.clearGrid();
+        CHECK (p.loadGroove (grooveFile));
+        CHECK (p.displayedPattern().lanes == shown.lanes);
+        grooveFile.deleteFile();
+
+        // The drums of a MIDI file go into the grid.
+        juce::MidiMessageSequence track;
+        for (int beat = 0; beat < 4; ++beat)
+        {
+            track.addEvent (juce::MidiMessage::noteOn (10, 36, (juce::uint8) 127), beat * 480.0);
+            track.addEvent (juce::MidiMessage::noteOff (10, 36), beat * 480.0 + 100.0);
+            track.addEvent (juce::MidiMessage::noteOn (10, 42, (juce::uint8) 40), beat * 480.0 + 240.0);
+            track.addEvent (juce::MidiMessage::noteOff (10, 42), beat * 480.0 + 300.0);
+        }
+        track.addEvent (juce::MidiMessage::noteOn (1, 60, (juce::uint8) 100), 0.0);   // not a drum
+        juce::MidiFile midi;
+        midi.setTicksPerQuarterNote (480);
+        midi.addTrack (track);
+        auto midFile = temp.getChildFile ("beat.mid");
+        {
+            juce::FileOutputStream out (midFile);
+            midi.writeTo (out);
+        }
+        CHECK (p.importMidiGroove (midFile));
+        CHECK (p.stepSymbol (0, 0) == 'X' && p.stepSymbol (0, 4) == 'X' && p.stepSymbol (0, 20) == 'X');   // one bar: twice
+        CHECK (p.stepSymbol ((int) fgd::Lane::closedHat, 2) == 'g');
+        CHECK (p.stepVelocity ((int) fgd::Lane::closedHat, 2) == 40);
+        CHECK (p.stepSymbol (0, 1) == '.');
+
+        temp.deleteRecursively();
+    }
 }
 
 int main()
@@ -255,6 +400,7 @@ int main()
     testStyles();
     testMidiExport();
     testTransport();
+    testV020();
 
     if (failures == 0)
         std::printf ("All plug-in tests passed.\n");

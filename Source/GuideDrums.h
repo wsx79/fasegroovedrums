@@ -13,6 +13,16 @@
 
 #include <array>
 #include <cmath>
+#include <memory>
+
+/** A drum's own sample, loaded by the user in place of the built-in sound. */
+struct DrumSample
+{
+    juce::AudioBuffer<float> audio;
+    double sampleRate = 44100.0;
+    juce::String path;
+};
+using DrumSamples = std::array<std::shared_ptr<const DrumSample>, fgd::numLanes>;
 
 class GuideDrums
 {
@@ -44,8 +54,9 @@ public:
     /** Plays the note-ons of `midi` (notes found through `notes`, the lanes' MIDI notes, or the
         General MIDI drum map) and adds the sound to the buffer. */
     void render (juce::AudioBuffer<float>& buffer, const juce::MidiBuffer& midi, const std::array<int, fgd::numLanes>& notes,
-                 const std::array<float, fgd::numLanes>& laneVolume) noexcept
+                 const std::array<float, fgd::numLanes>& laneVolume, const DrumSamples& samples) noexcept
     {
+        currentSamples = &samples;
         const int numSamples = buffer.getNumSamples();
         int position = 0;
 
@@ -63,6 +74,7 @@ public:
         }
 
         renderVoices (buffer, position, numSamples - position);
+        currentSamples = nullptr;
     }
 
 private:
@@ -123,6 +135,8 @@ private:
         int lane = 0;
         float time = 0.0f, gain = 0.0f, panL = 0.7f, panR = 0.7f, pitch = 1.0f, choke = 1.0f;
         bool choking = false;
+        std::shared_ptr<const DrumSample> sample;   // the user's own sound, when the drum has one
+        double samplePos = 0.0, sampleStep = 1.0;
         double phase1 = 0.0, phase2 = 0.0;
         std::array<double, 6> metalPhase {};
         std::uint32_t noiseState = 22222u;
@@ -204,6 +218,17 @@ private:
         const float pan = juce::jlimit (-1.0f, 1.0f, lanePan (lane) + (lane == (int) fgd::Lane::tom ? (float) offset * 0.05f : 0.0f));
         v.panL = std::cos ((pan + 1.0f) * juce::MathConstants<float>::pi * 0.25f);
         v.panR = std::sin ((pan + 1.0f) * juce::MathConstants<float>::pi * 0.25f);
+
+        // The user's own sample: played as it is (tuned for the fill's toms and congas).
+        if (currentSamples != nullptr)
+            if (auto s = (*currentSamples)[(size_t) lane]; s != nullptr && s->audio.getNumSamples() > 0)
+            {
+                v.sample = std::move (s);
+                v.gain = std::pow (juce::jlimit (0.0f, 1.0f, velocity), 1.3f) * 0.9f * juce::jlimit (0.0f, 2.0f, laneVolume[(size_t) lane]);
+                v.sampleStep = v.sample->sampleRate / sampleRate * std::pow (2.0, (double) offset / 12.0);
+                v.maxTime = (float) (v.sample->audio.getNumSamples() / v.sample->sampleRate) + 0.05f;
+                return;
+            }
 
         const double sr = sampleRate;
         switch ((fgd::Lane) lane)
@@ -360,6 +385,33 @@ private:
         return out * v.gain;
     }
 
+    /** The user's sample, linearly interpolated; false when it has ended. */
+    bool renderSample (Voice& v, float& l, float& r) noexcept
+    {
+        const auto& audio = v.sample->audio;
+        const int n = audio.getNumSamples();
+        const int i = (int) v.samplePos;
+        if (i >= n - 1)
+            return false;
+        const float frac = (float) (v.samplePos - i);
+        auto read = [&] (int ch) { const float* d = audio.getReadPointer (ch); return d[i] + (d[i + 1] - d[i]) * frac; };
+        float a = read (0), b = audio.getNumChannels() > 1 ? read (1) : a;
+        v.samplePos += v.sampleStep;
+
+        float g = v.gain;
+        if (v.choking)
+        {
+            v.choke *= chokeCoefficient;
+            g *= v.choke;
+            if (v.choke < 0.001f)
+                return false;
+        }
+        // Mono samples are placed like the built-in drum; stereo ones keep their own image.
+        if (audio.getNumChannels() > 1) { l += a * g; r += b * g; }
+        else                            { l += a * g * v.panL * 1.41f; r += a * g * v.panR * 1.41f; }
+        return true;
+    }
+
     void renderVoices (juce::AudioBuffer<float>& buffer, int start, int count) noexcept
     {
         if (count <= 0)
@@ -380,7 +432,15 @@ private:
         {
             float l = 0.0f, r = 0.0f;
             for (auto& v : voices)
-                if (v.active)
+                if (v.active && v.sample != nullptr)
+                {
+                    if (! renderSample (v, l, r))
+                    {
+                        v.active = false;
+                        v.sample.reset();
+                    }
+                }
+                else if (v.active)
                 {
                     const float s = renderVoice (v);
                     l += s * v.panL;
@@ -409,5 +469,6 @@ private:
     int kit = 0;
     float tone = 0.85f, toneL = 0.0f, toneR = 0.0f, chokeCoefficient = 0.99f;
     unsigned triggerCount = 0;
+    const DrumSamples* currentSamples = nullptr;
     std::array<Voice, 32> voices {};
 };

@@ -77,6 +77,7 @@ DrumSettings::DrumSettings() noexcept
         notes[(size_t) l] = defaultNote (l);
         levels[(size_t) l] = 1.0f;
         user[(size_t) l].fill ('.');
+        userVelocity[(size_t) l].fill (0);
     }
 }
 
@@ -106,21 +107,23 @@ DrumPattern GrooveEngine::basePattern (const DrumSettings& s)
         return p;
     }
 
-    return presets[(size_t) std::clamp (s.pattern, 0, (int) presets.size() - 1)];
+    // Every groove plays as two bars (a one-bar groove twice), so A-D are always half bars.
+    auto p = presets[(size_t) std::clamp (s.pattern, 0, (int) presets.size() - 1)];
+    normalisePattern (p, userPatternLength);
+    return p;
 }
 
 DrumPattern GrooveEngine::resolvePattern (const DrumSettings& s)
 {
-    return applySection (basePattern (s), s.section);
+    auto p = applySegmentOrder (basePattern (s), s.segmentOrder);
+    if (s.sectionVariation != 0)
+        p = makeSectionVariation (p, s.sectionVariation);
+    return applySection (p, s.section);
 }
 
-int GrooveEngine::patternLength (const DrumSettings& s) noexcept
+int GrooveEngine::patternLength (const DrumSettings&) noexcept
 {
-    if (s.pattern == randomPatternIndex() || s.pattern == userPatternIndex())
-        return userPatternLength;
-
-    const auto& presets = drumPatterns();
-    return presets[(size_t) std::clamp (s.pattern, 0, (int) presets.size() - 1)].length();
+    return userPatternLength;
 }
 
 int GrooveEngine::loopLengthInSteps (const DrumSettings& s) noexcept
@@ -149,7 +152,8 @@ const DrumPattern& GrooveEngine::patternFor (const DrumSettings& s)
     const bool usesSeed = s.pattern == randomPatternIndex();
     const bool usesUser = s.pattern == userPatternIndex();
 
-    if (s.pattern != cachedIndex || s.section != cachedSection
+    if (s.pattern != cachedIndex || s.section != cachedSection || s.segmentOrder != cachedOrder
+        || s.sectionVariation != cachedSectionVariation
         || (usesSeed && (s.riffSeed != cachedSeed || s.density != cachedDensity || s.randomGenre != cachedGenre))
         || (usesUser && s.user != cachedUser))
     {
@@ -161,6 +165,8 @@ const DrumPattern& GrooveEngine::patternFor (const DrumSettings& s)
         cachedDensity = s.density;
         cachedGenre = s.randomGenre;
         cachedUser = s.user;
+        cachedOrder = s.segmentOrder;
+        cachedSectionVariation = s.sectionVariation;
     }
     return cachedPattern;
 }
@@ -186,8 +192,8 @@ void GrooveEngine::collectStep (long long step, const DrumSettings& s, const Dru
     // Fills: the end of every N bars (or a fill asked for on one bar).
     auto isFillBar = [&s] (long long b)
     {
-        if (s.forcedFillBar >= 0 && b == s.forcedFillBar && s.forcedFillStyle >= 0)
-            return true;
+        if (s.forcedFillBar >= 0)
+            return b == s.forcedFillBar && s.forcedFillStyle >= 0;
         return s.fillEveryBars > 0 && sectionAllowsFills (s.section) && mod (b, s.fillEveryBars) == s.fillEveryBars - 1;
     };
     const bool fillBar = isFillBar (bar);
@@ -195,6 +201,17 @@ void GrooveEngine::collectStep (long long step, const DrumSettings& s, const Dru
                                 ? effectiveFillStyle ((FillStyle) std::clamp (s.forcedFillStyle, 0, numFillStyles - 1), bar)
                                 : effectiveFillStyle (s.fillStyle, bar);
     const bool inFill = fillBar && stepInBar >= fillStartStep (style);
+
+    // A velocity set by hand on this step of the user pattern (stored per step as written,
+    // before the A-D order).
+    auto handVelocity = [&] (int lane) -> int
+    {
+        if (s.pattern != userPatternIndex() || len != userPatternLength || inFill || varied)
+            return 0;
+        const int segment = userPatternLength / numSegments;
+        const int index = std::clamp (s.segmentOrder[(size_t) (pos / segment)], 0, numSegments - 1) * segment + pos % segment;
+        return s.userVelocity[(size_t) lane][(size_t) index];
+    };
 
     auto velocityFor = [&] (int lane, double level, int salt)
     {
@@ -217,7 +234,10 @@ void GrooveEngine::collectStep (long long step, const DrumSettings& s, const Dru
             return;
         const int salt = lane * 13 + 1;
         const double t = timeFor (lane, salt);
-        pending.push_back ({ t, note, velocityFor (lane, symbolLevel (symbol) * levelScale, salt), noteLength (lane), lane });
+        double level = symbolLevel (symbol) * levelScale;
+        if (const int set = handVelocity (lane); set > 0 && levelScale == 1.0)
+            level = set / 100.0;   // 100 = as the Velocity control
+        pending.push_back ({ t, note, velocityFor (lane, level, salt), noteLength (lane), lane });
         if (symbol == 'f')   // the flam's grace note, just before
             pending.push_back ({ t - 0.035, note, velocityFor (lane, 0.4 * levelScale, salt + 3), 0.03, lane });
     };
@@ -387,7 +407,14 @@ std::vector<NoteEvent> GrooveEngine::renderArrangement (const DrumSettings& s, c
         auto settings = s;
         settings.section = part.section;
         settings.sectionStartBar = bar;
+        settings.sectionVariation = part.variation;
         settings.forcedFillBar = -1;
+        if (part.endFill != -1)
+        {
+            // Its own fill on its last bar (or none at all).
+            settings.forcedFillBar = bar + part.bars - 1;
+            settings.forcedFillStyle = part.endFill;
+        }
 
         const double start = (double) bar * 4.0, end = (double) (bar + part.bars) * 4.0;
         if (markers != nullptr)

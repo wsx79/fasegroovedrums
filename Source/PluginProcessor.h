@@ -37,6 +37,7 @@ namespace ParamIDs
     inline constexpr const char* reverb      = "reverb";
     inline constexpr const char* volume      = "volume";
 
+    inline juce::String segment (int index) { return "segment" + juce::String (index + 1); }
     inline juce::String mute (int lane)  { return "mute" + juce::String (lane + 1); }
     inline juce::String note (int lane)  { return "note" + juce::String (lane + 1); }
     inline juce::String level (int lane) { return "level" + juce::String (lane + 1); }
@@ -89,17 +90,50 @@ public:
     void editStep (int lane, int step, char symbol);
     void clearLane (int lane);
     void clearGrid();
-    /** The groove shown on the grid (before the song section is applied). */
+    /** The groove shown on the grid: as you hear it in the A-D order (before the song section). */
     fgd::DrumPattern displayedPattern() const;
+
+    // A B C D: the four half bars of the groove, played in any order; each can get new random
+    // content (its die) or be locked so the dice leave it alone.
+    int segmentAt (int position) const;            // the part (0..3) played at a position
+    void setSegmentAt (int position, int part);
+    bool isSegmentLocked (int part) const          { return segmentLocked[(size_t) juce::jlimit (0, 3, part)]; }
+    void setSegmentLocked (int part, bool locked)  { segmentLocked[(size_t) juce::jlimit (0, 3, part)] = locked; }
+    void randomizeSegment (int part);
+    /** A new line for one drum only (in the NEW BEAT genre); locked parts stay. */
+    void randomizeLane (int lane);
+
+    /** Velocity set by hand on a displayed step (1..127, 100 = the Velocity control), 0 = automatic. */
+    int stepVelocity (int lane, int step) const;
+    void setStepVelocity (int lane, int step, int level);
+    void resetStepVelocities (int lane = -1);   // one drum, or all (-1)
+    bool hasStepVelocities() const;
+    /** The velocity a displayed step plays at (set by hand, or automatic from its symbol). */
+    int effectiveVelocity (int lane, int step) const;
+
+    /** Velocity shapes for one drum (what makes hats groove): the levels of its hits are set by hand. */
+    static juce::StringArray velocityShapeNames();
+    void applyVelocityShape (int lane, int shape);
+    /** The velocity dice: a random shape with a little life on every hit. */
+    void randomizeVelocities (int lane);
 
     bool isLaneMuted (int lane) const { return raw (ParamIDs::mute (lane)) > 0.5f; }
     void setLaneMuted (int lane, bool muted) { setParameterFromUI (ParamIDs::mute (lane), muted ? 1.0f : 0.0f); }
     int laneNote (int lane) const { return juce::roundToInt (raw (ParamIDs::note (lane))); }
 
+    // Your own sounds: a sample (WAV, AIFF, FLAC, MP3...) in place of a drum's built-in sound.
+    static bool isAudioFile (const juce::File&);
+    bool loadSample (int lane, const juce::File&);
+    void clearSample (int lane);
+    juce::String samplePath (int lane) const;   // empty: the built-in sound
+
     /** NEW BEAT: a brand new random beat in the chosen genre. */
     void rollNewBeat();
     /** NEW FEEL: another humanization (repeatable: it is saved with the project). */
     void newFeel();
+
+    /** TOTAL RANDOM: a random style, then a new beat, swing, feel, fills and kit; always musical. */
+    void totalRandom();
 
     /** One-click setups by genre: a groove of that genre, its swing, feel, fills and kit. */
     static juce::StringArray styleNames();
@@ -109,6 +143,7 @@ public:
 
     //==============================================================================
     enum class ClipPart { all = 0, tracks };   // tracks: one MIDI file, one track per drum
+    static juce::String sectionClipName (int partIndex);
     /** Pass as `bars` to export the whole song: intro, main, break, build-up, drop, outro. */
     static constexpr int songArrangement = -1;
 
@@ -119,9 +154,39 @@ public:
     juce::String clipFileName (int bars, ClipPart part) const;
     int clipLengthInBars (int bars) const;
 
-    /** Documents/Fase Groove Drums: MIDI clips, easy to find and back up. */
+    // Song arrangement: Intro, Main, Break, Build-up, Drop, Outro (the order of fgd::defaultArrangement).
+    static constexpr int numSongParts = 6;
+    std::vector<fgd::ArrangementPart> songArrangementParts() const;
+    void setSongBars (int part, int bars);
+    void setSongFill (int part, int fill);   // -1 as the Song panel, -2 none, else a fill style (last bar of the section)
+    void regenerateSongPart (int part);      // this section plays its own version of the groove
+    void resetSongPart (int part);           // back to the groove as it is
+    void resetSong();
+    /** One section of the song as a clip, named after it (empty file if the section is left out). */
+    juce::File writeSongSectionClip (int partIndex, ClipPart part) const;
+    /** Writes every section of the song as its own .mid file; returns how many were written. */
+    int saveSongSections (const juce::File& folder, ClipPart) const;
+
+    /** Documents/Fase Groove Drums: MIDI clips, presets and grooves, easy to find and back up. */
     static juce::File userFolder();
     static juce::File clipFolder();
+    static juce::File presetFolder();
+    static juce::File grooveFolder();
+    static juce::Array<juce::File> presetFiles();
+    static juce::Array<juce::File> grooveFiles();
+    bool savePreset (const juce::String& name);
+    bool loadPreset (const juce::File&);
+    /** MY GROOVES: the grid (with its velocities) as a .fgdgroove file. */
+    bool saveGroove (const juce::String& name);
+    bool loadGroove (const juce::File&);
+
+    /** Reads the drums of a MIDI file (channel 10, or the General MIDI drum notes) into the grid:
+        two bars, quantized to 16ths, with their velocities. Returns false when no drums were found. */
+    bool importMidiGroove (const juce::File&);
+
+    // Undo / redo: snapshots of everything but the window size.
+    juce::String snapshot() const;
+    void restoreSnapshot (const juce::String&);
 
     // Editor preferences, saved with the project.
     float editorScale = 1.0f;
@@ -155,6 +220,16 @@ private:
 
     // The user pattern, readable from the audio thread without locks.
     std::array<std::array<std::atomic<char>, fgd::userPatternLength>, fgd::numLanes> userGrid;
+    std::array<std::array<std::atomic<int>, fgd::userPatternLength>, fgd::numLanes> userVelocity;   // 0 = automatic
+    int baseStep (int displayedStep) const;   // the step of the user pattern shown at a displayed step
+    /** Makes the groove showing the user pattern (as written: before the A-D order); true if it already was. */
+    bool makeUserPattern();
+    std::array<bool, fgd::numSegments> segmentLocked {};
+    std::array<std::atomic<int>, numSongParts> songBars;                 // per song section (0 = left out)
+    std::array<std::atomic<std::uint32_t>, numSongParts> songVariation;  // 0 = the groove as it is
+    std::array<std::atomic<int>, numSongParts> songFill;                 // see setSongFill
+    juce::ValueTree stateTree() const;
+    void applyStateTree (const juce::ValueTree&);
 
     juce::MidiFile midiFromEvents (const std::vector<fgd::NoteEvent>&, double beats,
                                    const std::vector<fgd::GrooveEngine::Marker>*, ClipPart, const juce::String& name) const;
@@ -164,6 +239,7 @@ private:
     juce::MidiBuffer outMidi;
 
     GuideDrums drums;
+    DrumSamples samples;   // read and swapped with std::atomic_load / std::atomic_store
     juce::Reverb reverbFx;
     juce::SmoothedValue<float> outputGain;
 

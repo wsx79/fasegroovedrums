@@ -13,7 +13,7 @@ Fase Groove Drums rispetta la tua privacy nel modo più semplice possibile: **no
 
 | Cosa | Dove | Perché |
 |---|---|---|
-| Impostazioni del plug-in e la tua griglia | Nel progetto della DAW | Per ritrovarle quando riapri il progetto (le salva la DAW). |
+| Impostazioni del plug-in, la tua griglia e i percorsi dei tuoi campioni | Nel progetto della DAW | Per ritrovarle quando riapri il progetto (le salva la DAW). |
 | Clip MIDI trascinate | `Documenti/Fase Groove Drums/MIDI clips/` | Il trascinamento nella DAW richiede un file reale. Puoi cancellarle quando vuoi. |
 | File `.mid` salvati con *SAVE .MID* | Dove scegli tu | Su tua richiesta. |
 | Impostazioni audio/MIDI dell'app Standalone | La cartella delle impostazioni utente del sistema | Gestite dal framework JUCE per ricordare la tua scheda audio. |

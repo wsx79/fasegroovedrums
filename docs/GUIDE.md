@@ -87,3 +87,19 @@ project. **CLEAR** empties the grid. The light next to each name flashes when th
 
 - **Space bar:** play / pause without the DAW.
 - Click the **logo** or **ABOUT** for credits, links and donations.
+
+## 9. New in 0.2
+
+- **Dice:** the die in the header is TOTAL RANDOM; every drum's row has its own die (a new line for that
+  drum only); each part A-D has a die and a lock (locked parts are never changed by the dice).
+- **PARTS A-D** (over the grid): which half bar plays where, e.g. A A A B.
+- **VELOCITY** (next to GRID): pick a drum from the menu, drag its bars; SHAPE applies a groove
+  (Offbeat push is the classic house hat), RANDOM rolls one, AUTO goes back to the automatic levels.
+  Double-click a drum's name on the grid to open it there.
+- **Your own sample:** right-click a drum's name → *Load your own sample...*, or drop a WAV / AIFF /
+  FLAC / MP3 on its row. *Back to the built-in sound* removes it. The file stays where it is: the
+  project remembers its path.
+- **SONG:** the song window (bars, own variation and fill per section; drag or save the song or its sections).
+- **PRESETS / MY GROOVES:** save and load; MY GROOVES also imports the drums of a MIDI file (or drop
+  the .mid on the window).
+- ⏮ ▶ ■, undo / redo (arrows, Ctrl+Z), full screen (top right).
