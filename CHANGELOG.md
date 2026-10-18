@@ -4,6 +4,12 @@
 
 All notable changes to **Fase Groove Drums**.
 
+## [0.8.1] - 2026-10-18
+
+- **LINK PIANO** works with Fase Groove Piano 2.18 (its **LINK DRUMS** button): when the piano picks
+  a groove of another genre, the drums take the first groove of that genre too (and the other way
+  round), with the same swing.
+
 ## [0.8.0] - 2026-10-18
 
 - **Swing up to the heaviest shuffle**, shown as on a drum machine (50% straight, 67% triplet,

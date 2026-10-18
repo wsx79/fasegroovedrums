@@ -150,5 +150,6 @@ La prima modifica copia il groove mostrato nello **User pattern**, che si salva 
   / ch, open hat / oh, ride, crash, shaker, tambourine, conga / perc, cowbell, tom).
 - **SALVA .WAV...** (Export): il suono guida (kit interno o i tuoi sample) in WAV: questa clip (va
   in loop senza stacchi: le code suonano nell'inizio), il brano intero o un WAV per strumento (stem).
-- **LINK PIANO** (riga Groove): genere e swing seguono Fase Groove Piano e le altre istanze Fase
-  Groove collegate: cambiali in una qualsiasi.
+- **LINK PIANO** (riga Groove): genere e swing seguono Fase Groove Piano (dalla 2.18, con il suo
+  **LINK DRUMS** acceso) e le altre istanze Fase Groove collegate: cambiali in una qualsiasi. Un
+  groove di un altro genere porta il primo groove di quel genere nell'altro plug-in.

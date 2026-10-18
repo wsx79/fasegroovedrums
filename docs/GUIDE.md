@@ -147,5 +147,6 @@ project. **CLEAR** empties the grid. The light next to each name flashes when th
   oh, ride, crash, shaker, tambourine, conga / perc, cowbell, tom).
 - **SAVE .WAV...** (Export): the guide sound (built-in kit or your samples) as a WAV: this clip
   (it loops seamlessly: the tails ring into the start), the whole song, or one WAV per drum (stems).
-- **LINK PIANO** (Groove row): the genre and the swing follow Fase Groove Piano and the other
-  linked Fase Groove instances: change them in either one.
+- **LINK PIANO** (Groove row): the genre and the swing follow Fase Groove Piano (2.18 or later,
+  with its **LINK DRUMS** on) and the other linked Fase Groove instances: change them in either
+  one. A groove of another genre brings the first groove of that genre in the other plug-in.

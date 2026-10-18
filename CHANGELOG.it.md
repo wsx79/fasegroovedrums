@@ -4,6 +4,12 @@
 
 Tutte le modifiche importanti di **Fase Groove Drums**.
 
+## [0.8.1] - 2026-10-18
+
+- **LINK PIANO** funziona con Fase Groove Piano 2.18 (il suo pulsante **LINK DRUMS**): quando il
+  piano sceglie un groove di un altro genere, anche la drums prende il primo groove di quel genere
+  (e viceversa), con lo stesso swing.
+
 ## [0.8.0] - 2026-10-18
 
 - **Swing fino allo shuffle più pesante**, mostrato come su una drum machine (50% dritto, 67%
