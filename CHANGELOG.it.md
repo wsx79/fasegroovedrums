@@ -4,6 +4,13 @@
 
 Tutte le modifiche importanti di **Fase Groove Drums**.
 
+## [0.12.1] - 2026-10-18
+
+- **Nessun suono ne taglia un altro** nel suono guida: ogni strumento usa al massimo quattro voci
+  sue e sfuma la più vecchia, così uno strumento fitto con sample lunghi (shaker, open hat, crash)
+  non prende mai la voce di un altro strumento (la coda del kick, un clap...). La correzione open /
+  closed hat della 0.12.0 è l'unico choke, come su un hi-hat vero.
+
 ## [0.12.0] - 2026-10-18
 
 - **La stessa interfaccia di Fase Groove Piano** nei comandi che hanno in comune: i pulsanti in

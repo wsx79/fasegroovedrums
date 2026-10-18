@@ -8,6 +8,7 @@
 #include "../Source/Localisation.h"
 #include "../Source/PluginEditor.h"
 #include "../Source/Updater.h"
+#include "../Source/GuideDrums.h"
 
 #include <cstdio>
 #include <set>
@@ -817,6 +818,66 @@ namespace
     }
 }
 
+namespace
+{
+    /** No sound silences another one by mistake: an open hat with a closed hat on the same step,
+        and a busy drum with long samples never takes the voice of another drum. */
+    void testGuideVoices()
+    {
+        constexpr double rate = 44100.0;
+        auto flat = [] (double seconds)
+        {
+            auto s = std::make_shared<DrumSample>();
+            s->audio.setSize (1, (int) (seconds * rate));
+            s->audio.clear();
+            for (int i = 0; i < s->audio.getNumSamples(); ++i)
+                s->audio.setSample (0, i, 0.5f);
+            return std::shared_ptr<const DrumSample> (s);
+        };
+        DrumSamples samples {};
+        samples[(size_t) fgd::Lane::openHat] = flat (1.0);
+        samples[(size_t) fgd::Lane::closedHat] = flat (0.01);
+        samples[(size_t) fgd::Lane::kick] = flat (2.0);
+        samples[(size_t) fgd::Lane::shaker] = flat (2.0);
+        std::array<int, fgd::numLanes> notes {};
+        std::array<float, fgd::numLanes> volume {};
+        for (int l = 0; l < fgd::numLanes; ++l)
+        {
+            notes[(size_t) l] = fgd::defaultNote (l);
+            volume[(size_t) l] = 1.0f;
+        }
+
+        // Plays (lane, seconds) hits and gives the level at `at` seconds.
+        auto levelAt = [&] (std::vector<std::pair<fgd::Lane, double>> hits, double at)
+        {
+            GuideDrums kit;
+            kit.prepare (rate);
+            kit.setTone (1.0f);
+            juce::AudioBuffer<float> buffer (2, (int) (at * rate) + 1);
+            buffer.clear();
+            juce::MidiBuffer midi;
+            for (auto [lane, time] : hits)
+                midi.addEvent (juce::MidiMessage::noteOn (10, notes[(size_t) lane], 1.0f), (int) (time * rate));
+            kit.render (buffer, midi, notes, volume, samples);
+            return std::abs (buffer.getSample (0, buffer.getNumSamples() - 1));
+        };
+
+        // A closed hat a few ms after an open hat (same step, humanized) leaves it ringing...
+        CHECK (levelAt ({ { fgd::Lane::openHat, 0.0 }, { fgd::Lane::closedHat, 0.005 } }, 0.3) > 0.1f);
+        // ...one a 16th later still closes it, as on a real hi-hat.
+        CHECK (levelAt ({ { fgd::Lane::openHat, 0.0 }, { fgd::Lane::closedHat, 0.12 } }, 0.3) < 0.01f);
+
+        // Forty long shaker hits don't take the kick's voice.
+        std::vector<std::pair<fgd::Lane, double>> hits { { fgd::Lane::kick, 0.0 } };
+        for (int i = 0; i < 40; ++i)
+            hits.push_back ({ fgd::Lane::shaker, 0.01 + i * 0.02 });
+        const float withShakers = levelAt (hits, 1.0);
+        const float kickAlone = levelAt ({ { fgd::Lane::kick, 0.0 } }, 1.0);
+        CHECK (withShakers > kickAlone);   // the kick still sounds (under up to 4 shaker voices)
+        CHECK (withShakers < kickAlone * 7.0f);   // and the shaker keeps to its few voices
+    }
+}
+
 int main (int argc, char** argv)
 {
     juce::ScopedJuceInitialiser_GUI juce;
@@ -839,6 +900,7 @@ int main (int argc, char** argv)
     testUpdater();
     testGenreSwing();
     testV080();
+    testGuideVoices();
 
     if (failures == 0)
         std::printf ("All plug-in tests passed.\n");

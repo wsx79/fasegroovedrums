@@ -4,6 +4,13 @@
 
 All notable changes to **Fase Groove Drums**.
 
+## [0.12.1] - 2026-10-18
+
+- **No sound cuts another one short** in the guide sound: each drum keeps at most four voices of
+  its own and fades its oldest one out, so a busy drum with long samples (shaker, open hat,
+  crash) never takes the voice of another drum (the kick's tail, a clap...). The open / closed hat
+  fix of 0.12.0 is the only choke, as on a real hi-hat.
+
 ## [0.12.0] - 2026-10-18
 
 - **The same interface as Fase Groove Piano** in the controls the two share: the header buttons

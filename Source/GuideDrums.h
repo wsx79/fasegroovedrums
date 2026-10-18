@@ -198,12 +198,28 @@ private:
                 if (v.active && v.lane == (int) fgd::Lane::openHat && secondsPlayed (v) > 0.04)
                     v.choking = true;
 
+        // A drum keeps at most a few voices of its own: a long sample on fast 16ths fades its own
+        // oldest hit out, instead of taking a voice of another drum (and cutting it short).
+        {
+            Voice* oldest = nullptr;
+            int sounding = 0;
+            for (auto& v : voices)
+                if (v.active && v.lane == lane && ! v.choking)
+                {
+                    ++sounding;
+                    if (oldest == nullptr || v.age > oldest->age)
+                        oldest = &v;
+                }
+            if (sounding >= maxVoicesPerDrum && oldest != nullptr)
+                oldest->choking = true;
+        }
+
         Voice* voice = nullptr;
         for (auto& v : voices)
             if (! v.active) { voice = &v; break; }
-        if (voice == nullptr)
+        if (voice == nullptr)   // all busy: one already fading out, else the oldest
             for (auto& v : voices)
-                if (voice == nullptr || v.age > voice->age)
+                if (voice == nullptr || (v.choking && ! voice->choking) || (v.choking == voice->choking && v.age > voice->age))
                     voice = &v;
 
         for (auto& v : voices)
@@ -478,5 +494,6 @@ private:
     float tone = 0.85f, toneL = 0.0f, toneR = 0.0f, chokeCoefficient = 0.99f;
     unsigned triggerCount = 0;
     const DrumSamples* currentSamples = nullptr;
+    static constexpr int maxVoicesPerDrum = 4;
     std::array<Voice, 32> voices {};
 };
