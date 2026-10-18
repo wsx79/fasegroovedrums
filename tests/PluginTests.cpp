@@ -7,6 +7,7 @@
 #include "../Source/PluginProcessor.h"
 #include "../Source/Localisation.h"
 #include "../Source/PluginEditor.h"
+#include "../Source/Updater.h"
 
 #include <cstdio>
 #include <set>
@@ -773,6 +774,16 @@ namespace
         temp.deleteRecursively();
     }
 
+    void testUpdater()
+    {
+        CHECK (Updater::isNewer ("v0.11.0", "0.10.0"));
+        CHECK (Updater::isNewer ("v1.0.0", "0.10.3"));
+        CHECK (! Updater::isNewer ("v0.10.0", "0.10.0"));
+        CHECK (! Updater::isNewer ("v0.9.9", "0.10.0"));
+        const auto notes = Updater::changelogSection ("# Changelog\n\n## [0.11.0] - x\n\n- New A\n\n## [0.10.0] - y\n\n- Old\n", "0.11.0");
+        CHECK (notes.contains ("New A") && ! notes.contains ("Old"));
+    }
+
     void testTranslations()
     {
         const auto before = Localisation::current();
@@ -823,6 +834,7 @@ int main (int argc, char** argv)
     testTransport();
     testV020();
     testTranslations();
+    testUpdater();
     testGenreSwing();
     testV080();
 

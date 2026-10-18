@@ -31,6 +31,10 @@ namespace Localisation
     /** Loads the saved language, or picks the computer's language the first time. */
     void loadSaved();
 
+    /** Other user preferences shared by every project (same settings file as the language). */
+    juce::String setting (const char* key, const juce::String& fallback = {});
+    void setSetting (const char* key, const juce::var& value);
+
     /** Upper case that also handles accented letters. */
     juce::String upper (const juce::String&);
 

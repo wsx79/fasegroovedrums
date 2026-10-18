@@ -877,7 +877,8 @@ void FaseGrooveDrumsProcessor::tagSample (const juce::File& file, int lane)
     xml->writeTo (sampleTagFile());
 }
 
-std::vector<FaseGrooveDrumsProcessor::SampleInfo> FaseGrooveDrumsProcessor::scanSampleFolder (const juce::File& folder, int maxFiles)
+std::vector<FaseGrooveDrumsProcessor::SampleInfo> FaseGrooveDrumsProcessor::scanSampleFolder (const juce::File& folder, int maxFiles,
+                                                                                         std::function<void (float)> progress)
 {
     std::vector<SampleInfo> found;
     if (! folder.isDirectory())
@@ -914,8 +915,11 @@ std::vector<FaseGrooveDrumsProcessor::SampleInfo> FaseGrooveDrumsProcessor::scan
                 if (e->getStringAttribute ("drum") == fgd::laneName (l))
                     tags[e->getStringAttribute ("path")] = l;
 
+    int done = 0;
     for (const auto& file : files)
     {
+        if (progress != nullptr)
+            progress ((float) done++ / (float) juce::jmax (1, files.size()));
         SampleInfo info;
         info.file = file;
         if (const auto tag = tags.find (file.getFullPathName()); tag != tags.end())
@@ -1816,6 +1820,8 @@ juce::ValueTree FaseGrooveDrumsProcessor::stateTree() const
     juce::ValueTree sounds ("Samples");
     if (sampleFolder != juce::File())
         sounds.setProperty ("folder", sampleFolder.getFullPathName(), nullptr);
+    if (! sampleFolders.isEmpty())
+        sounds.setProperty ("folders", sampleFolders.joinIntoString ("\n"), nullptr);
     for (int l = 0; l < fgd::numLanes; ++l)
         if (const auto path = samplePath (l); path.isNotEmpty())
             sounds.setProperty ("lane" + juce::String (l + 1), path, nullptr);
@@ -1895,6 +1901,8 @@ void FaseGrooveDrumsProcessor::applyStateTree (const juce::ValueTree& source)
     const auto sounds = state.getChildWithName ("Samples");
     if (const auto folder = sounds.getProperty ("folder").toString(); folder.isNotEmpty())
         sampleFolder = juce::File (folder);
+    sampleFolders = juce::StringArray::fromLines (sounds.getProperty ("folders").toString());
+    sampleFolders.removeEmptyStrings();
     for (int l = 0; l < fgd::numLanes; ++l)
     {
         const auto path = sounds.getProperty ("lane" + juce::String (l + 1)).toString();

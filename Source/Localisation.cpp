@@ -162,6 +162,22 @@ void bindItems (juce::ComboBox& box, const juce::StringArray& english, int first
     });
 }
 
+juce::String setting (const char* key, const juce::String& fallback)
+{
+    if (auto settings = openSettings())
+        return settings->getValue (key, fallback);
+    return fallback;
+}
+
+void setSetting (const char* key, const juce::var& value)
+{
+    if (auto settings = openSettings())
+    {
+        settings->setValue (key, value);
+        settings->saveIfNeeded();
+    }
+}
+
 void setCurrent (Language language)
 {
     currentLanguage = juce::jlimit (0, numLanguages - 1, (int) language);

@@ -11,6 +11,7 @@
 
 #include <array>
 #include <atomic>
+#include <functional>
 
 namespace ParamIDs
 {
@@ -163,7 +164,9 @@ public:
     };
     /** True when a name says it is not a single drum hit (guitar, vocal, synth, loop, fx...). */
     static bool isNotADrum (const juce::String& name);
-    static std::vector<SampleInfo> scanSampleFolder (const juce::File& folder, int maxFiles = 4000);
+    /** progress (optional) is told how far the scan is, 0..1 (from the thread that scans). */
+    static std::vector<SampleInfo> scanSampleFolder (const juce::File& folder, int maxFiles = 4000,
+                                                     std::function<void (float)> progress = {});
     /** The drum a name says, -1 if none. Whole words (kick, snare, clap...) beat abbreviations (bd,
         sd, ch...), later words beat earlier ones (pack prefixes come first), and abbreviations in
         `ignore` (the codes every file of a pack starts with) don't count. */
@@ -172,6 +175,7 @@ public:
     /** Remembers the drum you set for a sample by hand (the browser uses it from then on). */
     static void tagSample (const juce::File&, int lane);
     juce::File sampleFolder;                               // the last folder browsed (saved with the project)
+    juce::StringArray sampleFolders;                       // every folder in the sample browser (saved with the project)
 
     /** Plays a sample file once, as it is (the sample browser). */
     void previewSampleFile (const juce::File&);

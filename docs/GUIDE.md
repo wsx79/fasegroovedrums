@@ -180,3 +180,11 @@ project. **CLEAR** empties the grid. The light next to each name flashes when th
   their sound) under ALL FILES.
 - **HUMANIZE** also lets the soft notes come and go over four bars, like a real loop (0%: exactly
   as written). NEW FEEL makes another phrase.
+
+## 16. New in 0.11
+
+- **Updates**: when a new version is out it is downloaded and shown with what's new; **INSTALL
+  NOW** installs it (with the Windows setup, without the wizard), **LATER** or **SKIP THIS
+  VERSION**. In **OPTIONS**: *Check for updates when it opens* on / off and **CHECK FOR UPDATES**.
+- **Sample browser**: **ADD FOLDER...** adds one more folder (kicks from one, claps from
+  another...), **CLEAR LIST** empties the list. While a big folder is read, a bar shows how far it is.

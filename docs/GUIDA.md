@@ -184,3 +184,13 @@ La prima modifica copia il groove mostrato nello **User pattern**, che si salva 
   un *forse* (dal suono) in TUTTI I FILE.
 - **HUMANIZE** fa anche andare e venire le note morbide nelle quattro bar, come in un loop vero
   (0%: esattamente come scritto). NEW FEEL crea un'altra frase.
+
+## 16. Novità della 0.11
+
+- **Aggiornamenti**: quando esce una nuova versione viene scaricata e mostrata con le novità;
+  **INSTALLA ORA** la installa (con il setup di Windows, senza la procedura guidata), **PIÙ TARDI**
+  o **SALTA QUESTA VERSIONE**. In **OPZIONI**: *Cerca aggiornamenti all'apertura* acceso / spento e
+  **CERCA AGGIORNAMENTI**.
+- **Sample browser**: **AGGIUNGI CARTELLA...** aggiunge un'altra cartella (i kick da una, i clap da
+  un'altra...), **SVUOTA LISTA** svuota l'elenco. Mentre legge una cartella grande, una barra
+  mostra a che punto è.

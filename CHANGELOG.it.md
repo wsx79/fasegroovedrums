@@ -4,6 +4,20 @@
 
 Tutte le modifiche importanti di **Fase Groove Drums**.
 
+## [0.11.0] - 2026-10-18
+
+- **Aggiornamenti automatici**, come in Fase Groove Piano: all'apertura controlla la pagina delle
+  release; una nuova versione viene scaricata (il setup per Windows o lo zip) e mostrata con le
+  novità, e installata solo quando premi INSTALLA ORA (PIÙ TARDI, SALTA QUESTA VERSIONE). OPZIONI:
+  disattivali, o CERCA AGGIORNAMENTI a mano. Nient'altro viene mai inviato.
+- **Griglia più grande**: la vista (griglia, velocity, mixer, fill) è alta circa un terzo in più;
+  i pannelli sopra sono più compatti, con manopole più piccole. Anche la finestra si apre un po'
+  più piccola.
+- **Il riquadro per trascinare il MIDI** è piccolo e sobrio (niente più blocco arancione).
+- **Sample browser**: una barra mostra a che punto è la lettura di una cartella; **AGGIUNGI
+  CARTELLA...** aggiunge cartelle invece di sostituirle (SVUOTA LISTA svuota l'elenco; gli
+  strumenti tengono i loro sample), e le cartelle tornano con il progetto.
+
 ## [0.10.0] - 2026-10-18
 
 - **Groove con più vita.** Humanize (30% di default) ora fa anche andare e venire le note morbide

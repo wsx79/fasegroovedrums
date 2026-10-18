@@ -5,6 +5,7 @@
 
 #include "Branding.h"
 #include "Localisation.h"
+#include "Updater.h"
 #include "PluginProcessor.h"
 
 #include <juce_gui_basics/juce_gui_basics.h>
@@ -295,6 +296,28 @@ private:
                      spotifyButton { "SPOTIFY" }, closeButton { "CLOSE" };
     juce::ComboBox languageBox;
     juce::Image artistLogo;
+public:
+    juce::ToggleButton updatesToggle;
+    juce::TextButton checkUpdatesButton { "CHECK FOR UPDATES" };
+    std::function<void()> onCheckUpdates;
+};
+
+//==============================================================================
+/** "A new version is ready": what's new (the changelog) and the user confirms the install. */
+class UpdateOverlay : public juce::Component
+{
+public:
+    UpdateOverlay();
+    void show (const Updater::Result&);
+    void refreshText();
+    void paint (juce::Graphics&) override;
+    void resized() override;
+
+private:
+    juce::Rectangle<float> card() const { return getLocalBounds().toFloat().withSizeKeepingCentre (640.0f, 560.0f); }
+    Updater::Result result;
+    juce::TextEditor notes;
+    juce::TextButton installButton, laterButton, skipButton;
 };
 
 //==============================================================================
@@ -350,7 +373,7 @@ private:
     name or its sound). Pick a drum on the left, click a sample to hear it, USE it (or double-click).
     Wrongly recognised? Drag the samples (several with shift / ctrl) onto the right drum. */
 class SampleBrowser : public juce::Component, public juce::DragAndDropContainer, public juce::DragAndDropTarget,
-                      private juce::ListBoxModel
+                      private juce::ListBoxModel, private juce::Timer
 {
 public:
     explicit SampleBrowser (FaseGrooveDrumsProcessor&);
@@ -381,7 +404,10 @@ private:
     juce::Rectangle<float> drumBounds (int lane) const;
     int drumAt (juce::Point<float>) const;
     void chooseFolder();
-    void scan (const juce::File& folder);
+    void scan (const juce::File& folder);   // adds the folder (or reads it again)
+    void scanFinished();
+    void timerCallback() override { repaint(); }
+    juce::String relativePath (const juce::File&) const;
     void rebuildList();
     void use (int row);
     void moveSelectedTo (int newLane);
@@ -391,11 +417,14 @@ private:
     FaseGrooveDrumsProcessor& processor;
     std::vector<FaseGrooveDrumsProcessor::SampleInfo> found;
     std::vector<int> rows;   // indexes into found, for the drum shown
-    juce::File folder;
+    juce::File folder;                      // the last one added
+    juce::Array<juce::File> folders;        // every folder in the browser
+    std::shared_ptr<std::atomic<float>> progress = std::make_shared<std::atomic<float>> (0.0f);
+    int pendingScans = 0;
     int lane = 0, dropLane = -1;
     bool scanning = false, showAll = false;
     juce::ListBox list;
-    juce::TextButton folderButton { "FOLDER..." }, autoButton { "AUTO KIT" }, allButton { "ALL FILES" }, closeButton { "CLOSE" },
+    juce::TextButton folderButton { "ADD FOLDER..." }, clearListButton { "CLEAR LIST" }, autoButton { "AUTO KIT" }, allButton { "ALL FILES" }, closeButton { "CLOSE" },
                      chooseButton { "CHOOSE A FOLDER OF SAMPLES..." }, builtInButton { "BUILT-IN" }, fileButton { "ONE FILE..." },
                      allBuiltInButton { "ALL BUILT-IN" };
     std::unique_ptr<juce::FileChooser> chooser;
@@ -560,6 +589,8 @@ private:
     GrooveBrowser browser { processor };
     SampleBrowser sampleBrowser { processor };
     AboutPanel about;
+    UpdateOverlay updateOverlay;
+    Updater::Checker updateChecker;
     std::vector<ParamCombo*> combos;
     juce::Rectangle<int> logoArea, displayArea;
     std::array<float, fgd::numLanes> lights {};

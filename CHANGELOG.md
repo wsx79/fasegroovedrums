@@ -4,6 +4,19 @@
 
 All notable changes to **Fase Groove Drums**.
 
+## [0.11.0] - 2026-10-18
+
+- **Automatic updates**, as in Fase Groove Piano: when it opens it checks the releases page; a new
+  version is downloaded (the Windows setup, or the zip) and shown with what's new, and installed
+  only when you say INSTALL NOW (LATER, SKIP THIS VERSION). OPTIONS: turn it off, or CHECK FOR
+  UPDATES by hand. Nothing else is ever sent.
+- **A bigger grid**: the view (step grid, velocity, mixer, fill) is about a third taller; the
+  panels above are more compact, with smaller knobs. The window opens a little smaller too.
+- **The MIDI drag tile** is small and quiet (no more big orange block).
+- **Sample browser**: a progress bar shows how far the reading of a folder is; **ADD FOLDER...**
+  adds folders instead of replacing them (CLEAR LIST empties the list; the drums keep their
+  samples), and the folders come back with the project.
+
 ## [0.10.0] - 2026-10-18
 
 - **Grooves with life.** Humanize (30% by default) now also lets the soft notes come and go over
