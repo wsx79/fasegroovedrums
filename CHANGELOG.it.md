@@ -4,6 +4,23 @@
 
 Tutte le modifiche importanti di **Fase Groove Drums**.
 
+## [0.3.0] - 2026-10-18
+
+La stessa interfaccia di Fase Groove Piano, adattata alla batteria.
+
+- **Intestazione** come nel piano: PRESETS, TOTAL (casuale), annulla / ripeti, schermo intero;
+  STYLE, RESET, OPTIONS; un riquadro TRANSPORT & TEMPO (⏮ ▶ ■, interruttore Sequencer, SYNC DAW,
+  BPM) e un grande display con il groove, il genere, la sezione e la posizione.
+- **Riga GROOVE** (la progressione del piano): preset dei groove, RANDOM, genere, densità e le quattro
+  **schede delle parti A-D** (al posto degli slot degli accordi), con il disegno dei colpi, dado e lucchetto.
+- **KIT & SOUNDS**: lo strumento scelto, la sua nota MIDI, livello, muto, il suo dado e il tuo campione.
+- **DRUM PADS** (al posto del circolo delle quinte): 13 pad che si accendono sui colpi; clic per
+  sentirlo e sceglierlo, tasto destro per il muto.
+- Pannelli **GROOVE FEEL & SONG** e **GUIDE SOUND & MIDI OUT**.
+- **STEP GRID / VELOCITY** in basso ed **EXPORT MIDI** con il grande riquadro arancione DRAG MIDI
+  TO DAW, SAVE .MID... e FULL SONG...
+- Nella griglia, il clic sul nome di uno strumento ora lo sceglie (muto: pannello kit, pad o tasto destro).
+
 ## [0.2.0] - 2026-10-18
 
 L'interfaccia di Fase Groove Piano, per la batteria.

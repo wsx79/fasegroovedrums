@@ -42,8 +42,8 @@ conga, campanaccio, tom, crash) × 32 step (due battute di 16esimi).
 | Cmd/Ctrl + clic | flam (un colpetto appena prima) |
 | Trascina | disegna lo stesso simbolo sugli altri step |
 | Tasto destro su uno step | menu: accento, colpo, ghost, flam, pausa |
-| Clic sul nome di uno strumento | muto / attivo |
-| Tasto destro sul nome | muto, svuota la riga, **nota MIDI** (nomi General MIDI o qualsiasi nota), **livello** |
+| Clic sul nome di uno strumento | lo sceglie (KIT & SOUNDS, VELOCITY) |
+| Tasto destro sul nome | muto, il suo dado, svuota la riga, **il tuo campione**, **nota MIDI**, **livello** |
 
 La prima modifica copia il groove mostrato nello **User pattern**, che si salva con il progetto.
 **CLEAR** svuota la griglia. La luce accanto a ogni nome lampeggia quando lo strumento suona.
@@ -89,7 +89,9 @@ La prima modifica copia il groove mostrato nello **User pattern**, che si salva 
 - **Barra spaziatrice:** play / pausa senza DAW.
 - Clicca il **logo** o **ABOUT** per crediti, link e donazioni.
 
-## 9. Novità della 0.2
+## 9. Novità della 0.2 e 0.3
+
+- **La disposizione di Fase Groove Piano:** riga GROOVE con le schede delle parti A-D, KIT & SOUNDS (lo strumento scelto: nota MIDI, livello, muto, dado, campione), DRUM PADS (clic: senti e scegli, tasto destro: muto), GROOVE FEEL & SONG, GUIDE SOUND & MIDI OUT, la griglia in basso ed EXPORT MIDI a destra (FULL SONG... apre la finestra del brano).
 
 - **Dadi:** il dado in alto è TOTAL RANDOM; ogni riga ha il suo dado (una nuova linea solo per quello
   strumento); ogni parte A-D ha un dado e un lucchetto (i dadi non toccano le parti bloccate).

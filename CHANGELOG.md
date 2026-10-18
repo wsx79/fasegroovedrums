@@ -4,6 +4,23 @@
 
 All notable changes to **Fase Groove Drums**.
 
+## [0.3.0] - 2026-10-18
+
+The same interface as Fase Groove Piano, adapted to the drums.
+
+- **Header** as in the piano: PRESETS, TOTAL (random), undo / redo, full screen; STYLE, RESET,
+  OPTIONS; a TRANSPORT & TEMPO box (⏮ ▶ ■, Sequencer switch, SYNC DAW, BPM) and a big display
+  with the groove, its genre, the section and where the playhead is.
+- **GROOVE row** (the piano's progression): groove presets, RANDOM, genre, density, and the four
+  **part cards A-D** (in place of the chord slots), each with a picture of its hits, a die and a lock.
+- **KIT & SOUNDS**: the drum picked, its MIDI note, level, mute, its die and your own sample.
+- **DRUM PADS** (in place of the circle of fifths): 13 pads that light up on the hits; click one to
+  hear it and pick it, right-click to mute it.
+- **GROOVE FEEL & SONG** and **GUIDE SOUND & MIDI OUT** panels.
+- **STEP GRID / VELOCITY** at the bottom, and **EXPORT MIDI** with the big orange DRAG MIDI TO DAW
+  tile, SAVE .MID... and FULL SONG...
+- On the grid, a click on a drum's name now picks it (mute: the kit panel, the pads or right-click).
+
 ## [0.2.0] - 2026-10-18
 
 The interface of Fase Groove Piano, for the drums.

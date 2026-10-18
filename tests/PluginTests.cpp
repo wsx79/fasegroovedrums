@@ -391,9 +391,61 @@ namespace
     }
 }
 
-int main()
+namespace
+{
+    /** --screenshots <folder>: the editor and its views as PNG files (to check the layout). */
+    void saveScreenshots (const juce::File& folder)
+    {
+        folder.createDirectory();
+        FaseGrooveDrumsProcessor p;
+        p.editStep (4, 3, 'x');
+        std::unique_ptr<juce::AudioProcessorEditor> editor (p.createEditor());
+        editor->setSize (1180, 860);
+
+        auto save = [&] (const juce::String& name)
+        {
+            const auto image = editor->createComponentSnapshot (editor->getLocalBounds(), true, 1.0f);
+            juce::PNGImageFormat png;
+            juce::FileOutputStream out (folder.getChildFile (name + ".png"));
+            out.setPosition (0);
+            out.truncate();
+            png.writeImageToStream (image, out);
+        };
+        std::function<juce::Button* (juce::Component&, const juce::String&)> findButton = [&] (juce::Component& c, const juce::String& text) -> juce::Button*
+        {
+            for (auto* child : c.getChildren())
+            {
+                if (auto* b = dynamic_cast<juce::Button*> (child); b != nullptr && b->getButtonText() == text)
+                    return b;
+                if (auto* found = findButton (*child, text))
+                    return found;
+            }
+            return nullptr;
+        };
+        auto click = [&] (const juce::String& text) { if (auto* b = findButton (*editor, text); b != nullptr && b->onClick) b->onClick(); };
+
+        save ("1-main");
+        click ("VELOCITY");
+        p.applyVelocityShape ((int) fgd::Lane::closedHat, 0);
+        save ("2-velocity");
+        click ("STEP GRID");
+        click ("FULL SONG...");
+        save ("3-song");
+        click ("CLOSE");
+        click ("OPTIONS");
+        save ("4-about");
+    }
+}
+
+int main (int argc, char** argv)
 {
     juce::ScopedJuceInitialiser_GUI juce;
+
+    if (argc > 2 && juce::String (argv[1]) == "--screenshots")
+    {
+        saveScreenshots (juce::File::getCurrentWorkingDirectory().getChildFile (argv[2]));
+        return 0;
+    }
 
     testStateRoundTrip();
     testGridEditing();

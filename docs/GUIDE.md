@@ -42,8 +42,8 @@ tom, crash) × 32 steps (two bars of 16ths).
 | Cmd/Ctrl + click | flam (a soft grace note just before) |
 | Drag | paints the same symbol on the other steps |
 | Right-click a step | menu: accent, hit, ghost, flam, rest |
-| Click a drum's name | mute / unmute |
-| Right-click a drum's name | mute, clear the row, **MIDI note** (General MIDI names or any note), **level** |
+| Click a drum's name | pick it (KIT & SOUNDS, VELOCITY) |
+| Right-click a drum's name | mute, its die, clear the row, **your own sample**, **MIDI note**, **level** |
 
 The first edit copies the groove showing into the **User pattern**, which is saved with your
 project. **CLEAR** empties the grid. The light next to each name flashes when the drum plays.
@@ -88,7 +88,9 @@ project. **CLEAR** empties the grid. The light next to each name flashes when th
 - **Space bar:** play / pause without the DAW.
 - Click the **logo** or **ABOUT** for credits, links and donations.
 
-## 9. New in 0.2
+## 9. New in 0.2 and 0.3
+
+- **The layout of Fase Groove Piano:** GROOVE row with the part cards A-D, KIT & SOUNDS (the drum picked: MIDI note, level, mute, die, sample), DRUM PADS (click: hear and pick, right-click: mute), GROOVE FEEL & SONG, GUIDE SOUND & MIDI OUT, the grid at the bottom and EXPORT MIDI on the right (FULL SONG... opens the song window).
 
 - **Dice:** the die in the header is TOTAL RANDOM; every drum's row has its own die (a new line for that
   drum only); each part A-D has a die and a lock (locked parts are never changed by the dice).

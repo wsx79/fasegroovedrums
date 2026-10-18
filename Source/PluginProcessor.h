@@ -194,6 +194,9 @@ public:
     juce::AudioProcessorValueTreeState apvts;
 
     //==============================================================================
+    /** Plays one hit of a drum now (the pads), through the guide kit and the MIDI out. */
+    void audition (int lane, int velocity = 110)   { auditionRequest = juce::jlimit (0, fgd::numLanes - 1, lane) * 128 + juce::jlimit (1, 127, velocity); }
+
     std::atomic<bool> previewOn { false };   // play the groove without the host transport
     std::atomic<bool> previewFromStart { true }, previewRewind { false };
     void previewPlay()    { previewOn = true; }
@@ -237,6 +240,7 @@ private:
     fgd::GrooveEngine engine;
     std::vector<fgd::NoteEvent> events;
     juce::MidiBuffer outMidi;
+    std::atomic<int> auditionRequest { -1 };   // lane * 128 + velocity
 
     GuideDrums drums;
     DrumSamples samples;   // read and swapped with std::atomic_load / std::atomic_store

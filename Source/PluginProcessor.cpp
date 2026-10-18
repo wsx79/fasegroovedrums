@@ -716,6 +716,15 @@ void FaseGrooveDrumsProcessor::processBlock (juce::AudioBuffer<float>& buffer, j
             outMidi.addEvent (juce::MidiMessage::noteOff (channel, e.note), pos);
     }
 
+    // A pad played by hand.
+    if (const int request = auditionRequest.exchange (-1); request >= 0)
+    {
+        const int lane = request / 128, note = settings.notes[(size_t) juce::jlimit (0, fgd::numLanes - 1, lane)];
+        outMidi.addEvent (juce::MidiMessage::noteOn (channel, note, (juce::uint8) (request % 128)), 0);
+        outMidi.addEvent (juce::MidiMessage::noteOff (channel, note), juce::jmax (0, numSamples - 1));
+        laneFlash[(size_t) juce::jlimit (0, fgd::numLanes - 1, lane)] = (float) (request % 128) / 127.0f;
+    }
+
     // ---- The guide kit ----
     const bool soundOn = raw (ParamIDs::sound) > 0.5f;
     if (soundWasOn && ! soundOn)
