@@ -289,7 +289,7 @@ namespace
         const auto clip = p.createMidiClip (1, FaseGrooveDrumsProcessor::ClipPart::all);
         bool found = false;
         for (const auto* e : *clip.getTrack (0))
-            if (e->message.isNoteOn() && e->message.getTimeStamp() < 1.0)
+            if (e->message.isNoteOn() && e->message.getNoteNumber() == 42 && e->message.getTimeStamp() < 1.0)
                 found = e->message.getVelocity() == 33;
         CHECK (found);
         p.resetStepVelocities ((int) fgd::Lane::closedHat);
