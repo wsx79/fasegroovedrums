@@ -480,8 +480,36 @@ static void testFourBarGrooves()
     CHECK (GrooveEngine::loopLengthInSteps (s) == 64);
 }
 
+static void testJackinGroove()
+{
+    const int jackin = categoryIndex ("Jackin'");
+    CHECK (jackin >= 0);
+    CHECK (genreSwing (jackin) >= 0.5f);
+
+    // Random jackin beats: four on the floor, open hats on the offbeats, closed hats never on them.
+    for (std::uint32_t seed = 1; seed < 60; ++seed)
+    {
+        const auto p = makeRandomPattern (seed, (float) (seed % 5) / 4.0f, jackin);
+        for (int i = 0; i < 32; ++i)
+        {
+            CHECK (isHit (p[Lane::kick][(size_t) i]) == (i % 4 == 0));
+            if (i % 4 == 2)
+                CHECK (! isHit (p[Lane::closedHat][(size_t) i]));
+        }
+        CHECK (countHits (p[Lane::openHat]) >= 6);
+    }
+
+    // The jackin grooves keep the clap on 2 and 4.
+    for (const auto& g : drumPatterns())
+        if (g.category == "Jackin'")
+        {
+            CHECK (isHit (g[Lane::clap][4]) && isHit (g[Lane::clap][12]));
+        }
+}
+
 int main()
 {
+    testJackinGroove();
     testFourBarGrooves();
     testKickAlwaysOnTheGrid();
     testPartsSectionsAndLanes();

@@ -200,20 +200,21 @@ const std::vector<DrumPattern>& drumPatterns()
                 { { K, "X..x X... X..x X..." }, { S, ".... X..g .g.. X.gg" }, { C, backbeat }, { OH, offbeats },
                   { T, "x.x. x.x. x.x. x.x." }, { TM, ".... .... .... .... .... .... .... XxXx" } }),
 
-        // ---- Jackin': Chicago 909 bounce, 16th hats, swing it! ----
+        // ---- Jackin': the Chicago bounce. A straight kick, claps on 2 and 4, open hats on the
+        //      offbeats and SHUFFLED closed hats around them (the swing does the jacking) ----
         groove ("Jack Your Body", "Jackin'",
-                { { K, fourFloor }, { C, backbeat }, { CH, "xxXx xxXx xxXx xxXx" } }),
+                { { K, fourFloor }, { C, backbeat }, { OH, offbeats }, { CH, "x..x x..x x..x x..x" } }),
         groove ("Chicago 909", "Jackin'",
                 { { K, fourFloor }, { C, backbeat }, { S, ".... x... .... x..." }, { OH, offbeats },
-                  { CH, "xx.x xx.x xx.x xx.x" }, { R, "...x ..x. .... ..x." } }),
+                  { CH, "xg.x xg.x xg.x xg.x" }, { R, "...x .... .x.. ...x" } }),
         groove ("Jackin' Shuffle", "Jackin'",
-                { { K, fourFloor }, { C, ".... X..x .... X..." }, { CH, "xg.g xg.g xg.g xg.g" }, { OH, offbeats },
+                { { K, fourFloor }, { C, "...g X... ...g X..." }, { CH, "xg.x xg.x xg.x xg.x" }, { OH, offbeats },
                   { CB, "..x. .x.. ..x. ...." } }),
         groove ("Ghetto Jack", "Jackin'",
-                { { K, "X..X X... X..X X.x." }, { C, backbeat }, { CH, "x.x. x.x. x.x. x.x." },
-                  { R, "..x. ..x. .x.. ..x." } }),
+                { { K, "X... X... X... X..x X... X... X... X.xx" }, { C, backbeat }, { OH, offbeats },
+                  { CH, "x..x x..x x..x x..x" }, { R, "...x ..x. .x.. ...." } }),
         groove ("Jack Cowbell", "Jackin'",
-                { { K, fourFloor }, { C, backbeat }, { OH, offbeats }, { CH, "xg.g xg.g xg.g xg.g" },
+                { { K, fourFloor }, { C, backbeat }, { OH, offbeats }, { CH, "xg.x xg.x xg.x xg.x" },
                   { CB, "x..x ..x. ..x. x... x..x ..x. x.x. ..x." } }),
 
         // ---- Jackin' Piano: the jack bounce under piano stabs ----
@@ -325,6 +326,17 @@ const std::vector<DrumPattern>& drumPatterns()
         groove ("Hands Up", "Dance Stabs",
                 { { K, fourFloor }, { S, backbeat }, { C, backbeat }, { OH, offbeats }, { CH, "xg.g xg.g xg.g xg.g" },
                   { CR, crashBar1 } }),
+
+        // ---- v0.7: more Jackin' (added at the end: saved projects keep their groove) ----
+        groove ("Percolator Jack", "Jackin'",
+                { { K, fourFloor }, { C, backbeat }, { OH, "..x. ..x. ..x. ..x." }, { CH, "x..x x..x x..x x..x" },
+                  { TM, "..x. .x.. x..x .x.. ..x. .x.. x..x .xx." }, { CB, "x... ..x. ..x. x..." } }),
+        groove ("Jackin' Claps", "Jackin'",
+                { { K, fourFloor }, { C, "...g X... ...g X... ...g X... ...g X..g" }, { OH, offbeats },
+                  { CH, "xg.x xg.x xg.x xg.x" } }),
+        groove ("Warehouse Jack", "Jackin'",
+                { { K, fourFloor }, { C, backbeat }, { RD, "..X. ..X. ..X. ..X." }, { CH, "xg.x xg.x xg.x xg.x" },
+                  { R, "...x ..x. .... .x.." } }),
     };
     return patterns;
 }
@@ -348,7 +360,7 @@ int categoryIndex (const std::string& category) noexcept
 
 float genreSwing (int category) noexcept
 {
-    static const float swing[] { 0.15f, 0.25f, 0.3f, 0.35f, 0.5f, 0.45f, 0.6f, 0.2f, 0.3f, 0.1f, 0.55f, 0.25f, 0.0f };
+    static const float swing[] { 0.15f, 0.25f, 0.3f, 0.35f, 0.6f, 0.5f, 0.6f, 0.2f, 0.3f, 0.1f, 0.55f, 0.25f, 0.0f };
     return category >= 0 && category < (int) std::size (swing) ? swing[category] : 0.2f;
 }
 

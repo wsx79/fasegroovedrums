@@ -1814,7 +1814,7 @@ void GrooveBrowser::show()
 
 void GrooveBrowser::pick (int pattern)
 {
-    processor.setParameterFromUI (ParamIDs::pattern, (float) pattern);
+    processor.selectGroove (pattern);
     repaint();
 }
 
@@ -2776,7 +2776,7 @@ void FaseGrooveDrumsEditor::stepGroove (int delta)
     auto it = std::find (order.begin(), order.end(), current);
     int index = it == order.end() ? 0 : (int) (it - order.begin()) + delta;
     index = (index % (int) order.size() + (int) order.size()) % (int) order.size();
-    processor.setParameterFromUI (ParamIDs::pattern, (float) order[(size_t) index]);
+    processor.selectGroove (order[(size_t) index]);
 }
 
 void FaseGrooveDrumsEditor::timerCallback()

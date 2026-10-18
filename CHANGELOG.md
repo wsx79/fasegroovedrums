@@ -4,6 +4,16 @@
 
 All notable changes to **Fase Groove Drums**.
 
+## [0.7.0] - 2026-10-18
+
+- **Jackin' sounds like jackin'**: the Jackin' grooves are rewritten around the classic Chicago
+  feel: four on the floor, claps on 2 and 4 with pickups, open hats on every offbeat, shuffled
+  closed hats around them, percolating cowbell, rim and toms. Three new grooves: Percolator Jack,
+  Jackin' Claps, Warehouse Jack. The random Jackin' beat follows the same rules.
+- **The genre's swing comes with the groove**: picking a groove (browser or arrows) sets its genre
+  and the genre's swing, and NEW BEAT starts from the genre's swing, so house grooves no longer
+  play almost straight. Jackin' swings more (60%), Jackin' Piano 50%.
+
 ## [0.6.1] - 2026-10-18
 
 - Technical terms stay in English in every language, as producers say them: the drums (kick,

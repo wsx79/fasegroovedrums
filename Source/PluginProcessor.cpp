@@ -515,8 +515,22 @@ std::uint32_t FaseGrooveDrumsProcessor::freshSeed()
     return (std::uint32_t) juce::Random::getSystemRandom().nextInt ({ 1, 100000 });
 }
 
+void FaseGrooveDrumsProcessor::selectGroove (int pattern)
+{
+    setParameterFromUI (ParamIDs::pattern, (float) pattern);
+    const auto& presets = fgd::drumPatterns();
+    if (juce::isPositiveAndBelow (pattern, (int) presets.size()))
+        if (const int genre = fgd::categoryIndex (presets[(size_t) pattern].category); genre >= 0)
+        {
+            setParameterFromUI (ParamIDs::genre, (float) genre);
+            setParameterFromUI (ParamIDs::swing, fgd::genreSwing (genre));
+        }
+}
+
 void FaseGrooveDrumsProcessor::rollNewBeat()
 {
+    setParameterFromUI (ParamIDs::swing, fgd::genreSwing (juce::roundToInt (raw (ParamIDs::genre))));
+
     auto seed = freshSeed();
     if (seed == (std::uint32_t) juce::roundToInt (raw (ParamIDs::riffSeed)))
         seed = seed % 99999 + 1;

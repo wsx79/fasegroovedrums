@@ -132,7 +132,10 @@ public:
     void clearSample (int lane);
     juce::String samplePath (int lane) const;   // empty: the built-in sound
 
-    /** NEW BEAT: a brand new random beat in the chosen genre. */
+    /** Picks a groove; a preset brings its genre's swing (and makes its genre the dice's genre). */
+    void selectGroove (int pattern);
+
+    /** NEW BEAT: a brand new random beat in the chosen genre (with the genre's swing). */
     void rollNewBeat();
     /** NEW FEEL: another humanization (repeatable: it is saved with the project). */
     void newFeel();

@@ -215,6 +215,35 @@ DrumPattern makeRandomPattern (std::uint32_t seed, float density, int genre)
             setBar (Lane::clap, backbeat); break;
     }
 
+    // ---- Jackin': its own rules. A straight kick and claps on 2 and 4 (above), open hats on the
+    //      offbeats, shuffled closed hats around them (never on the offbeat: they would choke the
+    //      open hat), the clap's 16th pick-up, and percussion percolating. The swing does the rest.
+    if (genre == jackin || genre == jackinPiano)
+    {
+        setBar (Lane::openHat, genre == jackin ? "..X. ..X. ..X. ..X." : "..x. ..x. ..x. ..x.");
+        setBar (Lane::closedHat, density < 0.35f ? "x... x... x... x..." : density < 0.65f ? pickCell ({ "x..x x..x x..x x..x", "xg.x xg.x xg.x xg.x" })
+                                                                                         : pickCell ({ "xg.x xg.x xg.x xg.x", "xgxx xg.x xgxx xg.x" }));
+        for (int i = 2; i < randomBeatLength; i += 4)   // keep the offbeats for the open hat
+            p[Lane::closedHat][(size_t) i] = '.';
+        if (r.chance (0.5f))
+            p[Lane::clap][3] = p[Lane::clap][19] = 'g';   // the clap's pick-up into beat 2
+        if (r.chance (0.35f))
+            p[Lane::clap][11] = p[Lane::clap][27] = 'g';  // ...and into beat 4
+        if (genre == jackinPiano && density > 0.4f)
+            setBar (r.chance (0.5f) ? Lane::shaker : Lane::tambourine, r.chance (0.5f) ? "xxxx xxxx xxxx xxxx" : ".... x... .... x...");
+        if (density > 0.4f)
+            switch (r.nextInt (3))
+            {
+                case 0:  setBar (Lane::cowbell, pickCell ({ "x..x ..x. ..x. x...", "..x. .x.. ..x. ...." })); break;
+                case 1:  setBar (Lane::tom, "..x. .x.. x..x .x.."); break;
+                default: setBar (Lane::rim, pickCell ({ "...x ..x. .x.. ...x", "...x .... .x.. ...." })); break;
+            }
+        if (density > 0.5f && r.chance (0.5f))
+            p[Lane::rim][31] = 'x';                       // a rim answering at the end of bar 2
+        normalisePattern (p, randomBeatLength);
+        return p;
+    }
+
     // ---- Main hat line (the accent groove gives it its life) ----
     enum Hat { openOff, closedOff, closed8, closed16, closedShuffle };
     Hat hat = openOff;

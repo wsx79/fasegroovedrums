@@ -487,6 +487,27 @@ namespace
 
 namespace
 {
+    void testGenreSwing()
+    {
+        FaseGrooveDrumsProcessor p;
+        const int jackin = fgd::categoryIndex ("Jackin'");
+        int pattern = -1;
+        for (size_t i = 0; i < fgd::drumPatterns().size(); ++i)
+            if (fgd::drumPatterns()[i].category == "Jackin'") { pattern = (int) i; break; }
+        CHECK (pattern >= 0);
+
+        // Picking a groove brings its genre and the genre's swing.
+        p.setParameterFromUI (ParamIDs::swing, 0.0f);
+        p.selectGroove (pattern);
+        CHECK (juce::roundToInt (p.raw (ParamIDs::genre)) == jackin);
+        CHECK (std::abs (p.raw (ParamIDs::swing) - fgd::genreSwing (jackin)) < 0.01f);
+
+        // A new random beat brings the genre's swing too.
+        p.setParameterFromUI (ParamIDs::swing, 0.0f);
+        p.rollNewBeat();
+        CHECK (std::abs (p.raw (ParamIDs::swing) - fgd::genreSwing (jackin)) < 0.01f);
+    }
+
     void testTranslations()
     {
         const auto before = Localisation::current();
@@ -537,6 +558,7 @@ int main (int argc, char** argv)
     testTransport();
     testV020();
     testTranslations();
+    testGenreSwing();
 
     if (failures == 0)
         std::printf ("All plug-in tests passed.\n");

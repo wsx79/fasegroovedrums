@@ -4,6 +4,16 @@
 
 Tutte le modifiche importanti di **Fase Groove Drums**.
 
+## [0.7.0] - 2026-10-18
+
+- **Il Jackin' suona jackin'**: i groove Jackin' sono riscritti attorno al classico feel Chicago:
+  cassa in quattro, clap su 2 e 4 con le anticipazioni, open hat su ogni controtempo, closed hat
+  shufflati attorno, cowbell, rim e tom che "percolano". Tre groove nuovi: Percolator Jack,
+  Jackin' Claps, Warehouse Jack. Il beat casuale Jackin' segue le stesse regole.
+- **Lo swing del genere arriva col groove**: scegliendo un groove (browser o frecce) si impostano
+  il suo genere e lo swing del genere, e NEW BEAT parte dallo swing del genere, cosi i groove
+  house non suonano piu quasi dritti. Jackin' ha piu swing (60%), Jackin' Piano 50%.
+
 ## [0.6.1] - 2026-10-18
 
 - I termini tecnici restano in inglese in tutte le lingue, come li dicono i produttori: gli
