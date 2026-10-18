@@ -640,12 +640,14 @@ namespace
         FaseGrooveDrumsProcessor a, b;
         a.setLinked (true);
         b.setLinked (true);
-        a.setParameterFromUI (ParamIDs::genre, 4.0f);
+        for (size_t i = 0; i < fgd::drumPatterns().size(); ++i)
+            if (fgd::drumPatterns()[i].category == "Jackin'") { a.selectGroove ((int) i); break; }
         a.setParameterFromUI (ParamIDs::swing, 1.2f);
         a.updateLink();
         link.setLastModificationTime (juce::Time::getCurrentTime() + juce::RelativeTime::seconds (5.0));
         b.updateLink();
         CHECK (juce::roundToInt (value (b, ParamIDs::genre)) == 4);
+        CHECK (fgd::drumPatterns()[(size_t) juce::roundToInt (value (b, ParamIDs::pattern))].category == "Jackin'");
         CHECK (std::abs (value (b, ParamIDs::swing) - 1.2f) < 0.01f);
         if (existed) link.replaceWithText (backup); else link.deleteFile();
 

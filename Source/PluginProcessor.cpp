@@ -1334,7 +1334,17 @@ void FaseGrooveDrumsProcessor::updateLink()
         return;
 
     const auto file = linkFile();
-    const int genre = juce::roundToInt (raw (ParamIDs::genre));
+    // The genre: the groove's own (a preset), else the genre the dice write in.
+    auto currentGenre = [this]
+    {
+        const int pattern = juce::roundToInt (raw (ParamIDs::pattern));
+        const auto& presets = fgd::drumPatterns();
+        if (juce::isPositiveAndBelow (pattern, (int) presets.size()))
+            if (const int g = fgd::categoryIndex (presets[(size_t) pattern].category); g >= 0)
+                return g;
+        return juce::roundToInt (raw (ParamIDs::genre));
+    };
+    const int genre = currentGenre();
     const float swing = raw (ParamIDs::swing);
 
     // Someone else changed it: take their genre and swing.
@@ -1344,12 +1354,24 @@ void FaseGrooveDrumsProcessor::updateLink()
         if (auto xml = juce::parseXML (file))
             if (xml->getStringAttribute ("from") != JucePlugin_Name || xml->getStringAttribute ("instance") != juce::String::toHexString ((juce::pointer_sized_int) this))
             {
+                // Their genre: the first groove of it (unless this one already is), or the dice's genre.
                 const int theirs = fgd::categoryIndex (xml->getStringAttribute ("genre").toStdString());
-                if (theirs >= 0)
+                if (theirs >= 0 && theirs != genre)
+                {
+                    const int pattern = juce::roundToInt (raw (ParamIDs::pattern));
+                    const auto& presets = fgd::drumPatterns();
+                    if (juce::isPositiveAndBelow (pattern, (int) presets.size()))
+                        for (size_t i = 0; i < presets.size(); ++i)
+                            if (presets[i].category == fgd::grooveCategories()[(size_t) theirs])
+                            {
+                                setParameterFromUI (ParamIDs::pattern, (float) i);
+                                break;
+                            }
                     setParameterFromUI (ParamIDs::genre, (float) theirs);
+                }
                 if (xml->hasAttribute ("swing"))
                     setParameterFromUI (ParamIDs::swing, juce::jlimit (0.0f, 1.5f, (float) xml->getDoubleAttribute ("swing")));
-                linkGenre = juce::roundToInt (raw (ParamIDs::genre));
+                linkGenre = currentGenre();
                 linkSwing = raw (ParamIDs::swing);
                 return;
             }
