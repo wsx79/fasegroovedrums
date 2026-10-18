@@ -25,6 +25,7 @@ struct DrumSettings
     float swing = 0.15f;                   // 0 = straight, 1 = full triplet shuffle
     int velocity = 100;
     float humanize = 0.2f;
+    float accentGroove = 0.6f;             // hats, shaker, ride, tambourine: louder on the offbeat, softer 16ths (0 = flat)
     std::uint32_t humanizeSeed = 0;        // NEW FEEL: another, repeatable humanization
 
     int fillEveryBars = 0;                 // 0 = no fills

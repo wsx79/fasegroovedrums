@@ -46,7 +46,7 @@ namespace
     {
         switch ((Lane) lane)
         {
-            case Lane::kick:       return 0.25;
+            case Lane::kick:       return 0.0;   // never moves (see timeFor)
             case Lane::snare:
             case Lane::clap:       return 0.6;
             case Lane::shaker:
@@ -68,6 +68,24 @@ namespace
     }
 
     int lcm (int a, int b) noexcept { return a / std::gcd (a, b) * b; }
+
+    /** The level a played hat (or shaker...) has at each 16th of the beat: the offbeat 8th sings,
+        the downbeat is a little softer, the 16th before the beat softer still, the one after it
+        softest. */
+    double accentProfile (int stepInBeat) noexcept
+    {
+        static constexpr double profile[] { 0.72, 0.52, 1.0, 0.6 };
+        return profile[stepInBeat & 3];
+    }
+
+    bool followsAccentGroove (int lane) noexcept
+    {
+        switch ((Lane) lane)
+        {
+            case Lane::closedHat: case Lane::openHat: case Lane::ride: case Lane::shaker: case Lane::tambourine: return true;
+            default: return false;
+        }
+    }
 }
 
 DrumSettings::DrumSettings() noexcept
@@ -203,10 +221,13 @@ void GrooveEngine::collectStep (long long step, const DrumSettings& s, const Dru
     const bool inFill = fillBar && stepInBar >= fillStartStep (style);
 
     // A velocity set by hand on this step of the user pattern (stored per step as written,
-    // before the A-D order).
+    // before the A-D order). It stays on the variation bar and under a fill, except on the hits
+    // they change.
     auto handVelocity = [&] (int lane) -> int
     {
-        if (s.pattern != userPatternIndex() || len != userPatternLength || inFill || varied)
+        if (s.pattern != userPatternIndex() || len != userPatternLength)
+            return 0;
+        if (varied && variation.lanes[(size_t) lane][(size_t) pos] != normal.lanes[(size_t) lane][(size_t) pos])
             return 0;
         const int segment = userPatternLength / numSegments;
         const int index = std::clamp (s.segmentOrder[(size_t) (pos / segment)], 0, numSegments - 1) * segment + pos % segment;
@@ -224,21 +245,31 @@ void GrooveEngine::collectStep (long long step, const DrumSettings& s, const Dru
 
     auto timeFor = [&] (int lane, int salt)
     {
+        // The kick is always exactly on the grid: no swing, no humanize.
+        if (lane == (int) Lane::kick)
+            return (double) step * stepLength;
         // Humanize only ever delays a hit a little (a drummer sits on or behind the grid).
         return baseTime + human * laneLooseness (lane) * 0.025 * noise (step, seedSalt + salt);
     };
 
-    auto add = [&] (int lane, char symbol, int note, double levelScale = 1.0)
+    auto add = [&] (int lane, char symbol, int note, double levelScale = 1.0, bool fromFill = false)
     {
         if (s.muted[(size_t) lane] || ! isHit (symbol))
             return;
         const int salt = lane * 13 + 1;
         const double t = timeFor (lane, salt);
         double level = symbolLevel (symbol) * levelScale;
-        if (const int set = handVelocity (lane); set > 0 && levelScale == 1.0)
+        if (const int set = fromFill ? 0 : handVelocity (lane); set > 0)
             level = set / 100.0;   // 100 = as the Velocity control
+        else if (followsAccentGroove (lane) && symbol != 'g')
+        {
+            // The accent groove: written accents stay on top, the rest follows the beat.
+            const double a = std::clamp ((double) s.accentGroove, 0.0, 1.0);
+            const double shape = 1.0 - a * (1.0 - accentProfile (stepInBar % 4));
+            level *= symbol == 'X' ? std::max (shape, 0.9) : shape * (1.0 + 0.25 * a);
+        }
         pending.push_back ({ t, note, velocityFor (lane, level, salt), noteLength (lane), lane });
-        if (symbol == 'f')   // the flam's grace note, just before
+        if (symbol == 'f' && lane != (int) Lane::kick)   // the flam's grace note, just before (never on the kick)
             pending.push_back ({ t - 0.035, note, velocityFor (lane, 0.4 * levelScale, salt + 3), 0.03, lane });
     };
 
@@ -272,27 +303,27 @@ void GrooveEngine::collectStep (long long step, const DrumSettings& s, const Dru
             {
                 const int lane = style == FillStyle::snareRoll ? snare : clap;
                 if (stepInBar >= 12 || stepInBar % 2 == 0)
-                    add (lane, stepInBar >= 14 ? 'X' : 'x', s.notes[(size_t) lane], ramp);
+                    add (lane, stepInBar >= 14 ? 'X' : 'x', s.notes[(size_t) lane], ramp, true);
                 break;
             }
             case FillStyle::tomRun:
             {
                 static constexpr int down[] { 5, 3, 0, -2 };   // high tom to floor tom
-                add (tom, stepInBar == 12 ? 'X' : 'x', s.notes[(size_t) tom] + down[std::clamp (stepInBar - 12, 0, 3)], ramp);
+                add (tom, stepInBar == 12 ? 'X' : 'x', s.notes[(size_t) tom] + down[std::clamp (stepInBar - 12, 0, 3)], ramp, true);
                 break;
             }
             case FillStyle::hatLift:
                 if (stepInBar == 12 || stepInBar == 14)
-                    add ((int) Lane::openHat, 'X', s.notes[(size_t) Lane::openHat]);
+                    add ((int) Lane::openHat, 'X', s.notes[(size_t) Lane::openHat], 1.0, true);
                 if (stepInBar == 15)
-                    add (snare, 'g', s.notes[(size_t) snare]);
+                    add (snare, 'g', s.notes[(size_t) snare], 1.0, true);
                 break;
             case FillStyle::dropOut:
                 if (stepInBar == 15)
-                    add (snare, 'X', s.notes[(size_t) snare]);
+                    add (snare, 'X', s.notes[(size_t) snare], 1.0, true);
                 break;
             case FillStyle::congaRun:
-                add (conga, stepInBar == 12 || stepInBar == 15 ? 'X' : 'x', s.notes[(size_t) conga] + (stepInBar >= 14 ? 1 : 0), ramp);
+                add (conga, stepInBar == 12 || stepInBar == 15 ? 'X' : 'x', s.notes[(size_t) conga] + (stepInBar >= 14 ? 1 : 0), ramp, true);
                 break;
             case FillStyle::mix:
             default:
@@ -306,7 +337,7 @@ void GrooveEngine::collectStep (long long step, const DrumSettings& s, const Dru
         const bool afterFill = isFillBar (bar - 1);
         const bool dropPhrase = s.section == Section::drop && mod (bar - s.sectionStartBar, 8) == 0;
         if (afterFill || dropPhrase)
-            add ((int) Lane::crash, 'X', s.notes[(size_t) Lane::crash]);
+            add ((int) Lane::crash, 'X', s.notes[(size_t) Lane::crash], 1.0, true);
     }
 }
 

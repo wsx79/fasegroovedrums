@@ -44,13 +44,6 @@ namespace
         return out;
     }
 
-    /** A one-bar cell written twice (two bars). */
-    std::string twoBars (const char* cell)
-    {
-        const auto c = compact (cell);
-        return c + c;
-    }
-
     void soften (std::string& line)
     {
         for (auto& c : line)
@@ -166,6 +159,10 @@ DrumPattern applySection (const DrumPattern& source, Section section)
 //==============================================================================
 DrumPattern makeRandomPattern (std::uint32_t seed, float density, int genre)
 {
+    // A beat is built by roles, as a producer would: the kick, the backbeat, ONE main hat line,
+    // maybe a second, softer hat line, ONE shaker or tambourine, at most ONE percussion line and
+    // a few ghost notes; every genre has its own allowed choices. Bar 2 repeats bar 1, with at
+    // most one small answer at its end.
     Random r (seed);
     density = std::clamp (density, 0.0f, 1.0f);
     genre = std::clamp (genre, 0, (int) grooveCategories().size() - 1);
@@ -176,152 +173,117 @@ DrumPattern makeRandomPattern (std::uint32_t seed, float density, int genre)
     for (auto& line : p.lanes)
         line.assign ((size_t) userPatternLength, '.');
 
-    auto set = [&p] (Lane lane, int step, char symbol)
+    auto setBar = [&p] (Lane lane, const char* cell)   // one bar, written into both bars
     {
-        auto& c = p[lane][(size_t) (step % userPatternLength)];
-        if (c == '.' || symbol == 'X')
-            c = symbol;
+        const auto c = compact (cell);
+        for (int i = 0; i < 16 && i < (int) c.size(); ++i)
+            if (c[(size_t) i] != '.')
+                p[lane][(size_t) i] = p[lane][(size_t) (i + 16)] = c[(size_t) i];
     };
+    auto pickCell = [&r] (std::initializer_list<const char*> cells) { return *(cells.begin() + r.nextInt ((int) cells.size())); };
 
-    // ---- Kick ----
+    // ---- Kick: on the grid, as the genre wants it ----
     Kick kick = Kick::fourFloor;
     if (genre == garage)        kick = r.chance (0.6f) ? Kick::twoStep : Kick::fourFloor;
-    else if (genre == neoSoul)  kick = r.chance (0.75f) ? Kick::broken : Kick::halfTime;
-    else if (genre == chill)    kick = r.chance (0.5f) ? Kick::fourFloor : Kick::halfTime;
-    else if (genre == funky)    kick = r.chance (0.3f) ? Kick::broken : Kick::fourFloor;
+    else if (genre == neoSoul)  kick = r.chance (0.7f) ? Kick::broken : Kick::halfTime;
+    else if (genre == chill)    kick = r.chance (0.6f) ? Kick::fourFloor : Kick::halfTime;
 
-    const char kickHit = genre == deep || genre == chill ? 'x' : 'X';
-    for (int bar = 0; bar < 2; ++bar)
+    switch (kick)
     {
-        const int o = bar * 16;
-        switch (kick)
-        {
-            case Kick::fourFloor:
-                for (int b = 0; b < 4; ++b) set (Lane::kick, o + b * 4, kickHit);
-                break;
-            case Kick::twoStep:
-                set (Lane::kick, o, 'X');
-                set (Lane::kick, o + r.pick ({ 10, 10, 11, 7 }), 'x');
-                if (bar == 1 && r.chance (0.5f)) set (Lane::kick, o + 13, 'x');
-                break;
-            case Kick::broken:
-                set (Lane::kick, o, 'X');
-                for (int n = 1 + r.nextInt (2); n > 0; --n)
-                    set (Lane::kick, o + r.pick ({ 6, 7, 10, 11, 14 }), 'x');
-                break;
-            case Kick::halfTime:
-                set (Lane::kick, o, 'X');
-                if (r.chance (0.6f)) set (Lane::kick, o + 10, 'x');
-                break;
-        }
-    }
-    if (kick == Kick::fourFloor && r.chance (density * 0.5f))
-        set (Lane::kick, r.pick ({ 31, 31, 30, 27 }), r.chance (0.5f) ? 'x' : 'g');
-
-    // ---- Backbeat: clap or snare (or both) on 2 and 4, on 3 in half time ----
-    const bool snareGenre = genre == funky || genre == neoSoul || genre == garage || genre == chill;
-    const Lane backbeat = snareGenre ? Lane::snare : (genre == deep && r.chance (0.4f)) ? Lane::rim : Lane::clap;
-    for (int bar = 0; bar < 2; ++bar)
-    {
-        if (kick == Kick::halfTime)
-            set (backbeat, bar * 16 + 8, 'X');
-        else
-        {
-            set (backbeat, bar * 16 + 4, genre == chill || genre == deep ? 'x' : 'X');
-            set (backbeat, bar * 16 + 12, genre == chill || genre == deep ? 'x' : 'X');
-        }
-    }
-    if (backbeat == Lane::clap && (genre == dance || genre == nineties || genre == gospel || r.chance (0.3f)))
-        for (int i = 0; i < userPatternLength; ++i)
-            if (p[Lane::clap][(size_t) i] != '.' && genre != chill)
-                set (Lane::snare, i, 'x');
-
-    // Ghost notes on the snare: more with more density (gospel, funk and neo soul love them).
-    const bool ghostGenre = genre == gospel || genre == funky || genre == neoSoul || genre == jackinPiano || genre == soulful;
-    if (ghostGenre && density > 0.3f)
-        for (int n = (int) std::lround (density * 4.0f); n > 0; --n)
-            set (Lane::snare, r.nextInt (2) * 16 + r.pick ({ 3, 7, 10, 11, 14, 15 }), 'g');
-
-    // ---- Hats ----
-    const bool openOffbeats = genre != neoSoul && genre != chill && kick == Kick::fourFloor && r.chance (genre == deep ? 0.4f : 0.8f);
-    if (openOffbeats)
-        for (int i = 2; i < userPatternLength; i += 4)
-            set (Lane::openHat, i, genre == deep ? 'x' : 'X');
-
-    static const char* closedCells[] { "xg.g xg.g xg.g xg.g", "xx.x xx.x xx.x xx.x", "x... x... x... x...",
-                                       "x.x. x.x. x.x. x.x.", "xxXx xxXx xxXx xxXx", "x.xg x.xg x.xg x.xg" };
-    const bool closed = ! openOffbeats || r.chance (0.35f + density * 0.5f);
-    if (closed)
-    {
-        int cell = openOffbeats ? r.pick ({ 0, 1, 2 }) : r.pick ({ 3, 4, 5 });
-        if (density < 0.3f && ! openOffbeats) cell = 3;
-        const auto line = twoBars (closedCells[cell]);
-        for (int i = 0; i < userPatternLength; ++i)
-            if (line[(size_t) i] != '.' && p[Lane::openHat][(size_t) i] == '.')
-                set (Lane::closedHat, i, line[(size_t) i]);
+        case Kick::fourFloor: setBar (Lane::kick, genre == deep || genre == chill ? "x... x... x... x..." : "X... X... X... X..."); break;
+        case Kick::twoStep:   setBar (Lane::kick, pickCell ({ "X... .... ..x. ....", "X... .... ..X. ...x", "X... ...x ..x. ...." })); break;
+        case Kick::broken:    setBar (Lane::kick, pickCell ({ "X... ..x. .x.. ....", "X... .... ..x. .x..", "X..x .... ..x. ...." })); break;
+        case Kick::halfTime:  setBar (Lane::kick, pickCell ({ "X... .... ..x. ....", "X... .... .... ...." })); break;
     }
 
-    // ---- Shaker ----
-    if (r.chance (0.2f + density * 0.6f) && genre != jackin)
-    {
-        static const char* cells[] { "xgxg xgxg xgxg xgxg", "gxXx gxXx gxXx gxXx", "g.x. g.x. g.x. g.x.", "Xgxg xgxg Xgxg xgxg" };
-        p[Lane::shaker] = twoBars (r.pick (cells));
-    }
-
-    // ---- Percussion by genre ----
-    auto cellInto = [&] (Lane lane, std::initializer_list<const char*> cells)
-    {
-        const auto line = twoBars (*(cells.begin() + r.nextInt ((int) cells.size())));
-        for (int i = 0; i < userPatternLength; ++i)
-            if (line[(size_t) i] != '.')
-                set (lane, i, line[(size_t) i]);
-        // The second bar answers a little differently.
-        if (density > 0.4f)
-            set (lane, 16 + r.pick ({ 13, 14, 15, 11 }), 'x');
-    };
-
+    // ---- Backbeat: on 2 and 4 (on 3 in half time) ----
+    const char* backbeat = kick == Kick::halfTime ? ".... .... X... ...." : ".... X... .... X...";
+    const char* softBackbeat = kick == Kick::halfTime ? ".... .... x... ...." : ".... x... .... x...";
     switch (genre)
     {
-        case afro:
-            cellInto (Lane::rim, { "x..x ..x. ..x. x...", "x..x ..x. x..x ..x." });
-            if (r.chance (0.5f + density * 0.4f)) cellInto (Lane::conga, { ".... x.x. .x.. x.x.", "..x. .x.. x.x. ..x.", "x..x ..x. x..x ..x." });
-            if (r.chance (density)) cellInto (Lane::tom, { "..x. .x.. ..x. x.x.", ".... .... .... ..x." });
-            break;
-        case soulful:
-        case gospel:
-            if (r.chance (0.6f + density * 0.3f)) cellInto (Lane::tambourine, { ".... x... .... x...", "g.X. g.X. g.X. g.X.", "..x. X.x. ..x. X.x." });
-            if (r.chance (density * 0.7f)) cellInto (Lane::conga, { "..x. .x.. x.x. ..x.", ".... ..x. .... x.x." });
-            break;
-        case jackin:
-        case jackinPiano:
-            if (r.chance (0.5f)) cellInto (Lane::cowbell, { "x..x ..x. ..x. x...", "..x. .x.. ..x. ...." });
-            if (r.chance (density)) cellInto (Lane::rim, { "...x ..x. .... ..x.", "...x .... .x.. ...." });
-            break;
-        case garage:
-        case deep:
-            cellInto (Lane::rim, { "...x .... .x.. ...x", "..x. ...x .x.. ..x.", ".x.. ..x. .x.. ...x" });
-            break;
-        case funky:
-            if (r.chance (0.6f)) cellInto (Lane::tambourine, { "x.x. x.x. x.x. x.x.", "..x. x.x. ..x. x.x." });
-            if (r.chance (density * 0.6f)) cellInto (Lane::cowbell, { ".... .... ..x. ....", "x.x. x.xx .x.x x.x." });
-            break;
-        case nineties:
-            if (r.chance (0.5f)) cellInto (Lane::tambourine, { ".... x... .... x..." });
-            else                 cellInto (Lane::ride, { "x.X. x.X. x.X. x.X." });
-            break;
+        case garage: case funky: case neoSoul:
+            setBar (Lane::snare, backbeat); break;
         case chill:
-            cellInto (Lane::rim, { ".... x... .... x...", ".... x..g .... x..." });
-            if (r.chance (density)) cellInto (Lane::conga, { ".... ..x. .... .x.x" });
+            setBar (r.chance (0.5f) ? Lane::rim : Lane::snare, softBackbeat); break;
+        case deep:
+            setBar (r.chance (0.4f) ? Lane::rim : Lane::clap, softBackbeat); break;
+        case gospel: case nineties: case dance:
+            setBar (Lane::clap, backbeat);
+            if (r.chance (genre == dance ? 0.7f : 0.5f)) setBar (Lane::snare, softBackbeat);
             break;
-        case neoSoul:
-            if (r.chance (density * 0.6f)) cellInto (Lane::rim, { ".... .... x... ...." });
-            break;
-        case pianoHouse:
-        case dance:
         default:
-            if (r.chance (density * 0.6f)) cellInto (Lane::tambourine, { ".... x... .... x..." });
-            if (r.chance (0.6f)) set (Lane::crash, 0, 'X');
-            break;
+            setBar (Lane::clap, backbeat); break;
+    }
+
+    // ---- Main hat line (the accent groove gives it its life) ----
+    enum Hat { openOff, closedOff, closed8, closed16, closedShuffle };
+    Hat hat = openOff;
+    switch (genre)
+    {
+        case pianoHouse: case nineties: case dance: case gospel: case jackinPiano:
+                        hat = r.chance (0.75f) ? openOff : closedOff; break;
+        case soulful:   hat = r.chance (0.6f) ? openOff : closed8; break;
+        case deep:      hat = r.chance (0.6f) ? closedOff : openOff; break;
+        case jackin:    hat = r.chance (0.6f) ? closed16 : openOff; break;
+        case garage:    hat = r.chance (0.6f) ? closedShuffle : closed8; break;
+        case afro:      hat = r.chance (0.5f) ? closedOff : openOff; break;
+        case funky:     hat = r.chance (0.5f) ? openOff : closed8; break;
+        case neoSoul:   hat = closed8; break;
+        case chill:     hat = r.chance (0.5f) ? closed8 : closedOff; break;
+        default: break;
+    }
+    const bool softHats = genre == deep || genre == chill;
+    switch (hat)
+    {
+        case openOff:       setBar (Lane::openHat, softHats ? "..x. ..x. ..x. ..x." : "..X. ..X. ..X. ..X."); break;
+        case closedOff:     setBar (Lane::closedHat, "..x. ..x. ..x. ..x."); break;
+        case closed8:       setBar (Lane::closedHat, "x.x. x.x. x.x. x.x."); break;
+        case closed16:      setBar (Lane::closedHat, "xxxx xxxx xxxx xxxx"); break;
+        case closedShuffle: setBar (Lane::closedHat, "x.xx x.xx x.xx x.xx"); break;
+    }
+    // A second, softer hat line under an open offbeat hat: the 16ths around it.
+    if (hat == openOff && density > 0.5f && r.chance (0.6f))
+        setBar (Lane::closedHat, pickCell ({ "x... x... x... x...", "xg.g xg.g xg.g xg.g", ".g.g .g.g .g.g .g.g" }));
+    // ...or an open hat lifting the end of each bar over closed hats.
+    else if (hat != openOff && hat != closed16 && density > 0.4f && r.chance (0.5f))
+        p[Lane::openHat][14] = p[Lane::openHat][30] = 'x', p[Lane::closedHat][14] = p[Lane::closedHat][30] = '.';
+
+    // ---- One shaker or tambourine ----
+    const bool shakerGenre = genre == soulful || genre == pianoHouse || genre == afro || genre == chill || genre == deep || genre == jackinPiano;
+    const bool tambGenre = genre == gospel || genre == funky || genre == nineties;
+    if (shakerGenre && density > 0.3f && r.chance (0.5f + density * 0.4f))
+        setBar (Lane::shaker, density > 0.5f ? "xxxx xxxx xxxx xxxx" : "x.x. x.x. x.x. x.x.");
+    else if (tambGenre && density > 0.3f && r.chance (0.6f))
+        setBar (Lane::tambourine, pickCell ({ ".... x... .... x...", "x.x. x.x. x.x. x.x.", "..x. ..x. ..x. ..x." }));
+
+    // ---- At most one percussion line ----
+    if (genre == afro)
+        setBar (Lane::rim, pickCell ({ "x..x ..x. ..x. x...", "x..x ..x. x..x ..x." }));   // the clave is the afro groove
+    const float percChance = genre == afro ? density * 0.8f : density > 0.55f ? 0.6f : 0.0f;
+    if (r.chance (percChance))
+        switch (genre)
+        {
+            case soulful: case afro: case chill: setBar (Lane::conga, pickCell ({ "..x. .x.. x.x. ..x.", ".... ..x. .... x.x.", "..x. .... ..x. .x.." })); break;
+            case jackin: case jackinPiano:       setBar (Lane::cowbell, pickCell ({ "..x. .x.. ..x. ....", "x..x ..x. ..x. x..." })); break;
+            case deep: case garage:              setBar (Lane::rim, pickCell ({ "...x ..x. ...x ....", "..x. ...x .x.. ..x." })); break;
+            case funky:                          setBar (Lane::cowbell, ".... .... ..x. ...."); break;
+            case gospel:                         setBar (Lane::tambourine, "..x. ..x. ..x. ..x."); break;
+            default: break;
+        }
+
+    // ---- Ghost notes (only where the genre has them), one per bar ----
+    if ((genre == gospel || genre == funky || genre == neoSoul) && density > 0.45f)
+    {
+        const int at = r.pick ({ 7, 10, 15 });
+        p[Lane::snare][(size_t) at] = p[Lane::snare][(size_t) (at + 16)] = 'g';
+    }
+
+    // ---- Bar 2 answers at its very end ----
+    if (density > 0.4f && r.chance (0.5f))
+    {
+        if (hat != openOff)                               p[Lane::openHat][31] = 'x';
+        else if (p[Lane::conga][31] == '.' && genre == soulful) p[Lane::conga][31] = 'x';
+        else if (genre == funky || genre == gospel)       p[Lane::snare][31] = 'g';
     }
 
     normalisePattern (p, userPatternLength);

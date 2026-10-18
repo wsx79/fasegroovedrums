@@ -63,6 +63,27 @@ namespace
     }
 }
 
+static void testAccentGroove()
+{
+    // The hats sing on the offbeat and are softer on the 16ths; 0 = as written.
+    auto s = straight();
+    s.pattern = userPatternIndex();
+    for (int i = 0; i < userPatternLength; ++i)
+        s.user[(size_t) Lane::closedHat][(size_t) i] = 'x';
+    std::map<int, int> byStep;
+    for (const auto& e : GrooveEngine::renderClip (s, 4.0))
+        if (e.isNoteOn())
+            byStep[(int) std::lround (e.ppq / stepLength) % 4] = e.velocity;
+    CHECK (byStep[2] > byStep[0] && byStep[0] > byStep[3] && byStep[3] > byStep[1]);
+
+    s.accentGroove = 0.0f;
+    std::set<int> flat;
+    for (const auto& e : GrooveEngine::renderClip (s, 4.0))
+        if (e.isNoteOn())
+            flat.insert (e.velocity);
+    CHECK (flat.size() == 1);
+}
+
 static void testPresets()
 {
     const auto& presets = drumPatterns();
@@ -128,6 +149,7 @@ static void testSwingAndHumanize()
 {
     auto s = straight();
     s.pattern = 0;
+    s.accentGroove = 0.0f;
     s.swing = 1.0f;
     const auto events = GrooveEngine::renderClip (s, 4.0);
 
@@ -373,6 +395,18 @@ static void testPartsSectionsAndLanes()
         if (e.isNoteOn())
             CHECK (e.velocity == 50);
 
+    // ...and it stays on the variation bar and under a fill (the kick keeps the floor).
+    s.variationEvery = 4;
+    s.fillEveryBars = 4;
+    for (int i = 0; i < userPatternLength; i += 4)
+    {
+        s.user[(size_t) Lane::kick][(size_t) i] = 'x';
+        s.userVelocity[(size_t) Lane::kick][(size_t) i] = 50;
+    }
+    for (const auto& e : GrooveEngine::renderClip (s, 16.0))
+        if (e.isNoteOn() && e.lane == (int) Lane::kick)
+            CHECK (e.velocity == 50);
+
     // A section's own fill: only on its last bar, or none.
     std::vector<ArrangementPart> parts { { Section::main, 4, 0, (int) FillStyle::tomRun } };
     auto f = straight();
@@ -391,10 +425,40 @@ static void testPartsSectionsAndLanes()
         CHECK (! (e.isNoteOn() && (e.lane == (int) Lane::crash || e.lane == (int) Lane::snare)));
 }
 
+static void testKickAlwaysOnTheGrid()
+{
+    // Whatever the swing, humanize, feel, groove or random beat: every kick exactly on a 16th.
+    for (int pattern = 0; pattern <= randomPatternIndex(); ++pattern)
+    {
+        DrumSettings s;
+        s.pattern = pattern;
+        s.swing = 1.0f;
+        s.humanize = 1.0f;
+        s.humanizeSeed = 777;
+        s.fillEveryBars = 2;
+        s.variationEvery = 4;
+        s.randomGenre = pattern % 13;
+        for (const auto& e : GrooveEngine::renderClip (s, 32.0))
+            if (e.isNoteOn() && e.lane == (int) Lane::kick)
+            {
+                const double steps = e.ppq / stepLength;
+                CHECK (std::abs (steps - std::round (steps)) < 1.0e-9);
+            }
+    }
+
+    // A flam on the kick has no grace note.
+    auto s = straight();
+    s.pattern = userPatternIndex();
+    s.user[(size_t) Lane::kick][3] = 'f';
+    CHECK (countOns (GrooveEngine::renderClip (s, 8.0), 36) == 1);
+}
+
 int main()
 {
+    testKickAlwaysOnTheGrid();
     testPartsSectionsAndLanes();
     testPresets();
+    testAccentGroove();
     testLanes();
     testRenderBasics();
     testSwingAndHumanize();

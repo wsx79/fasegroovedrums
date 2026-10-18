@@ -343,6 +343,8 @@ private:
     void showGroovesMenu();
     void askName (const juce::String& title, const juce::String& suggestion, std::function<void (const juce::String&)> onName);
     void importMidi();
+    void importAudio();
+    void importFile (const juce::File&);
     void setView (bool velocity);
     void stepGroove (int delta);
     void selectLane (int lane);
@@ -392,7 +394,7 @@ private:
     // Groove panel
     ParamCombo sectionCombo, fillsCombo, variationCombo, fillStyleCombo;
     juce::TextButton crashButton { "CRASH" }, newFeelButton { "NEW FEEL" };
-    Knob swing, humanize, velocity;
+    Knob swing, humanize, velocity, accents;
 
     // Guide sound & MIDI out
     juce::ToggleButton soundToggle { "Guide sound" };

@@ -4,6 +4,8 @@
 #include "PluginProcessor.h"
 #include "PluginEditor.h"
 
+#include <complex>
+
 namespace
 {
     // Choice lists. Items are only ever appended, so saved projects keep their values.
@@ -116,6 +118,7 @@ juce::AudioProcessorValueTreeState::ParameterLayout FaseGrooveDrumsProcessor::cr
     add (std::make_unique<AudioParameterInt> (ParameterID { ParamIDs::velocity, 1 }, "Velocity", 1, 127, 100));
     unitFloat (ParamIDs::humanize, "Humanize", 0.0f, 1.0f, 0.15f);
     add (std::make_unique<AudioParameterInt> (ParameterID { ParamIDs::humanizeSeed, 1 }, "Feel seed", 0, 100000, 0));
+    unitFloat (ParamIDs::accents, "Accents", 0.0f, 1.0f, 0.6f);
     group ("feel", "Feel");
 
     // Song
@@ -220,6 +223,7 @@ fgd::DrumSettings FaseGrooveDrumsProcessor::currentSettings() const
     s.velocity = juce::roundToInt (raw (ParamIDs::velocity));
     s.humanize = raw (ParamIDs::humanize);
     s.humanizeSeed = (std::uint32_t) juce::roundToInt (raw (ParamIDs::humanizeSeed));
+    s.accentGroove = raw (ParamIDs::accents);
     s.fillEveryBars = fillBars[juce::jlimit (0, 4, juce::roundToInt (raw (ParamIDs::fills)))];
     s.fillStyle = (fgd::FillStyle) juce::jlimit (0, fgd::numFillStyles - 1, juce::roundToInt (raw (ParamIDs::fillStyle)));
     s.crashAfterFill = raw (ParamIDs::crash) > 0.5f;
@@ -422,7 +426,7 @@ void FaseGrooveDrumsProcessor::applyVelocityShape (int lane, int shape)
         int v = 90;
         switch (shape)
         {
-            case 0: v = inBeat == 2 ? 112 : inBeat == 0 ? 88 : 62; break;               // the "ts" on the offbeat
+            case 0: v = inBeat == 2 ? 112 : inBeat == 0 ? 80 : inBeat == 3 ? 66 : 56; break;   // the "ts" on the offbeat
             case 1: v = inBeat == 0 ? 115 : inBeat == 2 ? 84 : 58; break;               // on the beat
             case 2: v = step % 2 == 0 ? 100 : 66; break;                                 // loud-soft 16ths
             case 3: v = 60 + (step % 16) * 55 / 15; break;                               // a crescendo over each bar
@@ -1202,6 +1206,198 @@ bool FaseGrooveDrumsProcessor::loadGroove (const juce::File& file)
         setSegmentAt (i, i);
     setParameterFromUI (ParamIDs::pattern, (float) fgd::userPatternIndex());
     return true;
+}
+
+namespace
+{
+    /** Zero-phase filtering (forwards, then backwards), twice: a steep band without delay. */
+    void filterBand (std::vector<float>& y, double sr, double low, double high)
+    {
+        auto run = [&y] (juce::IIRCoefficients c)
+        {
+            for (int pass = 0; pass < 2; ++pass)
+            {
+                juce::IIRFilter f;
+                f.setCoefficients (c);
+                f.processSamples (y.data(), (int) y.size());
+                std::reverse (y.begin(), y.end());
+            }
+        };
+        for (int order = 0; order < 2; ++order)
+        {
+            if (low > 0.0)  run (juce::IIRCoefficients::makeHighPass (sr, low));
+            if (high > 0.0) run (juce::IIRCoefficients::makeLowPass (sr, high));
+        }
+    }
+
+    struct AudioHit { double time; float level, ring, body; };
+
+    /** Where the sound of a band starts again (a fast rise in level), with how loud it is, how
+        long it rings (open hats) and how much body it has 35-60 ms later (claps and snares do,
+        a kick's click doesn't). */
+    std::vector<AudioHit> findHits (const std::vector<float>& y, double sr, double minGap)
+    {
+        const int hop = juce::jmax (1, (int) (sr * 0.002));
+        const int n = (int) y.size() / hop;
+        std::vector<float> e ((size_t) n), db ((size_t) n), flux ((size_t) n, 0.0f);
+        for (int i = 0; i < n; ++i)
+        {
+            double sum = 0.0;
+            for (int k = 0; k < hop; ++k)
+                sum += (double) y[(size_t) (i * hop + k)] * y[(size_t) (i * hop + k)];
+            e[(size_t) i] = (float) std::sqrt (sum / hop + 1.0e-12);
+            db[(size_t) i] = 20.0f * std::log10 (e[(size_t) i] + 1.0e-7f);
+        }
+        for (int i = 4; i < n; ++i)
+            flux[(size_t) i] = juce::jmax (0.0f, db[(size_t) i] - db[(size_t) (i - 4)]);
+
+        const int gap = juce::jmax (1, (int) (minGap * sr / hop));
+        const int w = (int) (0.025 * sr / hop), k100 = (int) (0.1 * sr / hop), a = (int) (0.035 * sr / hop), b = (int) (0.06 * sr / hop);
+        std::vector<AudioHit> hits;
+        int last = -gap;
+        for (int i = 1; i + 1 < n; ++i)
+        {
+            if (flux[(size_t) i] < 6.0f || flux[(size_t) i] < flux[(size_t) (i - 1)] || flux[(size_t) i] < flux[(size_t) (i + 1)])
+                continue;
+            float peak = 0.0f;
+            for (int j = i; j < juce::jmin (n, i + w); ++j)
+                peak = juce::jmax (peak, e[(size_t) j]);
+            float body = 0.0f;
+            for (int j = i + a; j < juce::jmin (n, i + b); ++j)
+                body += e[(size_t) j];
+            body /= (float) juce::jmax (1, juce::jmin (n, i + b) - (i + a)) * (peak + 1.0e-9f);
+            const AudioHit hit { (double) i * hop / sr, peak, e[(size_t) juce::jmin (n - 1, i + k100)] / (peak + 1.0e-9f), body };
+            if (i - last < gap)
+            {
+                if (! hits.empty() && hit.level > hits.back().level)
+                    hits.back() = hit, last = i;   // the stronger of two hits too close together
+                continue;
+            }
+            hits.push_back (hit);
+            last = i;
+        }
+        return hits;
+    }
+}
+
+juce::String FaseGrooveDrumsProcessor::importAudioGroove (const juce::File& file)
+{
+    juce::AudioFormatManager formats;
+    formats.registerBasicFormats();
+    std::unique_ptr<juce::AudioFormatReader> reader (formats.createReaderFor (file));
+    if (reader == nullptr || reader->lengthInSamples <= 0 || reader->sampleRate <= 0.0)
+        return {};
+
+    const double sr = reader->sampleRate;
+    const int length = (int) juce::jmin<juce::int64> (reader->lengthInSamples, (juce::int64) (sr * 40.0));
+    juce::AudioBuffer<float> audio ((int) juce::jlimit (1u, 2u, reader->numChannels), length);
+    reader->read (&audio, 0, length, 0, true, audio.getNumChannels() > 1);
+    std::vector<float> mono ((size_t) length);
+    for (int i = 0; i < length; ++i)
+        mono[(size_t) i] = audio.getNumChannels() > 1 ? 0.5f * (audio.getSample (0, i) + audio.getSample (1, i)) : audio.getSample (0, i);
+
+    // The tempo: a loop is a whole number of bars. The tempo in use first, else the one nearest
+    // 124 BPM that makes it 1, 2, 4 or 8 bars.
+    const double seconds = length / sr;
+    double bpm = exportBpm();
+    double bars = seconds / (4.0 * 60.0 / bpm);
+    if (std::abs (bars - std::round (bars)) > 0.04 || std::round (bars) < 1.0)
+    {
+        double best = 1.0e9;
+        for (int b : { 1, 2, 4, 8 })
+            if (const double t = b * 4.0 * 60.0 / seconds; t >= 70.0 && t <= 180.0 && std::abs (t - 124.0) < best)
+            {
+                best = std::abs (t - 124.0);
+                bpm = t;
+            }
+        bars = seconds / (4.0 * 60.0 / bpm);
+    }
+    const int wholeBars = juce::jmax (1, (int) std::round (bars));
+    const double T = seconds / (wholeBars * 16.0);   // seconds per 16th
+
+    auto bandOf = [&] (double low, double high) { auto y = mono; filterBand (y, sr, low, high); return y; };
+    auto kicks = findHits (bandOf (0.0, 110.0), sr, 0.1);
+    auto mids = findHits (bandOf (1000.0, 4000.0), sr, 0.045);
+    auto highs = findHits (bandOf (7500.0, 0.0), sr, 0.045);
+    if (kicks.empty() && mids.empty() && highs.empty())
+        return {};
+
+    // Where the loop sits against the grid: the strong kicks (or else the hats).
+    double offset = 0.0;
+    {
+        const auto& ref = kicks.empty() ? highs : kicks;
+        float top = 0.0f;
+        for (const auto& h : ref) top = juce::jmax (top, h.level);
+        std::complex<double> sum;
+        for (const auto& h : ref)
+            if (h.level > 0.5f * top)
+                sum += std::polar (1.0, juce::MathConstants<double>::twoPi * std::fmod (h.time / T, 1.0));
+        if (std::abs (sum) > 0.0)
+            offset = std::arg (sum) / juce::MathConstants<double>::twoPi * T;
+    }
+
+    fgd::DrumPattern p;
+    for (auto& line : p.lanes)
+        line.assign ((size_t) gridSteps, '.');
+    std::array<std::array<int, gridSteps>, fgd::numLanes> levels {};
+    std::vector<double> oddDelays, evenDelays;
+
+    auto place = [&] (const std::vector<AudioHit>& hits, std::function<int (const AudioHit&)> laneFor, float minBody, bool measureSwing)
+    {
+        float top = 0.0f;
+        for (const auto& h : hits)
+            if (h.body >= minBody) top = juce::jmax (top, h.level);
+        for (const auto& h : hits)
+        {
+            if (h.body < minBody || top <= 0.0f)
+                continue;
+            const double pos = (h.time - offset) / T;
+            const int step = (int) std::lround (pos);
+            if (step < 0 || step >= gridSteps)
+                continue;   // the first two bars
+            const float r = h.level / top;
+            if (r < 0.12f)
+                continue;
+            const int lane = laneFor (h);
+            const int v = juce::jlimit (1, 127, (int) std::lround (35.0 + 92.0 * r));
+            if (v <= levels[(size_t) lane][(size_t) step])
+                continue;
+            levels[(size_t) lane][(size_t) step] = v;
+            p.lanes[(size_t) lane][(size_t) step] = r > 0.75f ? 'X' : r > 0.38f ? 'x' : 'g';
+            if (measureSwing && r > 0.38f)
+                (step % 2 == 1 ? oddDelays : evenDelays).push_back (pos - step);
+        }
+    };
+    place (kicks, [] (const AudioHit&) { return (int) fgd::Lane::kick; }, 0.0f, false);
+    place (mids, [] (const AudioHit&) { return (int) fgd::Lane::clap; }, 0.28f, false);
+    place (highs, [] (const AudioHit& h) { return (int) (h.ring > 0.4f ? fgd::Lane::openHat : fgd::Lane::closedHat); }, 0.0f, true);
+
+    // A one-bar loop plays twice.
+    if (wholeBars == 1)
+        for (int l = 0; l < fgd::numLanes; ++l)
+            for (int i = 0; i < 16; ++i)
+            {
+                p.lanes[(size_t) l][(size_t) (i + 16)] = p.lanes[(size_t) l][(size_t) i];
+                levels[(size_t) l][(size_t) (i + 16)] = levels[(size_t) l][(size_t) i];
+            }
+
+    setUserPattern (p);
+    for (int l = 0; l < fgd::numLanes; ++l)
+        for (int i = 0; i < gridSteps; ++i)
+            userVelocity[(size_t) l][(size_t) i] = levels[(size_t) l][(size_t) i];
+    for (int i = 0; i < fgd::numSegments; ++i)
+        setSegmentAt (i, i);
+
+    // The swing: how late the odd 16ths are, as the Swing control measures it.
+    juce::String report = juce::String (wholeBars) + (wholeBars == 1 ? " bar" : " bars") + " at " + juce::String (bpm, 1) + " BPM";
+    if (oddDelays.size() >= 2)
+    {
+        auto median = [] (std::vector<double> v) { std::sort (v.begin(), v.end()); return v.empty() ? 0.0 : v[v.size() / 2]; };
+        const double swingAmount = juce::jlimit (0.0, 1.0, (median (oddDelays) - median (evenDelays)) * 3.0);
+        setParameterFromUI (ParamIDs::swing, (float) swingAmount);
+        report << ", swing " << juce::roundToInt (swingAmount * 100.0) << "%";
+    }
+    return report;
 }
 
 bool FaseGrooveDrumsProcessor::importMidiGroove (const juce::File& file)

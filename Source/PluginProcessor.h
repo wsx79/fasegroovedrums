@@ -19,6 +19,7 @@ namespace ParamIDs
     inline constexpr const char* velocity    = "velocity";
     inline constexpr const char* humanize    = "humanize";
     inline constexpr const char* humanizeSeed = "humanizeSeed";
+    inline constexpr const char* accents     = "accents";       // the accent groove of hats, shaker, ride, tambourine
     inline constexpr const char* fills       = "fills";
     inline constexpr const char* fillStyle   = "fillStyle";
     inline constexpr const char* crash       = "crash";         // a crash after every fill
@@ -183,6 +184,11 @@ public:
     /** Reads the drums of a MIDI file (channel 10, or the General MIDI drum notes) into the grid:
         two bars, quantized to 16ths, with their velocities. Returns false when no drums were found. */
     bool importMidiGroove (const juce::File&);
+
+    /** Turns an audio drum loop into the grid: kick, clap / snare, closed and open hats, with their
+        velocities, on two bars of 16ths (the loop's length gives the tempo). Returns a short report
+        ("2 bars at 125 BPM, swing 30%"), empty when nothing could be read. */
+    juce::String importAudioGroove (const juce::File&);
 
     // Undo / redo: snapshots of everything but the window size.
     juce::String snapshot() const;

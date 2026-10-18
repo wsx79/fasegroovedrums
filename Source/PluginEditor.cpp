@@ -1575,7 +1575,8 @@ void AboutPanel::paint (juce::Graphics& g)
                               "Grid: click hit, Shift accent, Alt ghost, Ctrl/Cmd flam, drag to paint",
                               "Drum name: click mute, double-click velocities, right-click note / level",
                               "Drop a .mid file on the window: its drums go into the grid",
-                              "Drop a sample (WAV, AIFF...) on a drum's row: your own sound for it" })
+                              "Drop a sample on a drum's row or pad: your own sound for it",
+                              "Drop an audio drum loop anywhere else: it becomes the grid" })
         g.drawText (line, r.removeFromTop (18), juce::Justification::centredLeft);
 
     r.removeFromTop (8);
@@ -1762,6 +1763,7 @@ FaseGrooveDrumsEditor::FaseGrooveDrumsEditor (FaseGrooveDrumsProcessor& p)
       swing (p.apvts, ParamIDs::swing, "Swing"),
       humanize (p.apvts, ParamIDs::humanize, "Humanize"),
       velocity (p.apvts, ParamIDs::velocity, "Velocity"),
+      accents (p.apvts, ParamIDs::accents, "Accents"),
       kitCombo (p.apvts, ParamIDs::kit, "Kit"),
       channelCombo (p.apvts, ParamIDs::midiChannel, "MIDI ch."),
       tone (p.apvts, ParamIDs::tone, "Tone"),
@@ -1936,13 +1938,14 @@ FaseGrooveDrumsEditor::FaseGrooveDrumsEditor (FaseGrooveDrumsProcessor& p)
     swing.setTip ("Pushes every other 16th later: 0% straight, 100% full shuffle");
     humanize.setTip ("Small timing and velocity changes, like a drummer (the kick stays tight)");
     velocity.setTip ("Overall velocity of the hits");
+    accents.setTip ("The accent groove of hats, shaker, ride and tambourine: the offbeat sings, the 16ths are softer (0%: flat)");
     crashButton.setClickingTogglesState (true);
     crashButton.setTooltip ("A crash on the bar after every fill");
     crashAttachment = std::make_unique<juce::AudioProcessorValueTreeState::ButtonAttachment> (p.apvts, ParamIDs::crash, crashButton);
     newFeelButton.setTooltip ("Another humanization (the same every time you play it)");
     newFeelButton.onClick = [this] { processor.newFeel(); };
     for (juce::Component* c : std::initializer_list<juce::Component*> { &sectionCombo, &fillsCombo, &variationCombo, &fillStyleCombo,
-                                                                        &swing, &humanize, &velocity, &crashButton, &newFeelButton })
+                                                                        &swing, &humanize, &velocity, &accents, &crashButton, &newFeelButton })
         show (*c);
 
     // ---- Guide sound & MIDI out ----
@@ -1964,8 +1967,21 @@ FaseGrooveDrumsEditor::FaseGrooveDrumsEditor (FaseGrooveDrumsProcessor& p)
     newRhythmButton.onClick = [this] { processor.rollNewBeat(); };
     myGroovesButton.setTooltip ("Save the grid as your own groove, or load one");
     myGroovesButton.onClick = [this] { showGroovesMenu(); };
-    importButton.setTooltip ("The drums of a MIDI file into the grid (or drop the .mid on the window)");
-    importButton.onClick = [this] { importMidi(); };
+    importButton.setButtonText ("IMPORT...");
+    importButton.setTooltip ("A MIDI file's drums, or an audio drum loop, into the grid (or drop the file on the window)");
+    importButton.onClick = [this]
+    {
+        juce::PopupMenu menu;
+        menu.addItem (1, "Import the drums of a MIDI file...");
+        menu.addItem (2, "Import an audio drum loop (WAV, AIFF...)...");
+        juce::Component::SafePointer<FaseGrooveDrumsEditor> safe (this);
+        menu.showMenuAsync (juce::PopupMenu::Options().withTargetComponent (&importButton), [safe] (int result)
+        {
+            if (safe == nullptr) return;
+            if (result == 1) safe->importMidi();
+            if (result == 2) safe->importAudio();
+        });
+    };
     clearButton.setTooltip ("Empty the grid and start your own beat");
     clearButton.onClick = [this] { processor.clearGrid(); grid.refresh(); velocityView.refresh(); };
     grid.onShowVelocity = [this] (int lane) { selectLane (lane); setView (true); };
@@ -2168,9 +2184,10 @@ void FaseGrooveDrumsEditor::layout()
     fillsCombo.setBounds (744, 278, 134, 46);
     variationCombo.setBounds (604, 328, 134, 46);
     fillStyleCombo.setBounds (744, 328, 134, 46);
-    swing.setBounds (604, 384, 88, 108);
-    humanize.setBounds (696, 384, 88, 108);
-    velocity.setBounds (788, 384, 88, 108);
+    swing.setBounds (600, 390, 70, 102);
+    humanize.setBounds (670, 390, 70, 102);
+    velocity.setBounds (740, 390, 70, 102);
+    accents.setBounds (810, 390, 70, 102);
 
     // Guide sound & MIDI out (900, 242, 262, 256)
     soundToggle.setBounds (914, 294, 116, 24);
@@ -2544,8 +2561,32 @@ void FaseGrooveDrumsEditor::importMidi()
     chooser->launchAsync (juce::FileBrowserComponent::openMode | juce::FileBrowserComponent::canSelectFiles, [safe] (const juce::FileChooser& fc)
     {
         if (safe != nullptr && fc.getResult().existsAsFile())
-            safe->filesDropped ({ fc.getResult().getFullPathName() }, 0, 0);
+            safe->importFile (fc.getResult());
     });
+}
+
+void FaseGrooveDrumsEditor::importAudio()
+{
+    chooser = std::make_unique<juce::FileChooser> ("Import an audio drum loop", juce::File(), "*.wav;*.aif;*.aiff;*.flac;*.mp3;*.ogg");
+    juce::Component::SafePointer<FaseGrooveDrumsEditor> safe (this);
+    chooser->launchAsync (juce::FileBrowserComponent::openMode | juce::FileBrowserComponent::canSelectFiles, [safe] (const juce::FileChooser& fc)
+    {
+        if (safe != nullptr && fc.getResult().existsAsFile())
+            safe->importFile (fc.getResult());
+    });
+}
+
+void FaseGrooveDrumsEditor::importFile (const juce::File& file)
+{
+    if (FaseGrooveDrumsProcessor::isAudioFile (file))
+    {
+        const auto report = processor.importAudioGroove (file);
+        showMessage (report.isNotEmpty() ? file.getFileNameWithoutExtension() + ": " + report : "No drums found in " + file.getFileName());
+    }
+    else
+        showMessage (processor.importMidiGroove (file) ? "Drums imported: " + file.getFileNameWithoutExtension()
+                                                       : juce::String ("No drums found in ") + file.getFileName());
+    setView (false);
 }
 
 bool FaseGrooveDrumsEditor::isInterestedInFileDrag (const juce::StringArray& files)
@@ -2558,13 +2599,17 @@ bool FaseGrooveDrumsEditor::isInterestedInFileDrag (const juce::StringArray& fil
 
 void FaseGrooveDrumsEditor::filesDropped (const juce::StringArray& files, int x, int y)
 {
-    // An audio file on a drum's row: that drum's own sample.
+    // An audio file on a drum's row (or on its pad, or the kit panel): that drum's own sample.
+    // Anywhere else: an audio loop, turned into the grid.
     for (const auto& f : files)
         if (const juce::File file (f); FaseGrooveDrumsProcessor::isAudioFile (file))
         {
-            const int lane = grid.isVisible() ? grid.laneAt (grid.getLocalPoint (this, juce::Point<int> (x, y))) : velocityView.getLane();
+            int lane = grid.isVisible() ? grid.laneAt (grid.getLocalPoint (this, juce::Point<int> (x, y))) : -1;
+            const auto inContent = content.getLocalPoint (this, juce::Point<int> (x, y));
+            if (lane < 0 && (pads.getBounds().contains (inContent) || juce::Rectangle<int> (20, 242, 290, 256).contains (inContent)))
+                lane = selectedLane;
             if (lane < 0)
-                showMessage ("Drop the sample on a drum's row of the grid");
+                importFile (file);
             else
                 showMessage (processor.loadSample (lane, file) ? juce::String (fgd::laneName (lane)) + ": " + file.getFileName()
                                                                : "Could not read " + file.getFileName());
@@ -2574,9 +2619,7 @@ void FaseGrooveDrumsEditor::filesDropped (const juce::StringArray& files, int x,
     for (const auto& f : files)
         if (f.endsWithIgnoreCase (".mid") || f.endsWithIgnoreCase (".midi"))
         {
-            const juce::File file (f);
-            showMessage (processor.importMidiGroove (file) ? "Drums imported: " + file.getFileNameWithoutExtension()
-                                                           : juce::String ("No drums found in ") + file.getFileName());
+            importFile (juce::File (f));
             return;
         }
 }
