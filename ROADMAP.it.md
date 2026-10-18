@@ -8,6 +8,5 @@ nelle [Novità](CHANGELOG.it.md).
 - Più groove per genere, rifiniti a orecchio.
 - Un piano roll più grande (note fuori griglia, micro-timing per colpo).
 - Browser dei groove con preferiti, come Fase Groove Piano.
-- Un'intera cartella di campioni per il kit in un colpo.
 - Installer per Windows, aggiornamenti automatici.
-- Sincronia con Fase Groove Piano (stesso stile, stesse sezioni del brano).
+- Sincronia con Fase Groove Piano: anche le sezioni del brano (genere e swing seguono già con LINK PIANO).

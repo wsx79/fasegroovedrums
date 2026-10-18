@@ -29,7 +29,7 @@ then **drag it into your DAW as a MIDI clip** and play it with your own drums.
 
 ## Features
 
-- 🥁 **53 grooves in 13 genres**, the same as Fase Groove Piano: Piano House, Soulful, Deep,
+- 🥁 **67 grooves in 13 genres**, the same as Fase Groove Piano: Piano House, Soulful, Deep,
   Gospel, Jackin', Jackin' Piano, Garage & UK, Afro & Latin, Funky & Disco, '90s Piano House,
   Neo Soul & Broken, Chill & Pads, Dance Stabs.
 - 🎲 **NEW BEAT:** a random but musical beat in the genre you choose, from bare to busy (Density).
@@ -38,9 +38,16 @@ then **drag it into your DAW as a MIDI clip** and play it with your own drums.
   paint; click a drum's name to mute it; right-click it to change its MIDI note or level.
 - 🎲 **Dice everywhere:** total random, new beat, one die per drum, one per part A-D (with locks).
 - 🎚️ **VELOCITY view:** a piano roll of velocities, one drum at a time, with shapes and a die: hats that groove.
-- 🔊 **Your own samples:** any drum can play your WAV / AIFF / FLAC / MP3 in the guide kit.
+- 🔊 **Your own samples:** any drum can play your WAV / AIFF / FLAC / MP3 in the guide kit, or load a
+  **whole kit folder** at once (samples matched to the drums by their names).
 - 🎬 **Song window**, ⏮ ▶ ■ transport, undo / redo, full screen, presets, my grooves, MIDI drum import.
-- 🎛️ **Feel:** swing, humanize (the kick stays tight, the hands drift) and **NEW FEEL**.
+- 🎛️ **Feel:** swing up to the heaviest shuffle (shown as drum machines show it, 50–75%), humanize
+  (the kick stays tight, the hands drift) and **NEW FEEL**. In the **MIXER** every drum has its own
+  **push / pull** (ms ahead of or behind the beat) and its **share of the swing**; ready-made **TIMING** feels.
+- 🧬 **Groove templates:** the timing and accents of an audio loop or a MIDI file, on any groove.
+- 🎯 **Chance and rolls** on any step of the grid (right-click): hits that play now and then, quick 2–4 hit rolls.
+- ✍️ **FILL view:** draw your own fill; 13 fill styles (kick build, rim shuffle, open hat run, clap stutter,
+  percussion break and more).
 - 🥁 **Fills** every 1, 2, 4 or 8 bars (snare roll, tom run, clap build, hat lift, drop out,
   conga run, mix), a crash after every fill, and a **variation** every 4 or 8 bars.
 - 🎬 **Song sections:** Intro, Main, Break, Build-up, Drop, Outro (automatable), and the
@@ -50,6 +57,8 @@ then **drag it into your DAW as a MIDI clip** and play it with your own drums.
 - 📤 **MIDI:** drag the clip into your DAW (loop, 1–16 bars or the whole song, one track or one
   track per drum), save it as `.mid`, or use live MIDI out. General MIDI notes on channel 10 by
   default; every drum's note can be changed.
+- 🔉 **Audio export:** the guide sound as WAV: a clip that loops seamlessly, the whole song, or stems (one file per drum).
+- 🔗 **LINK PIANO:** the same genre and swing as Fase Groove Piano.
 - 🌍 **Interface in 6 languages:** English, Italiano, Español, Français, Deutsch, Português (**OPTIONS → Language**).
 - ⏱️ **Tempo:** synced to the DAW or set by hand; ▶ plays without the DAW (space bar).
 

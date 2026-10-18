@@ -4,6 +4,27 @@
 
 Tutte le modifiche importanti di **Fase Groove Drums**.
 
+## [0.8.0] - 2026-10-18
+
+- **Swing fino allo shuffle più pesante**, mostrato come su una drum machine (50% dritto, 67%
+  terzina, 75%). Nuovo swing per ogni genere: Piano House 55%, Soulful, Deep e Disco circa 58%,
+  Garage circa 63%, Jackin' 70%, Neo Soul 65%...
+- **Feel di ogni strumento** (MIXER): push / pull in millisecondi e la sua parte di swing, con
+  feel di **TIMING** pronti. Il kick resta sempre sulla griglia.
+- **Groove template** (TEMPLATE...): timing e accenti di ogni 16esimo da un loop audio o da un
+  file MIDI, su qualsiasi groove.
+- **Probabilità e roll** su ogni step (tasto destro): colpi che suonano ogni tanto, roll veloci da 2-4 colpi.
+- **Vista FILL**: disegna il tuo fill (stile di fill: Custom), o parti da uno stile. Cinque nuovi
+  stili di fill: Kick build, Rim shuffle, Open hat run, Clap stutter, Percussion break.
+- **CARTELLA KIT...**: un kit intero di sample in un colpo, assegnati agli strumenti dal nome (o
+  trascina la cartella sulla finestra).
+- **SALVA .WAV...**: il suono guida in audio: una clip in loop senza stacchi, il brano intero o gli stem.
+- **LINK PIANO**: genere e swing condivisi con Fase Groove Piano.
+- Generi: deep (rim sincopati, ghost kick), soulful (tambourine, conga), disco (hi-hat in 16esimi
+  attorno all'open hat), garage (rim shuffle), afro (son clave, giro di tom), '90s (hi-hat e kick
+  Jersey) hanno la loro firma nei beat casuali, e sei groove nuovi.
+- Anche i suggerimenti di manopole e menu seguono la lingua dell'interfaccia.
+
 ## [0.7.1] - 2026-10-18
 
 - **Jack piu pesante**: lo swing Jackin' sale al 90% (Jackin' Piano 75%), il classico shuffle

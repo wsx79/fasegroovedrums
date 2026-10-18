@@ -4,6 +4,27 @@
 
 All notable changes to **Fase Groove Drums**.
 
+## [0.8.0] - 2026-10-18
+
+- **Swing up to the heaviest shuffle**, shown as on a drum machine (50% straight, 67% triplet,
+  75%). New swing for every genre: Piano House 55%, Soulful, Deep and Disco about 58%, Garage about 63%,
+  Jackin' 70%, Neo Soul 65%...
+- **Feel of each drum** (MIXER): push / pull in milliseconds and its share of the swing, with
+  ready-made **TIMING** feels. The kick always stays on the grid.
+- **Groove templates** (TEMPLATE...): the timing and accents of every 16th from an audio loop or
+  a MIDI file, on any groove.
+- **Chance and rolls** on any step (right-click): hits that play now and then, quick 2-4 hit rolls.
+- **FILL view**: draw your own fill (Fill style: Custom), or start from a style. Five new fill
+  styles: Kick build, Rim shuffle, Open hat run, Clap stutter, Percussion break.
+- **KIT FOLDER...**: a whole kit of samples at once, matched to the drums by their names (or drop
+  the folder on the window).
+- **SAVE .WAV...**: the guide sound as audio: a clip that loops seamlessly, the whole song, or stems.
+- **LINK PIANO**: genre and swing shared with Fase Groove Piano.
+- Genres: deep (syncopated rims, ghost kicks), soulful (tambourine, congas), disco (16th hats
+  around the open hat), garage (rim shuffle), afro (son clave, tom loop), '90s (Jersey hats and
+  kick) get their own signatures in the random beats, and six new grooves.
+- The tooltips of knobs and menus follow the interface language too.
+
 ## [0.7.1] - 2026-10-18
 
 - **Heavier jack**: the Jackin' swing goes up to 90% (Jackin' Piano 75%), the classic heavy

@@ -29,7 +29,7 @@ interno, poi **trascinalo nella DAW come clip MIDI** e suonalo con la tua batter
 
 ## Funzioni
 
-- 🥁 **53 groove in 13 generi**, gli stessi di Fase Groove Piano: Piano House, Soulful, Deep,
+- 🥁 **67 groove in 13 generi**, gli stessi di Fase Groove Piano: Piano House, Soulful, Deep,
   Gospel, Jackin', Jackin' Piano, Garage & UK, Afro & Latin, Funky & Disco, '90s Piano House,
   Neo Soul & Broken, Chill & Pads, Dance Stabs.
 - 🎲 **NEW BEAT:** un beat casuale ma musicale nel genere scelto, da essenziale a pieno (Density).
@@ -39,9 +39,16 @@ interno, poi **trascinalo nella DAW come clip MIDI** e suonalo con la tua batter
   per cambiarne nota MIDI o livello.
 - 🎲 **Dadi ovunque:** random totale, nuovo beat, un dado per strumento, uno per parte A-D (con lucchetti).
 - 🎚️ **Vista VELOCITY:** un piano roll delle velocity, uno strumento alla volta, con forme e dado: hat che hanno groove.
-- 🔊 **I tuoi campioni:** ogni strumento può suonare il tuo WAV / AIFF / FLAC / MP3 nel kit guida.
+- 🔊 **I tuoi sample:** ogni strumento può suonare il tuo WAV / AIFF / FLAC / MP3 nel kit guida, oppure carica
+  una **cartella kit intera** in un colpo (sample assegnati agli strumenti dal nome).
 - 🎬 **Finestra del brano**, trasporto ⏮ ▶ ■, annulla / ripeti, schermo intero, preset, my grooves, import della batteria da MIDI.
-- 🎛️ **Feel:** swing, humanize (la cassa resta precisa, le mani "respirano") e **NEW FEEL**.
+- 🎛️ **Feel:** swing fino allo shuffle più pesante (come lo mostrano le drum machine, 50–75%), humanize
+  (il kick resta preciso, le mani "respirano") e **NEW FEEL**. Nel **MIXER** ogni strumento ha il suo
+  **push / pull** (ms avanti o indietro rispetto al beat) e la sua **parte di swing**; feel di **TIMING** pronti.
+- 🧬 **Groove template:** il timing e gli accenti di un loop audio o di un file MIDI, su qualsiasi groove.
+- 🎯 **Probabilità e roll** su ogni step della griglia (tasto destro): colpi che suonano ogni tanto, roll veloci da 2–4 colpi.
+- ✍️ **Vista FILL:** disegna il tuo fill; 13 stili di fill (kick build, rim shuffle, open hat run, clap stutter,
+  percussion break e altri).
 - 🥁 **Fill** ogni 1, 2, 4 o 8 battute (rullata di rullante, giro di tom, clap in crescendo, hat
   aperto, stop, giro di conga, mix), un crash dopo ogni fill e una **variazione** ogni 4 o 8 battute.
 - 🎬 **Sezioni del brano:** Intro, Main, Break, Build-up, Drop, Outro (automatizzabili), e il
@@ -51,6 +58,8 @@ interno, poi **trascinalo nella DAW come clip MIDI** e suonalo con la tua batter
 - 📤 **MIDI:** trascina la clip nella DAW (loop, 1–16 battute o il brano intero, una traccia o una
   traccia per strumento), salvala come `.mid` o usa l'uscita MIDI dal vivo. Note General MIDI sul
   canale 10 di default; la nota di ogni strumento si può cambiare.
+- 🔉 **Export audio:** il suono guida in WAV: una clip che va in loop senza stacchi, il brano intero o gli stem (un file per strumento).
+- 🔗 **LINK PIANO:** stesso genere e stesso swing di Fase Groove Piano.
 - 🌍 **Interfaccia in 6 lingue:** English, Italiano, Español, Français, Deutsch, Português (**OPZIONI → Lingua**).
 - ⏱️ **Tempo:** sincronizzato con la DAW o impostato a mano; ▶ suona senza la DAW (barra spaziatrice).
 

@@ -807,7 +807,7 @@ void FaseGrooveDrumsProcessor::totalRandom()
     setParameterFromUI (ParamIDs::density, 0.25f + 0.6f * r.nextFloat());
     setParameterFromUI (ParamIDs::swing, juce::jlimit (0.0f, 1.0f, fgd::genreSwing (style) + (r.nextFloat() - 0.5f) * 0.12f));
     setParameterFromUI (ParamIDs::humanize, 0.05f + 0.35f * r.nextFloat());
-    setParameterFromUI (ParamIDs::fillStyle, (float) r.nextInt (fgd::numFillStyles));
+    setParameterFromUI (ParamIDs::fillStyle, (float) r.nextInt ((int) fgd::FillStyle::custom));   // not the custom fill: it may be empty
     if (r.nextInt (3) == 0)
         setParameterFromUI (ParamIDs::kit, (float) r.nextInt (GuideDrums::numKits));
     newFeel();

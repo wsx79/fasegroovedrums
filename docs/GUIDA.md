@@ -125,3 +125,30 @@ La prima modifica copia il groove mostrato nello **User pattern**, che si salva 
 ## 12. Durata delle parti
 
 **DURATA PARTI** (riga GROOVE): *1/2 battuta* = parti A-D di mezza battuta, groove di 2 battute; *1 battuta* = parti di una battuta, groove di 4 battute (la griglia mostra 4 battute).
+
+## 13. Novità della 0.8
+
+- Lo **swing** arriva allo shuffle più pesante e si legge come su una drum machine: 50% dritto,
+  67% shuffle in terzina, 75% il più pesante. Ogni genere ha il suo swing (Jackin' 70%, Garage circa 63%...).
+- **MIXER**: ogni strumento ha **PUSH** (millisecondi avanti al beat, −, o rilassato indietro, +) e
+  **SWING** (quanto swing prende: 0% dritto, 100% come la manopola Swing, 200% doppio).
+  **TIMING...** imposta feel pronti (snare e clap rilassati, hi-hat in avanti, jackin'...). Il kick
+  resta sempre esattamente sulla griglia.
+- **TEMPLATE...**: un groove template prende il timing e gli accenti di ogni 16esimo da un loop
+  audio o da un file MIDI e li mette su qualsiasi groove (al posto dello swing e del groove degli
+  accenti). Si accende / spegne o si toglie dallo stesso menu.
+- **Probabilità e roll** (tasto destro su uno step): un colpo può suonare sempre o il 90%...10%
+  delle volte (sempre allo stesso modo a ogni giro; NEW FEEL lo cambia) e suonare come un roll
+  veloce di 2, 3 o 4 colpi. Mai sul kick. Un angolo tagliato indica la probabilità, piccole
+  tacche il roll.
+- Vista **FILL**: disegna il tuo fill (una bar). Entra dal suo primo step scritto; gli strumenti
+  lasciati vuoti continuano a suonare il groove. **PARTI DA...** copia uno stile di fill per
+  cominciare. Disegnando lo stile di fill diventa **Custom**. Nuovi stili: Kick build, Rim
+  shuffle, Open hat run, Clap stutter, Percussion break.
+- **CARTELLA KIT...** (Suono guida): scegli una cartella di sample, o trascinala sulla finestra:
+  ogni strumento prende il sample il cui nome lo dice (kick / bd, snare / sd, clap, rim, closed hat
+  / ch, open hat / oh, ride, crash, shaker, tambourine, conga / perc, cowbell, tom).
+- **SALVA .WAV...** (Export): il suono guida (kit interno o i tuoi sample) in WAV: questa clip (va
+  in loop senza stacchi: le code suonano nell'inizio), il brano intero o un WAV per strumento (stem).
+- **LINK PIANO** (riga Groove): genere e swing seguono Fase Groove Piano e le altre istanze Fase
+  Groove collegate: cambiali in una qualsiasi.

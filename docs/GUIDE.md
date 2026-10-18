@@ -123,3 +123,29 @@ project. **CLEAR** empties the grid. The light next to each name flashes when th
 ## 12. Part length
 
 **PART LENGTH** (GROOVE row): *1/2 bar* = parts A-D of half a bar, a 2-bar groove; *1 bar* = parts of one bar, a 4-bar groove (the grid shows 4 bars).
+
+## 13. New in 0.8
+
+- **Swing** goes up to the heaviest shuffle and reads as on a drum machine: 50% straight, 67% a
+  triplet shuffle, 75% the heaviest. Every genre has its own swing (Jackin' 70%, Garage about 63%...).
+- **MIXER**: every drum has **PUSH** (milliseconds ahead of the beat, −, or laid back, +) and
+  **SWING** (how much of the swing it takes: 0% straight, 100% as the Swing knob, 200% double).
+  **TIMING...** sets ready-made feels (laid-back snare & clap, pushed hats, jackin'...). The kick
+  always stays exactly on the grid.
+- **TEMPLATE...**: a groove template takes the timing and the accents of every 16th from an audio
+  loop or a MIDI file and puts them on any groove (instead of the swing and the accent groove).
+  Switch it on / off or remove it from the same menu.
+- **Chance and roll** (right-click a step): a hit can play always or 90%...10% of the time (the
+  same way each time round; NEW FEEL changes it), and play as a quick roll of 2, 3 or 4 hits.
+  Never on the kick. A cut corner marks a chance, small ticks a roll.
+- **FILL** view: draw your own fill (one bar). It takes over from its first written step; the
+  drums you leave empty keep playing the groove. **START FROM...** copies a fill style to begin
+  with. Drawing sets the fill style to **Custom**. New fill styles: Kick build, Rim shuffle, Open
+  hat run, Clap stutter, Percussion break.
+- **KIT FOLDER...** (Guide sound): pick a folder of samples, or drop it on the window: each drum
+  gets the sample whose name says it (kick / bd, snare / sd, clap, rim, closed hat / ch, open hat /
+  oh, ride, crash, shaker, tambourine, conga / perc, cowbell, tom).
+- **SAVE .WAV...** (Export): the guide sound (built-in kit or your samples) as a WAV: this clip
+  (it loops seamlessly: the tails ring into the start), the whole song, or one WAV per drum (stems).
+- **LINK PIANO** (Groove row): the genre and the swing follow Fase Groove Piano and the other
+  linked Fase Groove instances: change them in either one.

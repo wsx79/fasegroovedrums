@@ -4,6 +4,7 @@
 #pragma once
 
 #include "Branding.h"
+#include "Localisation.h"
 #include "PluginProcessor.h"
 
 #include <juce_gui_basics/juce_gui_basics.h>
@@ -82,7 +83,7 @@ class Knob : public juce::Component
 public:
     Knob (juce::AudioProcessorValueTreeState&, const juce::String& paramId, const juce::String& caption);
     void resized() override;
-    void setTip (const juce::String& tip) { slider.setTooltip (tip); }
+    void setTip (const juce::String& tip) { Localisation::bindTip (slider, tip); }
 
 private:
     juce::Slider slider;
@@ -101,7 +102,7 @@ public:
     /** Re-reads the parameter (call it a few times a second). */
     void refresh();
     juce::ComboBox& comboBox() noexcept { return box; }
-    void setTip (const juce::String& tip) { box.setTooltip (tip); }
+    void setTip (const juce::String& tip) { Localisation::bindTip (box, tip); }
 
 private:
     juce::ComboBox box;
