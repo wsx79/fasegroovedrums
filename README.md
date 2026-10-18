@@ -50,6 +50,7 @@ then **drag it into your DAW as a MIDI clip** and play it with your own drums.
 - 📤 **MIDI:** drag the clip into your DAW (loop, 1–16 bars or the whole song, one track or one
   track per drum), save it as `.mid`, or use live MIDI out. General MIDI notes on channel 10 by
   default; every drum's note can be changed.
+- 🌍 **Interface in 6 languages:** English, Italiano, Español, Français, Deutsch, Português (**OPTIONS → Language**).
 - ⏱️ **Tempo:** synced to the DAW or set by hand; ▶ plays without the DAW (space bar).
 
 Everything is explained in the **[user guide](docs/GUIDE.md)**.

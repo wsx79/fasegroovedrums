@@ -115,3 +115,7 @@ project. **CLEAR** empties the grid. The light next to each name flashes when th
 - **ACCENTS** (GROOVE FEEL): the hats' accent groove. **VOLUME** (KIT & SOUNDS) and **MIXER** (next to
   VELOCITY): the volume of each drum in the guide sound.
 - The kick never leaves the grid.
+
+## 11. Language
+
+**OPTIONS → Language**: English, Italiano, Español, Français, Deutsch or Português. The interface changes at once; the choice is kept for every project.

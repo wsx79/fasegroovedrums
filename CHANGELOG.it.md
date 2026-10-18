@@ -4,6 +4,14 @@
 
 Tutte le modifiche importanti di **Fase Groove Drums**.
 
+## [0.5.0] - 2026-10-18
+
+- **Interfaccia in 6 lingue**, come in Fase Groove Piano: English, Italiano, Español, Français,
+  Deutsch, Português. Si sceglie in **OPZIONI → Lingua**: cambia tutto subito e la scelta vale per
+  ogni progetto (la prima volta si usa la lingua del computer).
+- Tradotti pulsanti, didascalie, menu, suggerimenti, finestra del brano, browser, mixer, messaggi e
+  le impostazioni audio dell'app Standalone; i nomi dei groove e dei generi restano com'erano.
+
 ## [0.4.0] - 2026-10-18
 
 - **Browser dei groove**: niente più menu a scorrimento. Generi a sinistra, i loro groove a destra,

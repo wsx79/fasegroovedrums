@@ -117,3 +117,7 @@ La prima modifica copia il groove mostrato nello **User pattern**, che si salva 
 - **ACCENTS** (GROOVE FEEL): il groove degli accenti degli hat. **VOLUME** (KIT & SOUNDS) e **MIXER**
   (accanto a VELOCITY): il volume di ogni strumento nel suono guida.
 - La cassa non esce mai dalla griglia.
+
+## 11. Lingua
+
+**OPZIONI → Lingua**: English, Italiano, Español, Français, Deutsch o Português. L'interfaccia cambia subito; la scelta vale per ogni progetto.

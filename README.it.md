@@ -51,6 +51,7 @@ interno, poi **trascinalo nella DAW come clip MIDI** e suonalo con la tua batter
 - 📤 **MIDI:** trascina la clip nella DAW (loop, 1–16 battute o il brano intero, una traccia o una
   traccia per strumento), salvala come `.mid` o usa l'uscita MIDI dal vivo. Note General MIDI sul
   canale 10 di default; la nota di ogni strumento si può cambiare.
+- 🌍 **Interfaccia in 6 lingue:** English, Italiano, Español, Français, Deutsch, Português (**OPZIONI → Lingua**).
 - ⏱️ **Tempo:** sincronizzato con la DAW o impostato a mano; ▶ suona senza la DAW (barra spaziatrice).
 
 Tutto è spiegato nella **[guida](docs/GUIDA.md)**.

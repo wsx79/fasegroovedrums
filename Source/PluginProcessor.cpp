@@ -3,6 +3,7 @@
 
 #include "PluginProcessor.h"
 #include "PluginEditor.h"
+#include "Localisation.h"
 
 #include <complex>
 
@@ -1398,13 +1399,13 @@ juce::String FaseGrooveDrumsProcessor::importAudioGroove (const juce::File& file
         setSegmentAt (i, i);
 
     // The swing: how late the odd 16ths are, as the Swing control measures it.
-    juce::String report = juce::String (wholeBars) + (wholeBars == 1 ? " bar" : " bars") + " at " + juce::String (bpm, 1) + " BPM";
+    juce::String report = juce::String (wholeBars) + " " + tr (wholeBars == 1 ? "bar" : "bars") + ", " + juce::String (bpm, 1) + " BPM";
     if (oddDelays.size() >= 2)
     {
         auto median = [] (std::vector<double> v) { std::sort (v.begin(), v.end()); return v.empty() ? 0.0 : v[v.size() / 2]; };
         const double swingAmount = juce::jlimit (0.0, 1.0, (median (oddDelays) - median (evenDelays)) * 3.0);
         setParameterFromUI (ParamIDs::swing, (float) swingAmount);
-        report << ", swing " << juce::roundToInt (swingAmount * 100.0) << "%";
+        report << ", " << tr ("Swing").toLowerCase() << " " << juce::roundToInt (swingAmount * 100.0) << "%";
     }
     return report;
 }

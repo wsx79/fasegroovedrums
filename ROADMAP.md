@@ -9,6 +9,5 @@ the [CHANGELOG](CHANGELOG.md).
 - A bigger piano roll (notes off the grid, micro-timing per hit).
 - Groove browser with favourites, like Fase Groove Piano.
 - A whole kit folder of samples in one go.
-- Interface in 6 languages, like Fase Groove Piano.
 - Windows installer, automatic updates.
 - Sync with Fase Groove Piano (same style, same song sections).

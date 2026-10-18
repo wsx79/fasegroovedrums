@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.22)
 
-project(FaseGrooveDrums VERSION 0.4.0 LANGUAGES C CXX)
+project(FaseGrooveDrums VERSION 0.5.0 LANGUAGES C CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -78,7 +78,8 @@ if(FGD_BUILD_PLUGIN)
     target_sources(FaseGrooveDrums PRIVATE
         Source/PluginProcessor.cpp
         Source/PluginEditor.cpp
-        Source/Branding.cpp)
+        Source/Branding.cpp
+        Source/Localisation.cpp)
 
     target_compile_definitions(FaseGrooveDrums PUBLIC
         JUCE_WEB_BROWSER=0

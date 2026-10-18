@@ -5,6 +5,7 @@
 // styles, exported MIDI files, DAW transport and the guide kit.
 
 #include "../Source/PluginProcessor.h"
+#include "../Source/Localisation.h"
 
 #include <cstdio>
 #include <set>
@@ -422,7 +423,7 @@ namespace
             }
             return nullptr;
         };
-        auto click = [&] (const juce::String& text) { if (auto* b = findButton (*editor, text); b != nullptr && b->onClick) b->onClick(); };
+        auto click = [&] (const juce::String& text) { if (auto* b = findButton (*editor, tr (text)); b != nullptr && b->onClick) b->onClick(); };
 
         save ("1-main");
         click ("VELOCITY");
@@ -445,7 +446,7 @@ namespace
         };
         if (auto* b = grooveButton (*editor)) b->onClick();
         save ("2c-browser");
-        if (auto* b = findButton (*editor, "CLOSE")) b->onClick();
+        if (auto* b = findButton (*editor, tr ("CLOSE"))) b->onClick();
         click ("FULL SONG...");
         save ("3-song");
         click ("CLOSE");
@@ -454,10 +455,42 @@ namespace
     }
 }
 
+namespace
+{
+    void testTranslations()
+    {
+        const auto before = Localisation::current();
+        Localisation::setCurrent (Localisation::Language::italian);
+        CHECK (tr ("CLOSE") == "CHIUDI");
+        CHECK (tr ("Kick") == "Cassa");
+        CHECK (tr ("Some groove name") == "Some groove name");   // no translation: as it is
+
+        // A bound text follows the language at once.
+        juce::TextButton b;
+        Localisation::bindText (b, "CLOSE");
+        CHECK (b.getButtonText() == "CHIUDI");
+        Localisation::setCurrent (Localisation::Language::german);
+        CHECK (b.getButtonText() == "SCHLIESSEN");
+        Localisation::setCurrent (Localisation::Language::english);
+        CHECK (b.getButtonText() == "CLOSE");
+
+        // Every language has a text for every entry.
+        for (int lang = 1; lang < Localisation::numLanguages; ++lang)
+        {
+            Localisation::setCurrent ((Localisation::Language) lang);
+            for (const auto* key : { "Groove feel & song", "Export MIDI", "Snare roll", "Every 4 bars", "Offbeat push", "Whole song" })
+                CHECK (tr (key).isNotEmpty() && (tr (key) != key || juce::String (key) == "Export MIDI"));
+        }
+        Localisation::setCurrent (before);
+    }
+}
+
 int main (int argc, char** argv)
 {
     juce::ScopedJuceInitialiser_GUI juce;
 
+    if (argc > 3 && juce::String (argv[1]) == "--screenshots")
+        Localisation::setCurrent ((Localisation::Language) juce::String (argv[3]).getIntValue());
     if (argc > 2 && juce::String (argv[1]) == "--screenshots")
     {
         saveScreenshots (juce::File::getCurrentWorkingDirectory().getChildFile (argv[2]));
@@ -470,6 +503,7 @@ int main (int argc, char** argv)
     testMidiExport();
     testTransport();
     testV020();
+    testTranslations();
 
     if (failures == 0)
         std::printf ("All plug-in tests passed.\n");

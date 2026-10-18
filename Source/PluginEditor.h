@@ -266,6 +266,7 @@ private:
     juce::Rectangle<int> card() const;
     juce::TextButton sourceButton { "SOURCE CODE" }, kofiButton { "DONATE: KO-FI" }, paypalButton { "DONATE: PAYPAL" },
                      spotifyButton { "SPOTIFY" }, closeButton { "CLOSE" };
+    juce::ComboBox languageBox;
     juce::Image artistLogo;
 };
 

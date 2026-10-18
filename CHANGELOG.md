@@ -4,6 +4,14 @@
 
 All notable changes to **Fase Groove Drums**.
 
+## [0.5.0] - 2026-10-18
+
+- **Interface in 6 languages**, as in Fase Groove Piano: English, Italiano, Español, Français,
+  Deutsch, Português. Choose it in **OPTIONS → Language**: everything changes at once and the
+  choice is kept for every project (the first time, the computer's language is used).
+- Buttons, captions, menus, tooltips, the song window, the browser, the mixer, messages and the
+  Standalone app's audio settings are all translated; groove and genre names stay as they are.
+
 ## [0.4.0] - 2026-10-18
 
 - **Groove browser**: the scrolling menu is gone. Genres on the left, their grooves on the right,
