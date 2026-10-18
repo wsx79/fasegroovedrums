@@ -106,3 +106,14 @@ La prima modifica copia il groove mostrato nello **User pattern**, che si salva 
 - **PRESETS / MY GROOVES:** salva e carica; MY GROOVES importa anche la batteria di un file MIDI (o
   trascina il .mid sulla finestra).
 - ⏮ ▶ ■, annulla / ripeti (frecce, Ctrl+Z), schermo intero (in alto a destra).
+
+## 10. Novità della 0.4
+
+- **GROOVE** (in alto a sinistra) apre il **browser**: un genere a sinistra, un groove a destra
+  (clic per caricarlo, frecce per il successivo).
+- **IMPORT...**: la batteria di un file MIDI, oppure un **loop audio** trasformato in griglia. Puoi
+  anche trascinare il file sulla finestra (sulla riga o sul pad di uno strumento un file audio
+  diventa il suo campione).
+- **ACCENTS** (GROOVE FEEL): il groove degli accenti degli hat. **VOLUME** (KIT & SOUNDS) e **MIXER**
+  (accanto a VELOCITY): il volume di ogni strumento nel suono guida.
+- La cassa non esce mai dalla griglia.

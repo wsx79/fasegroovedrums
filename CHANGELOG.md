@@ -4,6 +4,24 @@
 
 All notable changes to **Fase Groove Drums**.
 
+## [0.4.0] - 2026-10-18
+
+- **Groove browser**: the scrolling menu is gone. Genres on the left, their grooves on the right,
+  each with a picture of its rhythm (hats, backbeat, kick); a click loads it, arrows go through
+  them, a die makes a new beat in the genre.
+- **Audio loop → grid** (IMPORT... → audio, or drop a loop on the window): kick, clap, closed and
+  open hats, with their velocities and the loop's swing.
+- **The kick is always on the grid**: no swing, no humanize, no flam on the kick, ever.
+- **ACCENTS**: hats, shaker, ride and tambourine sing on the offbeat and are softer on the 16ths,
+  like a real hat player (0% = flat).
+- **VOLUME** per drum (kit panel) and a **MIXER** (a fader and a mute for every drum of the guide
+  sound and your samples). LEVEL still changes the MIDI velocities.
+- Velocities set by hand now stay on the variation bar and under fills (they used to change at
+  the end of the bar).
+- **Random beats rebuilt** by roles, as a producer works: kick, backbeat, one main hat line, at most
+  one second hat, one shaker or tambourine, at most one percussion; bar 2 repeats bar 1.
+- Genre swing and the Offbeat push velocity shape follow real house loops more closely.
+
 ## [0.3.0] - 2026-10-18
 
 The same interface as Fase Groove Piano, adapted to the drums.

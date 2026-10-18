@@ -290,6 +290,54 @@ private:
 };
 
 //==============================================================================
+/** The groove browser: the genres on the left, their grooves on the right, each with a picture
+    of its rhythm. A click loads it (you hear it at once if it plays). */
+class GrooveBrowser : public juce::Component
+{
+public:
+    explicit GrooveBrowser (FaseGrooveDrumsProcessor&);
+    void paint (juce::Graphics&) override;
+    void resized() override;
+    void mouseDown (const juce::MouseEvent&) override;
+    void mouseMove (const juce::MouseEvent&) override;
+    void mouseExit (const juce::MouseEvent&) override { hover = -1; repaint(); }
+    bool keyPressed (const juce::KeyPress&) override;
+    void show();
+
+private:
+    juce::Rectangle<float> card() const;
+    juce::Rectangle<float> genreBounds (int genre) const;
+    juce::Rectangle<float> tileBounds (int index) const;
+    std::vector<int> groovesOf (int genre) const;
+    void pick (int pattern);
+
+    FaseGrooveDrumsProcessor& processor;
+    int genre = 0, hover = -1;
+    IconButton randomButton { IconButton::Icon::dice };
+    juce::TextButton closeButton { "CLOSE" };
+};
+
+//==============================================================================
+/** The mixer: a volume fader and a mute for each drum of the guide kit (and your samples). */
+class MixerView : public juce::Component
+{
+public:
+    explicit MixerView (FaseGrooveDrumsProcessor&);
+    void paint (juce::Graphics&) override;
+    void resized() override;
+    void setLights (const std::array<float, fgd::numLanes>& l) { lights = l; repaint(); }
+
+private:
+    juce::Rectangle<int> strip (int lane) const;
+    FaseGrooveDrumsProcessor& processor;
+    juce::OwnedArray<juce::Slider> faders;
+    juce::OwnedArray<juce::TextButton> mutes;
+    juce::OwnedArray<juce::AudioProcessorValueTreeState::SliderAttachment> faderAttachments;
+    juce::OwnedArray<juce::AudioProcessorValueTreeState::ButtonAttachment> muteAttachments;
+    std::array<float, fgd::numLanes> lights {};
+};
+
+//==============================================================================
 /** The kit as 13 pads: they light up on the hits; click one to hear it and pick it. */
 class DrumPads : public juce::Component, public juce::SettableTooltipClient
 {
@@ -345,7 +393,7 @@ private:
     void importMidi();
     void importAudio();
     void importFile (const juce::File&);
-    void setView (bool velocity);
+    void setView (int mode);   // 0 step grid, 1 velocity, 2 mixer
     void stepGroove (int delta);
     void selectLane (int lane);
     void refreshKitPanel();
@@ -373,6 +421,7 @@ private:
 
     // Groove row
     ParamCombo grooveCombo, genreCombo;
+    juce::TextButton grooveButton;
     IconButton prevGroove { IconButton::Icon::left }, nextGroove { IconButton::Icon::right };
     IconButton newBeatButton { IconButton::Icon::dice };
     juce::Slider densitySlider;
@@ -384,8 +433,8 @@ private:
     juce::ComboBox drumBox, noteBox;
     juce::TextButton loadSampleButton { "LOAD SAMPLE..." }, builtInButton { "BUILT-IN" }, muteButton { "MUTE" };
     IconButton laneDiceButton { IconButton::Icon::dice };
-    juce::Slider levelKnob;
-    std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> levelAttachment;
+    juce::Slider levelKnob, volumeKnob;
+    std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> levelAttachment, volumeAttachment;
     std::unique_ptr<juce::FileChooser> sampleChooser;
 
     // Pads
@@ -402,12 +451,13 @@ private:
     Knob tone, reverb, volume;
 
     // Edit
-    juce::TextButton gridTab { "STEP GRID" }, velocityTab { "VELOCITY" }, clearButton { "CLEAR" }, myGroovesButton { "MY GROOVES" },
+    juce::TextButton gridTab { "STEP GRID" }, velocityTab { "VELOCITY" }, mixerTab { "MIXER" }, clearButton { "CLEAR" }, myGroovesButton { "MY GROOVES" },
                      importButton { "IMPORT MIDI" };
     IconButton newRhythmButton { IconButton::Icon::dice };
     DrumGrid grid;
     VelocityView velocityView;
-    bool velocityShown = false;
+    MixerView mixerView;
+    int viewMode = 0;
 
     // Export
     juce::ComboBox notesBox, lengthBox;
@@ -416,6 +466,7 @@ private:
     std::unique_ptr<juce::FileChooser> chooser;
 
     SongOverlay songOverlay { processor };
+    GrooveBrowser browser { processor };
     AboutPanel about;
     std::vector<ParamCombo*> combos;
     juce::Rectangle<int> logoArea, displayArea;

@@ -4,6 +4,25 @@
 
 Tutte le modifiche importanti di **Fase Groove Drums**.
 
+## [0.4.0] - 2026-10-18
+
+- **Browser dei groove**: niente più menu a scorrimento. Generi a sinistra, i loro groove a destra,
+  ognuno con il disegno del ritmo (hat, rullante/clap, cassa); un clic lo carica, le frecce li
+  scorrono, un dado crea un nuovo beat nel genere.
+- **Loop audio → griglia** (IMPORT... → audio, o trascina un loop sulla finestra): cassa, clap, hat
+  chiusi e aperti, con le velocity e lo swing del loop.
+- **La cassa è sempre sulla griglia**: niente swing, humanize o flam sulla cassa, mai.
+- **ACCENTS**: hat, shaker, ride e tamburello più forti in levare e più leggeri sui 16esimi, come
+  un vero batterista (0% = piatto).
+- **VOLUME** per strumento (pannello kit) e un **MIXER** (un fader e un muto per ogni strumento del
+  suono guida e dei tuoi campioni). LEVEL cambia ancora le velocity MIDI.
+- Le velocity impostate a mano ora restano anche nella battuta di variazione e sotto i fill
+  (prima cambiavano a fine battuta).
+- **Beat casuali rifatti** per ruoli, come lavora un produttore: cassa, backbeat, una linea di hat
+  principale, al massimo un secondo hat, uno shaker o un tamburello, al massimo una percussione;
+  la battuta 2 ripete la 1.
+- Swing per genere e forma "Offbeat push" più vicini ai veri loop house.
+
 ## [0.3.0] - 2026-10-18
 
 La stessa interfaccia di Fase Groove Piano, adattata alla batteria.

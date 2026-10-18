@@ -42,6 +42,7 @@ namespace ParamIDs
     inline juce::String mute (int lane)  { return "mute" + juce::String (lane + 1); }
     inline juce::String note (int lane)  { return "note" + juce::String (lane + 1); }
     inline juce::String level (int lane) { return "level" + juce::String (lane + 1); }
+    inline juce::String laneVolume (int lane) { return "volume" + juce::String (lane + 1); }   // the guide sound's volume of a drum, in dB
 }
 
 class FaseGrooveDrumsProcessor : public juce::AudioProcessor

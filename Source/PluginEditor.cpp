@@ -1695,6 +1695,296 @@ void PartCard::paint (juce::Graphics& g)
 }
 
 //==============================================================================
+GrooveBrowser::GrooveBrowser (FaseGrooveDrumsProcessor& p) : processor (p)
+{
+    setWantsKeyboardFocus (true);
+    randomButton.setButtonText ("NEW RANDOM BEAT IN THIS GENRE");
+    randomButton.iconColour = Palette::accent;
+    randomButton.onClick = [this]
+    {
+        if (genre < (int) fgd::grooveCategories().size())
+            processor.setParameterFromUI (ParamIDs::genre, (float) genre);
+        processor.rollNewBeat();
+        repaint();
+    };
+    addAndMakeVisible (randomButton);
+    closeButton.onClick = [this] { setVisible (false); };
+    addAndMakeVisible (closeButton);
+}
+
+juce::Rectangle<float> GrooveBrowser::card() const
+{
+    return getLocalBounds().toFloat().withSizeKeepingCentre (1040.0f, 680.0f);
+}
+
+juce::Rectangle<float> GrooveBrowser::genreBounds (int g) const
+{
+    auto c = card().reduced (22.0f);
+    return { c.getX(), c.getY() + 56.0f + 38.0f * (float) g, 210.0f, 34.0f };
+}
+
+juce::Rectangle<float> GrooveBrowser::tileBounds (int index) const
+{
+    auto c = card().reduced (22.0f);
+    auto area = c.withTrimmedLeft (230.0f).withTrimmedTop (56.0f).withTrimmedBottom (56.0f);
+    const float w = (area.getWidth() - 2 * 12.0f) / 3.0f, h = 76.0f;
+    return { area.getX() + (w + 12.0f) * (float) (index % 3), area.getY() + (h + 10.0f) * (float) (index / 3), w, h };
+}
+
+std::vector<int> GrooveBrowser::groovesOf (int g) const
+{
+    std::vector<int> list;
+    const auto& presets = fgd::drumPatterns();
+    if (g >= (int) fgd::grooveCategories().size())
+        return { fgd::randomPatternIndex(), fgd::userPatternIndex() };
+    for (size_t i = 0; i < presets.size(); ++i)
+        if (presets[i].category == fgd::grooveCategories()[(size_t) g])
+            list.push_back ((int) i);
+    return list;
+}
+
+void GrooveBrowser::show()
+{
+    const int current = juce::roundToInt (processor.raw (ParamIDs::pattern));
+    genre = current < (int) fgd::drumPatterns().size() ? juce::jmax (0, fgd::categoryIndex (fgd::drumPatterns()[(size_t) current].category))
+                                                        : (int) fgd::grooveCategories().size();
+    setVisible (true);
+    toFront (true);
+    grabKeyboardFocus();
+    repaint();
+}
+
+void GrooveBrowser::pick (int pattern)
+{
+    processor.setParameterFromUI (ParamIDs::pattern, (float) pattern);
+    repaint();
+}
+
+void GrooveBrowser::resized()
+{
+    auto c = card().reduced (22.0f).toNearestInt();
+    auto bottom = c.removeFromBottom (36);
+    closeButton.setBounds (bottom.removeFromRight (90));
+    bottom.removeFromRight (10);
+    randomButton.setBounds (bottom.removeFromRight (300));
+}
+
+void GrooveBrowser::paint (juce::Graphics& g)
+{
+    g.fillAll (juce::Colours::black.withAlpha (0.78f));
+    const auto c = card();
+    g.setColour (Palette::panel);
+    g.fillRoundedRectangle (c, 10.0f);
+    g.setColour (Palette::panelEdge.brighter (0.3f));
+    g.drawRoundedRectangle (c, 10.0f, 1.0f);
+
+    auto inner = c.reduced (22.0f);
+    g.setColour (Palette::accent);
+    g.setFont (font (20.0f, true));
+    g.drawText ("GROOVES", inner.removeFromTop (30.0f), juce::Justification::centredLeft);
+    g.setColour (Palette::dim);
+    g.setFont (font (12.0f));
+    g.drawText ("Pick a genre, click a groove: it loads at once (press play to hear it).  Arrows: previous / next.",
+                c.reduced (22.0f).withTrimmedTop (30.0f).withHeight (18.0f).withTrimmedLeft (0.0f), juce::Justification::centredLeft);
+
+    // Genres
+    const int numGenres = (int) fgd::grooveCategories().size();
+    for (int i = 0; i <= numGenres; ++i)
+    {
+        auto r = genreBounds (i);
+        const bool on = i == genre;
+        g.setColour (on ? Palette::accent : Palette::control);
+        g.fillRoundedRectangle (r, 5.0f);
+        g.setColour (on ? Palette::background : Palette::text);
+        g.setFont (font (13.0f, on));
+        const auto name = i < numGenres ? juce::String (fgd::grooveCategories()[(size_t) i]) : juce::String ("Your beats");
+        g.drawText (name, r.reduced (12.0f, 0.0f), juce::Justification::centredLeft);
+        g.setColour (on ? Palette::background.withAlpha (0.7f) : Palette::dim);
+        g.setFont (font (11.0f));
+        g.drawText (juce::String ((int) groovesOf (i).size()), r.reduced (12.0f, 0.0f), juce::Justification::centredRight);
+    }
+
+    // Grooves of the genre, with a picture of their rhythm.
+    const int current = juce::roundToInt (processor.raw (ParamIDs::pattern));
+    const auto list = groovesOf (genre);
+    for (int k = 0; k < (int) list.size(); ++k)
+    {
+        const int index = list[(size_t) k];
+        auto r = tileBounds (k);
+        const bool on = index == current;
+        g.setColour (k == hover ? Palette::control.brighter (0.08f) : Palette::field);
+        g.fillRoundedRectangle (r, 6.0f);
+        g.setColour (on ? Palette::accent : Palette::panelEdge);
+        g.drawRoundedRectangle (r.reduced (0.5f), 6.0f, on ? 2.0f : 1.0f);
+
+        fgd::DrumSettings s = processor.currentSettings();
+        s.pattern = index;
+        auto pattern = fgd::GrooveEngine::basePattern (s);
+        auto inner2 = r.reduced (10.0f, 7.0f);
+        g.setColour (on ? Palette::accent : Palette::text);
+        g.setFont (font (13.0f, true));
+        g.drawFittedText (index == fgd::userPatternIndex() ? juce::String ("User pattern") : juce::String (pattern.name),
+                          inner2.removeFromTop (18.0f).toNearestInt(), juce::Justification::centredLeft, 1, 0.7f);
+        inner2.removeFromTop (5.0f);
+
+        struct Row { std::initializer_list<fgd::Lane> lanes; int colourLane; };
+        const Row rows[] { { { fgd::Lane::closedHat, fgd::Lane::openHat, fgd::Lane::ride, fgd::Lane::shaker }, (int) fgd::Lane::closedHat },
+                           { { fgd::Lane::snare, fgd::Lane::clap, fgd::Lane::rim }, (int) fgd::Lane::snare },
+                           { { fgd::Lane::kick }, (int) fgd::Lane::kick } };
+        const float rowH = inner2.getHeight() / 3.0f, cellW = inner2.getWidth() / 32.0f;
+        for (int row = 0; row < 3; ++row)
+            for (int i = 0; i < 32 && i < pattern.length(); ++i)
+            {
+                char strongest = '.';
+                for (auto lane : rows[row].lanes)
+                {
+                    const char ch = pattern[lane][(size_t) i];
+                    if (ch == 'X' || (fgd::isHit (ch) && (strongest == '.' || strongest == 'g')))
+                        strongest = ch;
+                }
+                auto cell = juce::Rectangle<float> (inner2.getX() + cellW * (float) i, inner2.getY() + rowH * (float) row, cellW, rowH).reduced (0.8f);
+                g.setColour (Palette::panelEdge.withAlpha (i / 4 % 2 == 0 ? 0.5f : 0.3f));
+                g.fillRect (cell);
+                if (fgd::isHit (strongest))
+                {
+                    g.setColour (laneColour (rows[row].colourLane).withAlpha (strongest == 'X' ? 1.0f : strongest == 'g' ? 0.4f : 0.75f));
+                    g.fillRect (cell);
+                }
+            }
+    }
+}
+
+void GrooveBrowser::mouseDown (const juce::MouseEvent& e)
+{
+    if (! card().contains (e.position))
+    {
+        setVisible (false);
+        return;
+    }
+    for (int i = 0; i <= (int) fgd::grooveCategories().size(); ++i)
+        if (genreBounds (i).contains (e.position))
+        {
+            genre = i;
+            hover = -1;
+            repaint();
+            return;
+        }
+    const auto list = groovesOf (genre);
+    for (int k = 0; k < (int) list.size(); ++k)
+        if (tileBounds (k).contains (e.position))
+        {
+            pick (list[(size_t) k]);
+            if (e.getNumberOfClicks() > 1)
+                setVisible (false);
+            return;
+        }
+}
+
+void GrooveBrowser::mouseMove (const juce::MouseEvent& e)
+{
+    int now = -1;
+    const auto list = groovesOf (genre);
+    for (int k = 0; k < (int) list.size(); ++k)
+        if (tileBounds (k).contains (e.position))
+            now = k;
+    if (now != hover)
+    {
+        hover = now;
+        repaint();
+    }
+}
+
+bool GrooveBrowser::keyPressed (const juce::KeyPress& key)
+{
+    if (key == juce::KeyPress::escapeKey)
+    {
+        setVisible (false);
+        return true;
+    }
+    const auto list = groovesOf (genre);
+    if (list.empty())
+        return false;
+    const int current = juce::roundToInt (processor.raw (ParamIDs::pattern));
+    auto it = std::find (list.begin(), list.end(), current);
+    const int at = it == list.end() ? -1 : (int) (it - list.begin());
+    if (key == juce::KeyPress::rightKey || key == juce::KeyPress::downKey)
+    {
+        pick (list[(size_t) ((at + 1) % (int) list.size())]);
+        return true;
+    }
+    if (key == juce::KeyPress::leftKey || key == juce::KeyPress::upKey)
+    {
+        pick (list[(size_t) ((at - 1 + (int) list.size()) % (int) list.size())]);
+        return true;
+    }
+    return false;
+}
+
+//==============================================================================
+MixerView::MixerView (FaseGrooveDrumsProcessor& p) : processor (p)
+{
+    for (int l = 0; l < fgd::numLanes; ++l)
+    {
+        auto* f = faders.add (new juce::Slider (juce::Slider::LinearVertical, juce::Slider::TextBoxBelow));
+        f->setTextBoxStyle (juce::Slider::TextBoxBelow, false, 56, 16);
+        f->setColour (juce::Slider::trackColourId, laneColour (l));
+        f->setColour (juce::Slider::thumbColourId, Palette::text);
+        f->setColour (juce::Slider::backgroundColourId, Palette::field);
+        f->setColour (juce::Slider::textBoxOutlineColourId, juce::Colours::transparentBlack);
+        f->setTooltip (juce::String (fgd::laneName (l)) + ": volume of the guide sound (your sample too). The MIDI velocities don't change: LEVEL does that");
+        f->setDoubleClickReturnValue (true, 0.0);
+        addAndMakeVisible (f);
+        faderAttachments.add (new juce::AudioProcessorValueTreeState::SliderAttachment (processor.apvts, ParamIDs::laneVolume (l), *f));
+
+        auto* m = mutes.add (new juce::TextButton ("M"));
+        m->setClickingTogglesState (true);
+        m->setColour (juce::TextButton::buttonOnColourId, Palette::toms);
+        m->setTooltip ("Mute the " + juce::String (fgd::laneName (l)).toLowerCase());
+        addAndMakeVisible (m);
+        muteAttachments.add (new juce::AudioProcessorValueTreeState::ButtonAttachment (processor.apvts, ParamIDs::mute (l), *m));
+    }
+}
+
+juce::Rectangle<int> MixerView::strip (int lane) const
+{
+    const int w = getWidth() / fgd::numLanes;
+    return { lane * w, 0, w, getHeight() };
+}
+
+void MixerView::resized()
+{
+    for (int l = 0; l < fgd::numLanes; ++l)
+    {
+        auto r = strip (l).reduced (4, 2);
+        r.removeFromTop (30);
+        mutes[l]->setBounds (r.removeFromBottom (22).reduced (6, 0));
+        r.removeFromBottom (4);
+        faders[l]->setBounds (r);
+    }
+}
+
+void MixerView::paint (juce::Graphics& g)
+{
+    for (int l = 0; l < fgd::numLanes; ++l)
+    {
+        auto r = strip (l).reduced (2, 0).toFloat();
+        g.setColour (Palette::field);
+        g.fillRoundedRectangle (r, 5.0f);
+        g.setColour (laneColour (l).withAlpha (0.9f));
+        g.fillRoundedRectangle (r.withHeight (3.0f).reduced (6.0f, 0.0f), 1.5f);
+        g.setColour (Palette::text);
+        g.setFont (font (10.5f, true));
+        g.drawText (fgd::laneShortName (l), r.withTrimmedTop (5.0f).withHeight (14.0f), juce::Justification::centred);
+        const float light = juce::jlimit (0.0f, 1.0f, lights[(size_t) l]);
+        auto led = juce::Rectangle<float> (r.getWidth() - 20.0f, 4.0f).withCentre ({ r.getCentreX(), r.getY() + 24.0f });
+        g.setColour (Palette::panelEdge);
+        g.fillRoundedRectangle (led, 2.0f);
+        g.setColour (laneColour (l));
+        g.fillRoundedRectangle (led.withWidth (led.getWidth() * light), 2.0f);
+    }
+}
+
+//==============================================================================
 juce::Rectangle<float> DrumPads::padBounds (int lane) const
 {
     // 4 x 4: the kit in its usual order, the three cymbals... and percussion around them.
@@ -1769,7 +2059,7 @@ FaseGrooveDrumsEditor::FaseGrooveDrumsEditor (FaseGrooveDrumsProcessor& p)
       tone (p.apvts, ParamIDs::tone, "Tone"),
       reverb (p.apvts, ParamIDs::reverb, "Reverb"),
       volume (p.apvts, ParamIDs::volume, "Volume"),
-      grid (p), velocityView (p)
+      grid (p), velocityView (p), mixerView (p)
 {
     setLookAndFeel (&lookAndFeel);
     addAndMakeVisible (content);
@@ -1870,7 +2160,9 @@ FaseGrooveDrumsEditor::FaseGrooveDrumsEditor (FaseGrooveDrumsProcessor& p)
     densitySlider.setSliderStyle (juce::Slider::LinearBar);
     densitySlider.setTooltip ("How busy the dice are: from kick, clap and hats to 16ths and percussion");
     densityAttachment = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment> (p.apvts, ParamIDs::density, densitySlider);
-    for (juce::Component* c : std::initializer_list<juce::Component*> { &grooveCombo, &prevGroove, &nextGroove, &genreCombo, &newBeatButton, &densitySlider })
+    grooveButton.setTooltip ("The groove: click to open the browser (genres, grooves and the picture of their rhythm)");
+    grooveButton.onClick = [this] { browser.show(); };
+    for (juce::Component* c : std::initializer_list<juce::Component*> { &grooveButton, &prevGroove, &nextGroove, &genreCombo, &newBeatButton, &densitySlider })
         show (*c);
     for (int i = 0; i < fgd::numSegments; ++i)
     {
@@ -1922,8 +2214,14 @@ FaseGrooveDrumsEditor::FaseGrooveDrumsEditor (FaseGrooveDrumsProcessor& p)
     levelKnob.setSliderStyle (juce::Slider::RotaryHorizontalVerticalDrag);
     levelKnob.setTextBoxStyle (juce::Slider::TextBoxBelow, false, 70, 15);
     levelKnob.setColour (juce::Slider::textBoxOutlineColourId, juce::Colours::transparentBlack);
-    levelKnob.setTooltip ("This drum's level: its velocities (and so the clips) go up or down");
-    for (juce::Component* c : std::initializer_list<juce::Component*> { &drumBox, &noteBox, &laneDiceButton, &muteButton, &loadSampleButton, &builtInButton, &levelKnob })
+    levelKnob.setTooltip ("This drum's LEVEL: its MIDI velocities (and so the clips) go up or down");
+    volumeKnob.setSliderStyle (juce::Slider::RotaryHorizontalVerticalDrag);
+    volumeKnob.setTextBoxStyle (juce::Slider::TextBoxBelow, false, 70, 15);
+    volumeKnob.setColour (juce::Slider::textBoxOutlineColourId, juce::Colours::transparentBlack);
+    volumeKnob.setDoubleClickReturnValue (true, 0.0);
+    volumeKnob.setTooltip ("This drum's VOLUME in the guide sound (your sample too); the MIDI doesn't change. All of them: MIXER");
+    for (juce::Component* c : std::initializer_list<juce::Component*> { &drumBox, &noteBox, &laneDiceButton, &muteButton, &loadSampleButton, &builtInButton,
+                                                                        &levelKnob, &volumeKnob })
         show (*c);
 
     // ---- Pads ----
@@ -1957,10 +2255,13 @@ FaseGrooveDrumsEditor::FaseGrooveDrumsEditor (FaseGrooveDrumsProcessor& p)
 
     // ---- Edit: step grid / velocity ----
     gridTab.setConnectedEdges (juce::Button::ConnectedOnRight);
-    velocityTab.setConnectedEdges (juce::Button::ConnectedOnLeft);
-    gridTab.onClick = [this] { setView (false); };
+    velocityTab.setConnectedEdges (juce::Button::ConnectedOnLeft | juce::Button::ConnectedOnRight);
+    mixerTab.setConnectedEdges (juce::Button::ConnectedOnLeft);
+    mixerTab.setTooltip ("A volume fader and a mute for every drum of the guide sound");
+    mixerTab.onClick = [this] { setView (2); };
+    gridTab.onClick = [this] { setView (0); };
     velocityTab.setTooltip ("The velocity of every hit, one drum at a time (what makes hats groove)");
-    velocityTab.onClick = [this] { setView (true); };
+    velocityTab.onClick = [this] { setView (1); };
     newRhythmButton.setButtonText ("BEAT");
     newRhythmButton.iconColour = Palette::accent;
     newRhythmButton.setTooltip ("A brand new random beat (locked parts stay)");
@@ -1984,11 +2285,12 @@ FaseGrooveDrumsEditor::FaseGrooveDrumsEditor (FaseGrooveDrumsProcessor& p)
     };
     clearButton.setTooltip ("Empty the grid and start your own beat");
     clearButton.onClick = [this] { processor.clearGrid(); grid.refresh(); velocityView.refresh(); };
-    grid.onShowVelocity = [this] (int lane) { selectLane (lane); setView (true); };
+    grid.onShowVelocity = [this] (int lane) { selectLane (lane); setView (1); };
     grid.onSelectLane = [this] (int lane) { selectLane (lane); };
-    for (juce::Component* c : std::initializer_list<juce::Component*> { &gridTab, &velocityTab, &newRhythmButton, &myGroovesButton, &importButton, &clearButton, &grid })
+    for (juce::Component* c : std::initializer_list<juce::Component*> { &gridTab, &velocityTab, &mixerTab, &newRhythmButton, &myGroovesButton, &importButton, &clearButton, &grid })
         show (*c);
     content.addChildComponent (velocityView);
+    content.addChildComponent (mixerView);
 
     // ---- Export MIDI ----
     notesBox.addItem ("All drums", 1);
@@ -2015,13 +2317,15 @@ FaseGrooveDrumsEditor::FaseGrooveDrumsEditor (FaseGrooveDrumsProcessor& p)
         show (*c);
 
     content.addChildComponent (songOverlay);
+    content.addChildComponent (browser);
     content.addChildComponent (about);
 
-    combos = { &grooveCombo, &genreCombo, &sectionCombo, &fillsCombo, &variationCombo, &fillStyleCombo, &kitCombo, &channelCombo };
+    combos = { &genreCombo, &sectionCombo, &fillsCombo, &variationCombo, &fillStyleCombo, &kitCombo, &channelCombo };
 
     lastSnapshot = processor.snapshot();
     selectLane ((int) fgd::Lane::closedHat);
-    setView (false);
+    setView (0);
+    timerCallback();   // the groove's name, the parts and the lights from the start
 
     const float scale = juce::jlimit (0.6f, 2.0f, processor.editorScale);
     setResizable (true, true);
@@ -2129,6 +2433,7 @@ bool FaseGrooveDrumsEditor::Content::keyPressed (const juce::KeyPress& key)
     {
         editor.about.setVisible (false);
         editor.songOverlay.setVisible (false);
+        editor.browser.setVisible (false);
         return true;
     }
     return false;
@@ -2156,7 +2461,7 @@ void FaseGrooveDrumsEditor::layout()
     displayArea = { 874, 12, 288, 78 };
 
     // Groove row (20, 100, 1142, 132)
-    grooveCombo.setBounds (34, 128, 214, 46);
+    grooveButton.setBounds (34, 143, 214, 30);
     prevGroove.setBounds (252, 143, 24, 30);
     nextGroove.setBounds (276, 143, 24, 30);
     genreCombo.setBounds (34, 178, 150, 46);
@@ -2169,10 +2474,11 @@ void FaseGrooveDrumsEditor::layout()
     drumBox.setBounds (34, 290, 164, 28);
     laneDiceButton.setBounds (202, 290, 34, 28);
     muteButton.setBounds (240, 290, 56, 28);
-    noteBox.setBounds (34, 344, 176, 28);
-    levelKnob.setBounds (218, 326, 82, 88);
-    loadSampleButton.setBounds (34, 456, 166, 30);
-    builtInButton.setBounds (204, 456, 92, 30);
+    noteBox.setBounds (34, 344, 146, 28);
+    levelKnob.setBounds (182, 340, 58, 74);
+    volumeKnob.setBounds (240, 340, 60, 74);
+    loadSampleButton.setBounds (34, 460, 166, 28);
+    builtInButton.setBounds (204, 460, 92, 28);
 
     // Pads (320, 242, 260, 256)
     pads.setBounds (326, 276, 248, 216);
@@ -2198,14 +2504,16 @@ void FaseGrooveDrumsEditor::layout()
     volume.setBounds (1074, 384, 76, 108);
 
     // Edit (20, 508, 830, 342)
-    gridTab.setBounds (34, 534, 100, 26);
-    velocityTab.setBounds (134, 534, 96, 26);
-    newRhythmButton.setBounds (246, 534, 90, 26);
-    myGroovesButton.setBounds (352, 534, 112, 26);
-    importButton.setBounds (468, 534, 112, 26);
+    gridTab.setBounds (34, 534, 92, 26);
+    velocityTab.setBounds (126, 534, 86, 26);
+    mixerTab.setBounds (212, 534, 70, 26);
+    newRhythmButton.setBounds (296, 534, 86, 26);
+    myGroovesButton.setBounds (396, 534, 104, 26);
+    importButton.setBounds (504, 534, 90, 26);
     clearButton.setBounds (762, 534, 76, 26);
     grid.setBounds (28, 568, 814, 274);
     velocityView.setBounds (28, 568, 814, 274);
+    mixerView.setBounds (28, 568, 814, 274);
 
     // Export MIDI (860, 508, 302, 342)
     notesBox.setBounds (874, 556, 134, 28);
@@ -2215,6 +2523,7 @@ void FaseGrooveDrumsEditor::layout()
     songButton.setBounds (1014, 756, 134, 32);
 
     songOverlay.setBounds (content.getLocalBounds());
+    browser.setBounds (content.getLocalBounds());
     about.setBounds (content.getLocalBounds());
 }
 
@@ -2284,15 +2593,17 @@ void FaseGrooveDrumsEditor::paintContent (juce::Graphics& g)
         g.setFont (font (11.0f, true));
         g.drawText (text, x, y, w, 15, juce::Justification::centredLeft);
     };
+    caption ("GROOVE  (click: browser)", 34, 128, 214);
     caption ("DENSITY", 310, 178);
     caption ("PARTS A-D  (each half a bar: play them in any order)", 430, 104, 400);
     caption ("DRUM", 34, 274);
     caption ("MIDI NOTE", 34, 328);
-    caption ("LEVEL", 220, 274);
-    caption ("SAMPLE", 34, 390);
+    caption ("LEVEL", 186, 326, 54);
+    caption ("VOLUME", 242, 326, 60);
+    caption ("SAMPLE", 34, 420);
     caption ("VIEW", 34, 516);
-    caption ("NEW RHYTHM", 246, 516);
-    caption ("GROOVE", 352, 516);
+    caption ("NEW RHYTHM", 296, 516);
+    caption ("GROOVE", 396, 516);
     caption ("NOTES", 874, 540);
     caption ("CLIP LENGTH", 1014, 540);
 
@@ -2303,17 +2614,18 @@ void FaseGrooveDrumsEditor::paintContent (juce::Graphics& g)
         g.setFont (font (13.0f, true));
         g.drawFittedText (path.isNotEmpty() ? juce::File (path).getFileName()
                                             : "Built-in: " + juce::String (GuideDrums::kitName (juce::roundToInt (processor.raw (ParamIDs::kit)))),
-                          juce::Rectangle<int> (34, 408, 262, 20), juce::Justification::centredLeft, 1, 0.7f);
+                          juce::Rectangle<int> (82, 418, 214, 20), juce::Justification::centredLeft, 1, 0.7f);
         g.setColour (Palette::dim);
-        g.setFont (font (11.0f));
-        g.drawText ("or drop a WAV / AIFF on the drum's row", 34, 428, 262, 18, juce::Justification::centredLeft);
+        g.setFont (font (10.5f));
+        g.drawText ("or drop a WAV / AIFF on its row or pad", 34, 438, 262, 18, juce::Justification::centredLeft);
     }
 
     g.setColour (Palette::dim);
     g.setFont (font (11.0f));
     g.setFont (font (10.5f));
-    g.drawFittedText (velocityShown ? "one drum at a time:\ndrag its bars" : "shift accent - alt ghost\nctrl flam - drag paints",
-                      juce::Rectangle<int> (590, 532, 168, 30), juce::Justification::centredLeft, 2, 0.8f);
+    g.drawFittedText (viewMode == 1 ? "one drum at a time:\ndrag its bars" : viewMode == 2 ? "volume of each drum\nin the guide sound"
+                                                                           : "shift accent - alt ghost\nctrl flam - drag paints",
+                      juce::Rectangle<int> (604, 532, 154, 30), juce::Justification::centredLeft, 2, 0.8f);
     g.drawText ("Drop it on a drum track (your own kit / drum rack)", 874, 806, 280, 16, juce::Justification::centredLeft);
 
     // A short message (a saved preset, an imported file...)
@@ -2328,13 +2640,15 @@ void FaseGrooveDrumsEditor::paintContent (juce::Graphics& g)
     }
 }
 
-void FaseGrooveDrumsEditor::setView (bool showVelocity)
+void FaseGrooveDrumsEditor::setView (int mode)
 {
-    velocityShown = showVelocity;
-    gridTab.setToggleState (! showVelocity, juce::dontSendNotification);
-    velocityTab.setToggleState (showVelocity, juce::dontSendNotification);
-    grid.setVisible (! showVelocity);
-    velocityView.setVisible (showVelocity);
+    viewMode = juce::jlimit (0, 2, mode);
+    gridTab.setToggleState (viewMode == 0, juce::dontSendNotification);
+    velocityTab.setToggleState (viewMode == 1, juce::dontSendNotification);
+    mixerTab.setToggleState (viewMode == 2, juce::dontSendNotification);
+    grid.setVisible (viewMode == 0);
+    velocityView.setVisible (viewMode == 1);
+    mixerView.setVisible (viewMode == 2);
     velocityView.setLane (selectedLane);
     content.repaint();
 }
@@ -2344,6 +2658,9 @@ void FaseGrooveDrumsEditor::selectLane (int lane)
     selectedLane = juce::jlimit (0, fgd::numLanes - 1, lane);
     levelAttachment.reset();
     levelAttachment = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment> (processor.apvts, ParamIDs::level (selectedLane), levelKnob);
+    volumeAttachment.reset();
+    volumeAttachment = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment> (processor.apvts, ParamIDs::laneVolume (selectedLane), volumeKnob);
+    volumeKnob.setColour (juce::Slider::textBoxTextColourId, Palette::text);
     levelKnob.setColour (juce::Slider::textBoxTextColourId, Palette::text);
     if (velocityView.getLane() != selectedLane)
         velocityView.setLane (selectedLane);
@@ -2388,8 +2705,10 @@ void FaseGrooveDrumsEditor::timerCallback()
     grid.setLights (lights, selectedLane);
     pads.setLights (lights, selectedLane);
 
-    if (velocityShown)
+    if (viewMode == 1)
         velocityView.refresh();
+    else if (viewMode == 2)
+        mixerView.setLights (lights);
     else
         grid.refresh();
 
@@ -2398,6 +2717,17 @@ void FaseGrooveDrumsEditor::timerCallback()
     for (auto& card : partCards)
         card->refresh (shown, step);
     refreshKitPanel();
+
+    // The groove's name on its button.
+    {
+        const auto settings = processor.currentSettings();
+        const auto name = settings.pattern == fgd::userPatternIndex() ? juce::String ("User pattern")
+                                                                      : juce::String (fgd::GrooveEngine::basePattern (settings).name);
+        if (grooveButton.getButtonText() != name)
+            grooveButton.setButtonText (name);
+        if (browser.isVisible())
+            browser.repaint();
+    }
 
     const bool playing = processor.previewOn.load();
     playButton.setIcon (playing ? IconButton::Icon::pause : IconButton::Icon::play);
@@ -2586,7 +2916,7 @@ void FaseGrooveDrumsEditor::importFile (const juce::File& file)
     else
         showMessage (processor.importMidiGroove (file) ? "Drums imported: " + file.getFileNameWithoutExtension()
                                                        : juce::String ("No drums found in ") + file.getFileName());
-    setView (false);
+    setView (0);
 }
 
 bool FaseGrooveDrumsEditor::isInterestedInFileDrag (const juce::StringArray& files)

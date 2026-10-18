@@ -105,3 +105,13 @@ project. **CLEAR** empties the grid. The light next to each name flashes when th
 - **PRESETS / MY GROOVES:** save and load; MY GROOVES also imports the drums of a MIDI file (or drop
   the .mid on the window).
 - ⏮ ▶ ■, undo / redo (arrows, Ctrl+Z), full screen (top right).
+
+## 10. New in 0.4
+
+- **GROOVE** (top left) opens the **browser**: a genre on the left, a groove on the right (click
+  to load it, arrows for the next one).
+- **IMPORT...**: the drums of a MIDI file, or an **audio drum loop** turned into the grid. You can
+  also drop the file on the window (on a drum's row or pad an audio file becomes that drum's sample).
+- **ACCENTS** (GROOVE FEEL): the hats' accent groove. **VOLUME** (KIT & SOUNDS) and **MIXER** (next to
+  VELOCITY): the volume of each drum in the guide sound.
+- The kick never leaves the grid.

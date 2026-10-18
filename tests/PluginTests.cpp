@@ -428,7 +428,24 @@ namespace
         click ("VELOCITY");
         p.applyVelocityShape ((int) fgd::Lane::closedHat, 0);
         save ("2-velocity");
+        click ("MIXER");
+        save ("2b-mixer");
         click ("STEP GRID");
+        p.setParameterFromUI (ParamIDs::pattern, 5.0f);
+        std::function<juce::Button* (juce::Component&)> grooveButton = [&] (juce::Component& c) -> juce::Button*
+        {
+            for (auto* child : c.getChildren())
+            {
+                if (auto* b = dynamic_cast<juce::Button*> (child); b != nullptr && b->getTooltip().startsWith ("The groove: click"))
+                    return b;
+                if (auto* found = grooveButton (*child))
+                    return found;
+            }
+            return nullptr;
+        };
+        if (auto* b = grooveButton (*editor)) b->onClick();
+        save ("2c-browser");
+        if (auto* b = findButton (*editor, "CLOSE")) b->onClick();
         click ("FULL SONG...");
         save ("3-song");
         click ("CLOSE");

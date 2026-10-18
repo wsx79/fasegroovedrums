@@ -214,7 +214,7 @@ private:
         v.active = true;
         v.lane = lane;
         v.noiseState = 0x9E3779B9u ^ (std::uint32_t) (note * 7919 + (int) (velocity * 1000.0f) + (int) (++triggerCount));
-        v.gain = std::pow (juce::jlimit (0.0f, 1.0f, velocity), 1.3f) * laneGain (lane) * juce::jlimit (0.0f, 2.0f, laneVolume[(size_t) lane]);
+        v.gain = std::pow (juce::jlimit (0.0f, 1.0f, velocity), 1.3f) * laneGain (lane) * juce::jlimit (0.0f, 4.0f, laneVolume[(size_t) lane]);
         const float pan = juce::jlimit (-1.0f, 1.0f, lanePan (lane) + (lane == (int) fgd::Lane::tom ? (float) offset * 0.05f : 0.0f));
         v.panL = std::cos ((pan + 1.0f) * juce::MathConstants<float>::pi * 0.25f);
         v.panR = std::sin ((pan + 1.0f) * juce::MathConstants<float>::pi * 0.25f);
@@ -224,7 +224,7 @@ private:
             if (auto s = (*currentSamples)[(size_t) lane]; s != nullptr && s->audio.getNumSamples() > 0)
             {
                 v.sample = std::move (s);
-                v.gain = std::pow (juce::jlimit (0.0f, 1.0f, velocity), 1.3f) * 0.9f * juce::jlimit (0.0f, 2.0f, laneVolume[(size_t) lane]);
+                v.gain = std::pow (juce::jlimit (0.0f, 1.0f, velocity), 1.3f) * 0.9f * juce::jlimit (0.0f, 4.0f, laneVolume[(size_t) lane]);
                 v.sampleStep = v.sample->sampleRate / sampleRate * std::pow (2.0, (double) offset / 12.0);
                 v.maxTime = (float) (v.sample->audio.getNumSamples() / v.sample->sampleRate) + 0.05f;
                 return;

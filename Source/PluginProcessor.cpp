@@ -155,6 +155,10 @@ juce::AudioProcessorValueTreeState::ParameterLayout FaseGrooveDrumsProcessor::cr
         toggle (ParamIDs::mute (l), name + " mute", false);
         add (std::make_unique<AudioParameterInt> (ParameterID { ParamIDs::note (l), 1 }, name + " note", 0, 127, fgd::defaultNote (l)));
         unitFloat (ParamIDs::level (l), name + " level", 0.0f, 1.5f, 1.0f);
+        add (std::make_unique<AudioParameterFloat> (ParameterID { ParamIDs::laneVolume (l), 1 }, name + " volume",
+                                                    NormalisableRange<float> (-48.0f, 12.0f, 0.1f, 2.0f), 0.0f,
+                                                    AudioParameterFloatAttributes().withStringFromValueFunction ([] (float v, int)
+                                                        { return v <= -47.9f ? String ("-inf") : String (v, 1) + " dB"; })));
     }
     group ("kit", "Kit");
 
@@ -737,13 +741,18 @@ void FaseGrooveDrumsProcessor::processBlock (juce::AudioBuffer<float>& buffer, j
 
     if (soundOn)
     {
-        static const std::array<float, fgd::numLanes> unity = [] { std::array<float, fgd::numLanes> a {}; a.fill (1.0f); return a; }();
+        std::array<float, fgd::numLanes> gains {};
+        for (int l = 0; l < fgd::numLanes; ++l)
+        {
+            const float db = raw (ParamIDs::laneVolume (l));
+            gains[(size_t) l] = db <= -47.9f ? 0.0f : juce::Decibels::decibelsToGain (db);
+        }
         drums.setKit (juce::roundToInt (raw (ParamIDs::kit)));
         drums.setTone (raw (ParamIDs::tone));
         DrumSamples current;
         for (int l = 0; l < fgd::numLanes; ++l)
             current[(size_t) l] = std::atomic_load (&samples[(size_t) l]);
-        drums.render (buffer, outMidi, settings.notes, unity, current);
+        drums.render (buffer, outMidi, settings.notes, gains, current);
 
         const float amount = raw (ParamIDs::reverb);
         if (amount > 0.001f)
