@@ -4,6 +4,30 @@
 
 Tutte le modifiche importanti di **Fase Groove Drums**.
 
+## [0.10.0] - 2026-10-18
+
+- **Groove con più vita.** Humanize (30% di default) ora fa anche andare e venire le note morbide
+  in una frase di quattro bar, come in un loop suonato o programmato: ghost note, i 16esimi di
+  hi-hat e shaker tra i controtempi, le anticipazioni del clap; ogni tanto una nota morbida prima
+  della bar dopo. La frase si ripete; NEW FEEL ne crea un'altra. Il kick e gli accenti non
+  cambiano mai.
+- **Uno strato morbido di 16esimi** (shaker o tambourine) nei groove che non ne avevano quasi, e
+  nella maggior parte dei beat casuali: è lì che swing e accenti fanno il groove.
+- L'open hat è un accento ovunque sia (non viene più ammorbidito sui 16esimi).
+- **I tuoi sample, riconosciuti con certezza**: solo dal nome del file o della cartella, prima le
+  parole intere (kick, snare, clap... vincono sulle sigle, e i codici che un pack mette davanti a
+  ogni nome, come "HL_CH_", non contano più: "HL_CH_CLAP_001" è un clap). I sample il cui nome o
+  cartella dice altro (guitar, bass, vocal, synth, chord, fx, loop...) sono esclusi; quelli senza
+  nome hanno solo un "forse" dal suono (in TUTTI I FILE), mai usato da solo.
+- **I TUOI SAMPLE...** (Kit e suoni e Suono guida) apre il sample browser: i tre passi sono scritti
+  in alto, un pulsante grande sceglie la cartella, INTERNO / UN FILE... / TUTTI INTERNI sono a
+  portata di mano. Riconosciuto male? Trascina i sample (più di uno con shift / ctrl) sullo
+  strumento giusto, o tasto destro: È un... - e se lo ricorda. I tuoi file restano dove sono.
+- **Interfaccia più grande**: la finestra si apre grande quanto lo schermo permette, e i pulsanti
+  più piccoli (schede della vista, NEW FEEL, CRASH, LINK, frecce dei groove) sono più grandi.
+- **Installer per Windows** (FaseGrooveDrums-Windows-Setup.exe): VST3 + Standalone, solo VST3 o
+  solo Standalone, come per Fase Groove Piano.
+
 ## [0.9.0] - 2026-10-18
 
 - **Groove che hanno groove.** Hi-hat, shaker, tambourine e ride seguono la curva degli accenti

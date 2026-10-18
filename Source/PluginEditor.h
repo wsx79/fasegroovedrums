@@ -347,8 +347,10 @@ private:
 
 //==============================================================================
 /** The sample browser: a folder of samples, each recognised as a drum (by its name, its folder's
-    name or its sound). Pick a drum on the left, click a sample to hear it, USE it (or double-click). */
-class SampleBrowser : public juce::Component, private juce::ListBoxModel
+    name or its sound). Pick a drum on the left, click a sample to hear it, USE it (or double-click).
+    Wrongly recognised? Drag the samples (several with shift / ctrl) onto the right drum. */
+class SampleBrowser : public juce::Component, public juce::DragAndDropContainer, public juce::DragAndDropTarget,
+                      private juce::ListBoxModel
 {
 public:
     explicit SampleBrowser (FaseGrooveDrumsProcessor&);
@@ -362,30 +364,41 @@ public:
     void show (const juce::File& folder, int lane);
     std::function<void (const juce::String&)> onMessage;
 
+    bool isInterestedInDragSource (const SourceDetails&) override;
+    void itemDragMove (const SourceDetails&) override;
+    void itemDragExit (const SourceDetails&) override;
+    void itemDropped (const SourceDetails&) override;
+
 private:
     int getNumRows() override;
     void paintListBoxItem (int row, juce::Graphics&, int width, int height, bool selected) override;
     void listBoxItemClicked (int row, const juce::MouseEvent&) override;
     void listBoxItemDoubleClicked (int row, const juce::MouseEvent&) override;
     void selectedRowsChanged (int row) override;
+    juce::var getDragSourceDescription (const juce::SparseSet<int>& rows) override;
 
     juce::Rectangle<float> card() const;
     juce::Rectangle<float> drumBounds (int lane) const;
+    int drumAt (juce::Point<float>) const;
+    void chooseFolder();
     void scan (const juce::File& folder);
     void rebuildList();
     void use (int row);
+    void moveSelectedTo (int newLane);
+    void showRowMenu (int row);
     int countFor (int lane) const;
 
     FaseGrooveDrumsProcessor& processor;
     std::vector<FaseGrooveDrumsProcessor::SampleInfo> found;
     std::vector<int> rows;   // indexes into found, for the drum shown
     juce::File folder;
-    int lane = 0;
+    int lane = 0, dropLane = -1;
     bool scanning = false, showAll = false;
     juce::ListBox list;
-    juce::TextButton folderButton { "FOLDER..." }, autoButton { "AUTO KIT" }, allButton { "ALL FILES" }, closeButton { "CLOSE" };
+    juce::TextButton folderButton { "FOLDER..." }, autoButton { "AUTO KIT" }, allButton { "ALL FILES" }, closeButton { "CLOSE" },
+                     chooseButton { "CHOOSE A FOLDER OF SAMPLES..." }, builtInButton { "BUILT-IN" }, fileButton { "ONE FILE..." },
+                     allBuiltInButton { "ALL BUILT-IN" };
     std::unique_ptr<juce::FileChooser> chooser;
-    std::shared_ptr<std::atomic<bool>> alive = std::make_shared<std::atomic<bool>> (true);
 };
 
 //==============================================================================
@@ -507,7 +520,7 @@ private:
     // Kit & sounds (the drum picked)
     int selectedLane = 0;
     juce::ComboBox drumBox, noteBox;
-    juce::TextButton loadSampleButton { "LOAD SAMPLE..." }, builtInButton { "BUILT-IN" }, muteButton { "MUTE" };
+    juce::TextButton loadSampleButton { "YOUR SAMPLES..." }, builtInButton { "BUILT-IN" }, muteButton { "MUTE" };
     IconButton laneDiceButton { IconButton::Icon::dice };
     juce::Slider levelKnob, volumeKnob;
     std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> levelAttachment, volumeAttachment;
@@ -540,7 +553,7 @@ private:
     juce::ComboBox notesBox, lengthBox;
     DragTile dragTile;
     juce::TextButton saveButton { "SAVE .MID..." }, songButton { "FULL SONG..." }, wavButton { "SAVE .WAV..." };
-    juce::TextButton kitFolderButton { "KIT FOLDER..." }, linkButton { "LINK PIANO" };
+    juce::TextButton kitFolderButton { "YOUR SAMPLES..." }, linkButton { "LINK PIANO" };
     std::unique_ptr<juce::FileChooser> chooser;
 
     SongOverlay songOverlay { processor };

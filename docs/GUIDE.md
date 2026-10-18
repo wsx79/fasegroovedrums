@@ -168,3 +168,15 @@ project. **CLEAR** empties the grid. The light next to each name flashes when th
 - **LINK PIANO** (now next to Sequencer, as in Fase Groove Piano): genre, swing, **tempo, SYNC
   DAW and the play / pause / stop buttons** are shared, and both play the same beat at the same
   time, also without the DAW.
+
+## 15. New in 0.10
+
+- **Installation on Windows**: run *FaseGrooveDrums-Windows-Setup.exe* and choose VST3 +
+  Standalone, VST3 only or Standalone only (the zip is still there for a manual install).
+- **YOUR SAMPLES...** opens the sample browser. Choose a folder: each sample is put under its
+  drum only when its name or its folder's name says it (kick, snare, clap, hat, open hat...);
+  guitars, vocals, loops and the like are left out. Wrong drum? Drag the samples onto the right
+  drum, or right-click -> *It is a...*: it is remembered. Unnamed samples show a *maybe* (from
+  their sound) under ALL FILES.
+- **HUMANIZE** also lets the soft notes come and go over four bars, like a real loop (0%: exactly
+  as written). NEW FEEL makes another phrase.

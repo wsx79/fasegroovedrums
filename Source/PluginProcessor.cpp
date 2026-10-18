@@ -6,6 +6,7 @@
 #include "Localisation.h"
 
 #include <complex>
+#include <map>
 
 namespace
 {
@@ -122,7 +123,7 @@ juce::AudioProcessorValueTreeState::ParameterLayout FaseGrooveDrumsProcessor::cr
                                                 AudioParameterFloatAttributes().withStringFromValueFunction ([] (float v, int)
                                                     { return String (swingPercent (v)) + "%"; })));
     add (std::make_unique<AudioParameterInt> (ParameterID { ParamIDs::velocity, 1 }, "Velocity", 1, 127, 100));
-    unitFloat (ParamIDs::humanize, "Humanize", 0.0f, 1.0f, 0.15f);
+    unitFloat (ParamIDs::humanize, "Humanize", 0.0f, 1.0f, 0.3f);
     add (std::make_unique<AudioParameterInt> (ParameterID { ParamIDs::humanizeSeed, 1 }, "Feel seed", 0, 100000, 0));
     unitFloat (ParamIDs::accents, "Accents", 0.0f, 1.0f, 0.85f);
     group ("feel", "Feel");
@@ -683,40 +684,105 @@ juce::String FaseGrooveDrumsProcessor::samplePath (int lane) const
     return s != nullptr ? s->path : juce::String();
 }
 
-int FaseGrooveDrumsProcessor::laneFromWords (const juce::String& text)
+namespace
 {
-    // The words drum sample names use, most specific first (an "open hat" is not a closed one).
-    struct Rule { fgd::Lane lane; std::initializer_list<const char*> words; };
-    static const Rule rules[] {
-        { fgd::Lane::openHat,    { "openhat", "open", "oh", "ohh", "ophat", "hho" } },
-        { fgd::Lane::closedHat,  { "closedhat", "closed", "ch", "chh", "hhc", "hihat", "hat", "hats", "hh" } },
-        { fgd::Lane::kick,       { "kick", "bd", "kik", "bassdrum", "kck" } },
-        { fgd::Lane::clap,       { "clap", "cp", "clp", "handclap" } },
-        { fgd::Lane::rim,        { "rimshot", "rim", "rims", "rs", "stick" } },
-        { fgd::Lane::snare,      { "snare", "sd", "snr", "sn" } },
-        { fgd::Lane::ride,       { "ride", "rd" } },
-        { fgd::Lane::crash,      { "crash", "cr", "cym", "cymbal", "splash" } },
-        { fgd::Lane::shaker,     { "shaker", "shk", "shake", "maraca", "cabasa" } },
-        { fgd::Lane::tambourine, { "tambourine", "tamborine", "tamb", "tmb" } },
-        { fgd::Lane::cowbell,    { "cowbell", "bell", "cb", "agogo" } },
-        { fgd::Lane::conga,      { "conga", "bongo", "cga", "perc", "timbale" } },
-        { fgd::Lane::tom,        { "tom", "toms", "tm", "floortom" } },
+    // The words drum sample names use: 3 = the drum's own word, 2 = a common word, 1 = an
+    // abbreviation (only as a word of its own: "ch" but not "chord").
+    struct DrumWord { const char* word; fgd::Lane lane; int strength; };
+    const DrumWord drumWords[] {
+        { "kick", fgd::Lane::kick, 3 }, { "kik", fgd::Lane::kick, 2 }, { "bassdrum", fgd::Lane::kick, 3 }, { "bd", fgd::Lane::kick, 1 }, { "kck", fgd::Lane::kick, 1 },
+        { "snare", fgd::Lane::snare, 3 }, { "snr", fgd::Lane::snare, 1 }, { "sd", fgd::Lane::snare, 1 }, { "sn", fgd::Lane::snare, 1 },
+        { "clap", fgd::Lane::clap, 3 }, { "handclap", fgd::Lane::clap, 3 }, { "cp", fgd::Lane::clap, 1 }, { "clp", fgd::Lane::clap, 1 },
+        { "rimshot", fgd::Lane::rim, 3 }, { "rim", fgd::Lane::rim, 3 }, { "rims", fgd::Lane::rim, 3 }, { "sidestick", fgd::Lane::rim, 3 }, { "stick", fgd::Lane::rim, 2 }, { "rs", fgd::Lane::rim, 1 },
+        { "closedhat", fgd::Lane::closedHat, 3 }, { "hihat", fgd::Lane::closedHat, 3 }, { "hat", fgd::Lane::closedHat, 2 }, { "hats", fgd::Lane::closedHat, 2 },
+        { "closed", fgd::Lane::closedHat, 2 }, { "ch", fgd::Lane::closedHat, 1 }, { "chh", fgd::Lane::closedHat, 1 }, { "hhc", fgd::Lane::closedHat, 1 }, { "hh", fgd::Lane::closedHat, 1 },
+        { "openhat", fgd::Lane::openHat, 3 }, { "open", fgd::Lane::openHat, 2 }, { "oh", fgd::Lane::openHat, 1 }, { "ohh", fgd::Lane::openHat, 1 }, { "hho", fgd::Lane::openHat, 1 },
+        { "ride", fgd::Lane::ride, 3 }, { "rd", fgd::Lane::ride, 1 },
+        { "crash", fgd::Lane::crash, 3 }, { "cymbal", fgd::Lane::crash, 3 }, { "splash", fgd::Lane::crash, 3 }, { "china", fgd::Lane::crash, 2 }, { "cym", fgd::Lane::crash, 2 }, { "cr", fgd::Lane::crash, 1 },
+        { "shaker", fgd::Lane::shaker, 3 }, { "maraca", fgd::Lane::shaker, 3 }, { "cabasa", fgd::Lane::shaker, 3 }, { "shake", fgd::Lane::shaker, 2 }, { "shk", fgd::Lane::shaker, 1 },
+        { "tambourine", fgd::Lane::tambourine, 3 }, { "tamborine", fgd::Lane::tambourine, 3 }, { "tamb", fgd::Lane::tambourine, 3 }, { "tmb", fgd::Lane::tambourine, 1 },
+        { "cowbell", fgd::Lane::cowbell, 3 }, { "agogo", fgd::Lane::cowbell, 3 }, { "bell", fgd::Lane::cowbell, 2 }, { "cb", fgd::Lane::cowbell, 1 },
+        { "conga", fgd::Lane::conga, 3 }, { "bongo", fgd::Lane::conga, 3 }, { "timbale", fgd::Lane::conga, 3 }, { "djembe", fgd::Lane::conga, 3 }, { "perc", fgd::Lane::conga, 2 }, { "cga", fgd::Lane::conga, 1 },
+        { "tom", fgd::Lane::tom, 3 }, { "toms", fgd::Lane::tom, 3 }, { "floortom", fgd::Lane::tom, 3 }, { "tm", fgd::Lane::tom, 1 },
     };
 
-    const auto name = text.toLowerCase();
-    const auto squashed = name.removeCharacters (" _-.()[]&+0123456789");
-    juce::StringArray tokens;
-    tokens.addTokens (name.replaceCharacters ("_-.()[]&+0123456789", "                   "), " ", {});
-    tokens.removeEmptyStrings();
-    for (const auto& rule : rules)
-        for (const auto* word : rule.words)
+    juce::StringArray wordsOf (const juce::String& text)
+    {
+        // "HL_CH_Clap_001", "KickDrum 02", "Hi-Hat closed": lower-case words, digits dropped,
+        // camelCase split.
+        juce::String spaced;
+        for (int i = 0; i < text.length(); ++i)
         {
-            // Short words must be a word of their own ("ch", not "chord"); long ones anywhere.
-            const juce::String w (word);
-            if (w.length() <= 3 ? tokens.contains (w) : squashed.contains (w))
-                return (int) rule.lane;
+            const auto c = text[i];
+            if (i > 0 && juce::CharacterFunctions::isUpperCase (c) && juce::CharacterFunctions::isLowerCase (text[i - 1]))
+                spaced << ' ';
+            spaced << (juce::CharacterFunctions::isLetter (c) ? juce::String::charToString (c) : juce::String (" "));
         }
-    return -1;
+        juce::StringArray words;
+        words.addTokens (spaced.toLowerCase(), " ", {});
+        words.removeEmptyStrings();
+        return words;
+    }
+}
+
+bool FaseGrooveDrumsProcessor::isNotADrum (const juce::String& name)
+{
+    static const char* const others[] { "guitar", "gtr", "bass", "bassline", "sub", "vocal", "vocals", "vox", "voice", "acapella",
+                                        "synth", "pad", "pads", "piano", "keys", "organ", "rhodes", "chord", "chords", "stab", "stabs",
+                                        "string", "strings", "brass", "horn", "lead", "pluck", "arp", "melody", "fx", "sfx", "riser",
+                                        "sweep", "impact", "uplifter", "downlifter", "noise", "atmo", "ambience", "texture", "loop",
+                                        "loops", "bpm", "song", "mix", "master", "stem" };
+    // ...and words that are something else unless the name also says a drum ("Sub Kick", "Bass Drum").
+    static const char* const unlessDrum[] { "bass", "sub", "fx", "sfx", "stab", "stabs", "noise", "impact" };
+    const auto words = wordsOf (name);
+    for (const auto* w : others)
+        if (words.contains (w) && juce::String (w) != "bass" && juce::String (w) != "sub" && juce::String (w) != "fx"
+            && juce::String (w) != "sfx" && juce::String (w) != "stab" && juce::String (w) != "stabs" && juce::String (w) != "noise"
+            && juce::String (w) != "impact")
+            return true;
+    for (const auto* w : unlessDrum)
+        if (words.contains (w) && laneFromWords (name) < 0 && ! words.joinIntoString ({}).contains ("bassdrum"))
+            return true;
+    return false;
+}
+
+int FaseGrooveDrumsProcessor::laneFromWords (const juce::String& text, const juce::StringArray& ignore)
+{
+    const auto words = wordsOf (text);
+    if (words.isEmpty())
+        return -1;
+    const auto squashed = words.joinIntoString ({});   // "hi hat" -> "hihat"
+
+    std::array<double, fgd::numLanes> score {};
+    for (const auto& w : drumWords)
+    {
+        const juce::String word (w.word);
+        for (int i = 0; i < words.size(); ++i)
+        {
+            const auto& token = words[i];
+            const bool match = w.strength == 1 ? token == word
+                                               : token == word || (word.length() > 3 && token.contains (word));
+            if (! match || (w.strength == 1 && ignore.contains (token)))
+                continue;
+            // Later words weigh a little more: a pack's codes come first, the drum last.
+            score[(size_t) w.lane] = std::max (score[(size_t) w.lane], w.strength * (1.0 + 0.3 * i / (double) words.size()));
+        }
+        if (w.strength == 3 && word.length() > 4 && squashed.contains (word))
+            score[(size_t) w.lane] = std::max (score[(size_t) w.lane], 3.0);
+    }
+
+    // An open hat is a hat that says open.
+    if (score[(size_t) fgd::Lane::openHat] > 0.0 && score[(size_t) fgd::Lane::closedHat] > 0.0)
+        score[(size_t) fgd::Lane::openHat] += score[(size_t) fgd::Lane::closedHat];
+    if (score[(size_t) fgd::Lane::openHat] > 0.0 && score[(size_t) fgd::Lane::openHat] < 2.0 && score[(size_t) fgd::Lane::closedHat] == 0.0
+        && ! words.contains ("oh") && ! words.contains ("ohh") && ! words.contains ("hho"))
+        score[(size_t) fgd::Lane::openHat] = 0.0;   // "open" alone isn't a hat
+
+    int best = -1;
+    for (int l = 0; l < fgd::numLanes; ++l)
+        if (score[(size_t) l] > 0.0 && (best < 0 || score[(size_t) l] > score[(size_t) best]))
+            best = l;
+    return best;
 }
 
 int FaseGrooveDrumsProcessor::laneFromSound (const juce::File& file)
@@ -785,6 +851,32 @@ int FaseGrooveDrumsProcessor::laneFromSound (const juce::File& file)
     return -1;
 }
 
+namespace
+{
+    juce::File sampleTagFile()
+    {
+        return FaseGrooveDrumsProcessor::userFolder().getChildFile ("Sample tags.xml");
+    }
+}
+
+void FaseGrooveDrumsProcessor::tagSample (const juce::File& file, int lane)
+{
+    auto xml = juce::parseXML (sampleTagFile());
+    if (xml == nullptr || ! xml->hasTagName ("SampleTags"))
+        xml = std::make_unique<juce::XmlElement> ("SampleTags");
+    for (auto* e : xml->getChildIterator())
+        if (e->getStringAttribute ("path") == file.getFullPathName())
+        {
+            xml->removeChildElement (e, true);
+            break;
+        }
+    auto* e = xml->createNewChildElement ("Sample");
+    e->setAttribute ("path", file.getFullPathName());
+    e->setAttribute ("drum", fgd::laneName (juce::jlimit (0, fgd::numLanes - 1, lane)));
+    sampleTagFile().getParentDirectory().createDirectory();
+    xml->writeTo (sampleTagFile());
+}
+
 std::vector<FaseGrooveDrumsProcessor::SampleInfo> FaseGrooveDrumsProcessor::scanSampleFolder (const juce::File& folder, int maxFiles)
 {
     std::vector<SampleInfo> found;
@@ -793,25 +885,71 @@ std::vector<FaseGrooveDrumsProcessor::SampleInfo> FaseGrooveDrumsProcessor::scan
 
     auto files = folder.findChildFiles (juce::File::findFiles, true, "*.wav;*.aif;*.aiff;*.flac;*.mp3;*.ogg");
     files.sort();
+    if (files.size() > maxFiles)
+        files.removeRange (maxFiles, files.size());
+
+    // A pack's codes ("HL_CH_..."): the short words most of its files start with don't count.
+    juce::StringArray ignore;
+    if (files.size() >= 4)
+    {
+        std::map<juce::String, int> count;
+        for (const auto& file : files)
+        {
+            auto words = wordsOf (file.getFileNameWithoutExtension());
+            words.removeDuplicates (false);
+            for (const auto& w : words)
+                if (w.length() <= 3)
+                    ++count[w];
+        }
+        for (const auto& [word, n] : count)
+            if (n * 2 > files.size())
+                ignore.add (word);
+    }
+
+    // The drums you set by hand.
+    std::map<juce::String, int> tags;
+    if (auto xml = juce::parseXML (sampleTagFile()))
+        for (auto* e : xml->getChildIterator())
+            for (int l = 0; l < fgd::numLanes; ++l)
+                if (e->getStringAttribute ("drum") == fgd::laneName (l))
+                    tags[e->getStringAttribute ("path")] = l;
+
     for (const auto& file : files)
     {
-        if ((int) found.size() >= maxFiles)
-            break;
         SampleInfo info;
         info.file = file;
-        // Its name first, then the folders it sits in (nearest first), then its sound.
-        if ((info.lane = laneFromWords (file.getFileNameWithoutExtension())) >= 0)
+        if (const auto tag = tags.find (file.getFullPathName()); tag != tags.end())
+        {
+            info.lane = tag->second;
+            info.source = SampleInfo::Source::manual;
+            found.push_back (info);
+            continue;
+        }
+
+        // Not a drum hit (a guitar, a vocal, a loop...) by its name or any of its folders: left out.
+        bool other = isNotADrum (file.getFileNameWithoutExtension());
+        for (auto dir = file.getParentDirectory(); ! other && dir.isAChildOf (folder); dir = dir.getParentDirectory())
+            other = isNotADrum (dir.getFileName());
+        if (other)
+            continue;
+
+        // Its name first, then the folders it sits in (nearest first, the folder chosen last).
+        if ((info.lane = laneFromWords (file.getFileNameWithoutExtension(), ignore)) >= 0)
             info.source = SampleInfo::Source::name;
         else
-            for (auto dir = file.getParentDirectory(); info.lane < 0 && dir.isAChildOf (folder.getParentDirectory()); dir = dir.getParentDirectory())
+            for (auto dir = file.getParentDirectory(); info.lane < 0 && (dir == folder || dir.isAChildOf (folder)); dir = dir.getParentDirectory())
             {
-                if ((info.lane = laneFromWords (dir.getFileName())) >= 0)
+                if ((info.lane = laneFromWords (dir.getFileName(), ignore)) >= 0)
                     info.source = SampleInfo::Source::folder;
                 if (dir == folder)
                     break;
             }
-        if (info.lane < 0 && file.getSize() < 8 * 1024 * 1024 && (info.lane = laneFromSound (file)) >= 0)
-            info.source = SampleInfo::Source::sound;
+        // Nothing says it: only a guess from its sound, for you to confirm.
+        if (info.lane < 0 && file.getSize() < 8 * 1024 * 1024)
+        {
+            info.guess = laneFromSound (file);
+            info.source = info.guess >= 0 ? SampleInfo::Source::sound : SampleInfo::Source::none;
+        }
         found.push_back (info);
     }
     return found;
@@ -823,7 +961,7 @@ juce::StringArray FaseGrooveDrumsProcessor::loadKitFolder (const juce::File& fol
     juce::StringArray loaded;
     const auto found = scanSampleFolder (folder);
     for (int l = 0; l < fgd::numLanes; ++l)
-        for (auto source : { SampleInfo::Source::name, SampleInfo::Source::folder, SampleInfo::Source::sound })
+        for (auto source : { SampleInfo::Source::manual, SampleInfo::Source::name, SampleInfo::Source::folder })
         {
             const auto it = std::find_if (found.begin(), found.end(), [l, source] (const SampleInfo& i) { return i.lane == l && i.source == source; });
             if (it != found.end() && loadSample (l, it->file))
@@ -1787,7 +1925,9 @@ void FaseGrooveDrumsProcessor::setStateInformation (const void* data, int sizeIn
         return;
 
     const auto state = juce::ValueTree::fromXml (*xml);
-    editorScale = juce::jlimit (0.6f, 2.0f, (float) state.getProperty ("editorScale", 1.0f));
+    editorScale = (float) state.getProperty ("editorScale", 0.0f);
+    if (editorScale > 0.0f)
+        editorScale = juce::jlimit (0.6f, 2.0f, editorScale);
     applyStateTree (state);
 }
 

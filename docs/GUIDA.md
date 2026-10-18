@@ -172,3 +172,15 @@ La prima modifica copia il groove mostrato nello **User pattern**, che si salva 
 - **LINK PIANO** (ora accanto a Sequencer, come in Fase Groove Piano): genere, swing, **tempo,
   SYNC DAW e i pulsanti play / pausa / stop** sono condivisi, e suonano lo stesso beat nello
   stesso momento, anche senza la DAW.
+
+## 15. Novità della 0.10
+
+- **Installazione su Windows**: avvia *FaseGrooveDrums-Windows-Setup.exe* e scegli VST3 +
+  Standalone, solo VST3 o solo Standalone (lo zip c'è ancora per l'installazione manuale).
+- **I TUOI SAMPLE...** apre il sample browser. Scegli una cartella: ogni sample va sotto il suo
+  strumento solo quando il suo nome o quello della sua cartella lo dice (kick, snare, clap, hat,
+  open hat...); chitarre, voci, loop e simili sono esclusi. Strumento sbagliato? Trascina i sample
+  sullo strumento giusto, o tasto destro -> *È un...*: se lo ricorda. I sample senza nome mostrano
+  un *forse* (dal suono) in TUTTI I FILE.
+- **HUMANIZE** fa anche andare e venire le note morbide nelle quattro bar, come in un loop vero
+  (0%: esattamente come scritto). NEW FEEL crea un'altra frase.

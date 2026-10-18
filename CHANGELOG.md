@@ -4,6 +4,29 @@
 
 All notable changes to **Fase Groove Drums**.
 
+## [0.10.0] - 2026-10-18
+
+- **Grooves with life.** Humanize (30% by default) now also lets the soft notes come and go over
+  a four-bar phrase, as in a played or programmed loop: ghost notes, the hats' and shakers' 16ths
+  between the offbeats, the clap's pick-ups; now and then a soft note before the next bar. The
+  phrase repeats; NEW FEEL makes another. The kick and the accents never change.
+- **A soft 16th layer** (shaker or tambourine) in the grooves that had almost none, and in most
+  random beats: that's where the swing and the accents make the groove.
+- An open hat is an accent wherever it is (no longer softened on the 16ths).
+- **Your samples, recognised for sure**: only by the file's name or its folder's name, whole words
+  first (kick, snare, clap... beat the abbreviations, and the codes a pack puts in front of every
+  name, such as "HL_CH_", no longer count: "HL_CH_CLAP_001" is a clap). Samples whose name or
+  folder says something else (guitar, bass, vocal, synth, chord, fx, loop...) are left out; the
+  unnamed ones only get a "maybe" from their sound (in ALL FILES), never used by themselves.
+- **YOUR SAMPLES...** (Kit & sounds and Guide sound) opens the sample browser: the three steps are
+  written on top, a big button chooses the folder, BUILT-IN / ONE FILE... / ALL BUILT-IN are at
+  hand. Wrongly recognised? Drag the samples (several with shift / ctrl) onto the right drum, or
+  right-click: It is a... - remembered next time. Your files stay where they are.
+- **Bigger interface**: the window opens as big as the screen allows, and the smaller buttons
+  (view tabs, NEW FEEL, CRASH, LINK, the groove arrows) are bigger.
+- **Windows installer** (FaseGrooveDrums-Windows-Setup.exe): VST3 + Standalone, VST3 only or
+  Standalone only, as for Fase Groove Piano.
+
 ## [0.9.0] - 2026-10-18
 
 - **Grooves that groove.** Hats, shakers, tambourines and rides now follow the accent curve of

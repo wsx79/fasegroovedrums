@@ -323,6 +323,20 @@ DrumPattern makeRandomPattern (std::uint32_t seed, float density, int genre)
     else if (r.chance (style.shaker * more))
         setBar (Lane::shaker, pickCell (r, shakerCells));
 
+    // ---- A soft 16th layer, where the swing and the accents make the groove (most house beats
+    //      have one: shaker, tambourine or soft hats between the offbeats) ----
+    auto sixteenths = [&p]
+    {
+        int odd = 0;
+        for (int l = 1; l < numLanes; ++l)
+            for (int i = 1; i < randomBeatLength; i += 2)
+                odd += isHit (p.lanes[(size_t) l][(size_t) i]) ? 1 : 0;
+        return odd;
+    };
+    if (! brokenBeat && ! garageBeat && genre != dance && sixteenths() < 8 && r.chance (0.55f + 0.45f * density))
+        setBar (genre == gospel || genre == funky || genre == nineties ? Lane::tambourine : Lane::shaker,
+                genre == soulful ? "xxxx xxxx xxxx xxxx" : pickOf ({ "..xx ..x. ..xx ..x.", "..xx ..xx ..xg ..xx", "g.xg xgxg g.xg xgxg", "xgx. xgxx xgx. xgxx" }));
+
     // ---- At most one sparse percussion line, maybe a low one ----
     if (genre == afro && r.chance (0.6f))
         setLoop (Lane::rim, "x... ..x. .... x... .... x... x... ....");   // the son clave

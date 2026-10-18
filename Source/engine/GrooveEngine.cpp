@@ -103,8 +103,8 @@ namespace
     {
         switch ((Lane) lane)
         {
-            case Lane::closedHat: case Lane::openHat: case Lane::ride: case Lane::shaker: case Lane::tambourine:
-            case Lane::conga: case Lane::cowbell: return true;
+            case Lane::closedHat: case Lane::ride: case Lane::shaker: case Lane::tambourine:
+            case Lane::conga: case Lane::cowbell: return true;   // (an open hat is an accent wherever it is)
             default: return false;
         }
     }
@@ -313,10 +313,28 @@ void GrooveEngine::collectStep (long long step, const DrumSettings& s, const Dru
         return step >= 0 ? std::max (t, 0.0) : t;
     };
 
+    // Life (with Humanize): over a four-bar phrase the soft notes come and go, as in a played or
+    // programmed loop: ghosts, the hats' and shakers' 16ths between the offbeats, the clap's
+    // pick-ups. The phrase repeats (NEW FEEL makes another). The kick and the accents never change.
+    const int phraseBar = mod (bar, 4);
+    auto isSoft = [&] (int lane, char symbol)
+    {
+        if (symbol == 'X' || lane == (int) Lane::kick)
+            return false;
+        if (symbol == 'g')
+            return true;
+        if (followsAccentGroove (lane) && stepInBar % 2 == 1)
+            return true;
+        return (lane == (int) Lane::clap || lane == (int) Lane::snare || lane == (int) Lane::rim) && stepInBar % 4 != 0;
+    };
+    auto lifeNoise = [&] (int lane, int salt) { return noise (phraseBar * 16 + stepInBar, seedSalt + lane * 101 + salt); };
+
     auto add = [&] (int lane, char symbol, int note, double levelScale = 1.0, bool fromFill = false, int roll = 1)
     {
         if (s.muted[(size_t) lane] || ! isHit (symbol))
             return;
+        if (! fromFill && human > 0.0 && isSoft (lane, symbol) && lifeNoise (lane, 77) < 0.4 * human)
+            return;   // not in this bar of the phrase
         const int salt = lane * 13 + 1;
         if (! fromFill)
             if (const int index = userIndex (lane); index >= 0)
@@ -357,9 +375,19 @@ void GrooveEngine::collectStep (long long step, const DrumSettings& s, const Dru
     // ---- The groove as written (what a fill leaves of it) ----
     for (int lane = 0; lane < numLanes; ++lane)
     {
-        const char symbol = pattern.lanes[(size_t) lane][(size_t) pos];
+        char symbol = pattern.lanes[(size_t) lane][(size_t) pos];
         if (inFill && ! fillKeeps (style, lane, customLanes))
             continue;
+        // ...and now and then a soft note that isn't written: a hat or shaker 16th, or the clap's
+        // ghost, just before the next bar.
+        if (symbol == '.' && human > 0.0 && ! inFill && stepInBar >= 13 && stepInBar % 2 == 1 && phraseBar % 2 == 1)
+        {
+            const bool plays = std::any_of (pattern.lanes[(size_t) lane].begin(), pattern.lanes[(size_t) lane].end(), isHit);
+            const bool suits = (followsAccentGroove (lane) && lane != (int) Lane::openHat && lane != (int) Lane::ride)
+                            || (lane == (int) Lane::clap && stepInBar == 15);
+            if (plays && suits && lifeNoise (lane, 91) < 0.3 * human)
+                symbol = 'g';
+        }
         add (lane, symbol, s.notes[(size_t) lane]);
     }
 

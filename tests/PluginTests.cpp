@@ -655,11 +655,45 @@ namespace
             const auto name = info.file.getFileNameWithoutExtension();
             if (name == "Deep One")  CHECK (info.lane == (int) fgd::Lane::kick && info.source == FaseGrooveDrumsProcessor::SampleInfo::Source::folder);
             if (name == "CH 01")     CHECK (info.lane == (int) fgd::Lane::closedHat && info.source == FaseGrooveDrumsProcessor::SampleInfo::Source::name);
-            if (name == "mystery 7") CHECK (info.lane == (int) fgd::Lane::kick && info.source == FaseGrooveDrumsProcessor::SampleInfo::Source::sound);
+            if (name == "mystery 7") CHECK (info.lane < 0 && info.guess == (int) fgd::Lane::kick);   // only a guess, never used by itself
         }
         CHECK (FaseGrooveDrumsProcessor::laneFromWords ("Toms") == (int) fgd::Lane::tom);
         CHECK (FaseGrooveDrumsProcessor::laneFromWords ("Hi Hats") == (int) fgd::Lane::closedHat);
         CHECK (FaseGrooveDrumsProcessor::laneFromWords ("Chord stab") == -1);
+        CHECK (FaseGrooveDrumsProcessor::isNotADrum ("Guitar Kick Hit"));
+        CHECK (FaseGrooveDrumsProcessor::isNotADrum ("Kick Loop 124"));
+        CHECK (FaseGrooveDrumsProcessor::isNotADrum ("Deep Bass C"));
+        CHECK (! FaseGrooveDrumsProcessor::isNotADrum ("Sub Kick 02"));
+        CHECK (! FaseGrooveDrumsProcessor::isNotADrum ("Bass Drum 909"));
+        CHECK (! FaseGrooveDrumsProcessor::isNotADrum ("HL_CH_CLAP_001"));
+        {
+            using L = fgd::Lane;
+            const std::pair<const char*, L> names[] {
+                { "HL_CH_CLAP_001", L::clap }, { "HL_CH_CYMBAL_001", L::crash }, { "HL_CH_KICK_014", L::kick }, { "OH 01", L::openHat },
+                { "Open Hat 2", L::openHat }, { "HiHat Open", L::openHat }, { "Closed Hat", L::closedHat }, { "KickDrum02", L::kick },
+                { "BD_909", L::kick }, { "Perc Conga Hi", L::conga }, { "Shaker 3", L::shaker }, { "Tom Low", L::tom },
+                { "Ride Bell", L::ride }, { "SD Tight", L::snare }, { "Rimshot 808", L::rim }, { "Tamb Hit", L::tambourine } };
+            for (const auto& [name, lane] : names)
+                CHECK (FaseGrooveDrumsProcessor::laneFromWords (name) == (int) lane);
+        }
+
+        // A pack whose every name starts with the same codes ("HL_CH_"): the codes don't count.
+        auto pack = temp.getChildFile ("HL_CH_SINGLE SHOTS");
+        const std::pair<const char*, fgd::Lane> packFiles[] {
+            { "HL_CH_CLAPS/HL_CH_CLAP_001", fgd::Lane::clap }, { "HL_CH_CLAPS/HL_CH_CLAP_002", fgd::Lane::clap },
+            { "HL_CH_KICKS/HL_CH_KICK_001", fgd::Lane::kick }, { "HL_CH_HATS/HL_CH_HAT_001", fgd::Lane::closedHat },
+            { "HL_CH_HATS/HL_CH_OPEN HAT_001", fgd::Lane::openHat }, { "HL_CH_CRASH/HL_CH_CYMBAL_001", fgd::Lane::crash },
+            { "HL_CH_PERC/HL_CH_001", fgd::Lane::conga } };
+        for (const auto& [name, lane] : packFiles)
+        {
+            auto f = pack.getChildFile (juce::String (name) + ".wav");
+            f.getParentDirectory().createDirectory();
+            writeTestWav (f, 0.3f);
+        }
+        for (const auto& info : FaseGrooveDrumsProcessor::scanSampleFolder (pack))
+            for (const auto& [name, lane] : packFiles)
+                if (info.file == pack.getChildFile (juce::String (name) + ".wav"))
+                    CHECK (info.lane == (int) lane);
         p.previewSampleFile (library.getChildFile ("CH 01.wav"));
         {
             juce::AudioBuffer<float> out (2, 512);

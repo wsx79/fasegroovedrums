@@ -150,18 +150,27 @@ public:
     juce::StringArray loadKitFolder (const juce::File&);
     void clearAllSamples();
 
-    /** A sample found in a folder, and the drum it sounds like: recognised from its file name,
-        from its folder's name (Kicks, Hi Hats...) or, failing both, from its sound. */
+    /** A sample found in a folder, and its drum: set by you, or said by its file name or its
+        folder's name (Kicks, Hi Hats...). Samples whose name or folder says something else
+        (guitar, vocal, loop...) are left out; the others get only a guess from their sound. */
     struct SampleInfo
     {
-        enum class Source { name, folder, sound, none };
+        enum class Source { manual, name, folder, sound, none };
         juce::File file;
-        int lane = -1;
+        int lane = -1;                 // the drum, when sure
         Source source = Source::none;
+        int guess = -1;                // what it sounds like (unnamed samples, never used on its own)
     };
+    /** True when a name says it is not a single drum hit (guitar, vocal, synth, loop, fx...). */
+    static bool isNotADrum (const juce::String& name);
     static std::vector<SampleInfo> scanSampleFolder (const juce::File& folder, int maxFiles = 4000);
-    static int laneFromWords (const juce::String& text);   // -1: no drum word in it
+    /** The drum a name says, -1 if none. Whole words (kick, snare, clap...) beat abbreviations (bd,
+        sd, ch...), later words beat earlier ones (pack prefixes come first), and abbreviations in
+        `ignore` (the codes every file of a pack starts with) don't count. */
+    static int laneFromWords (const juce::String& text, const juce::StringArray& ignore = {});
     static int laneFromSound (const juce::File&);          // -1: can't tell
+    /** Remembers the drum you set for a sample by hand (the browser uses it from then on). */
+    static void tagSample (const juce::File&, int lane);
     juce::File sampleFolder;                               // the last folder browsed (saved with the project)
 
     /** Plays a sample file once, as it is (the sample browser). */
@@ -266,7 +275,7 @@ public:
     void restoreSnapshot (const juce::String&);
 
     // Editor preferences, saved with the project.
-    float editorScale = 1.0f;
+    float editorScale = 0.0f;   // 0: as big as suits the screen (the first time)
 
     juce::AudioProcessorValueTreeState apvts;
 
