@@ -492,7 +492,8 @@ namespace
         const auto before = Localisation::current();
         Localisation::setCurrent (Localisation::Language::italian);
         CHECK (tr ("CLOSE") == "CHIUDI");
-        CHECK (tr ("Kick") == "Cassa");
+        CHECK (tr ("Kick") == "Kick");                            // technical terms stay in English
+        CHECK (tr ("Every 4 bars") == "Ogni 4 bar");
         CHECK (tr ("Some groove name") == "Some groove name");   // no translation: as it is
 
         // A bound text follows the language at once.
@@ -508,8 +509,10 @@ namespace
         for (int lang = 1; lang < Localisation::numLanguages; ++lang)
         {
             Localisation::setCurrent ((Localisation::Language) lang);
-            for (const auto* key : { "Groove feel & song", "Export MIDI", "Snare roll", "Every 4 bars", "Offbeat push", "Whole song" })
-                CHECK (tr (key).isNotEmpty() && (tr (key) != key || juce::String (key) == "Export MIDI"));
+            for (const auto* key : { "Groove feel & song", "Whole song", "CLOSE", "Song arrangement" })
+                CHECK (tr (key).isNotEmpty() && tr (key) != key);
+            for (const auto* key : { "Kick", "Snare roll", "Bar", "Fill", "Swing", "Velocity", "Build-up" })
+                CHECK (tr (key) == key);
         }
         Localisation::setCurrent (before);
     }

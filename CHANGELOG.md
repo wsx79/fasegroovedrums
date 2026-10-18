@@ -4,6 +4,13 @@
 
 All notable changes to **Fase Groove Drums**.
 
+## [0.6.1] - 2026-10-18
+
+- Technical terms stay in English in every language, as producers say them: the drums (kick,
+  snare, clap, hi-hat, ride, shaker, conga, cowbell, tom, crash...), bar and beat, fill and the fill
+  names, ghost note, flam, velocity, swing, sample, mute, mixer, the song sections (intro, main,
+  break, build-up, drop, outro) and the velocity shapes.
+
 ## [0.6.0] - 2026-10-18
 
 - **Part length** (GROOVE row): the parts A-D are half a bar each (a 2-bar groove, as before) or

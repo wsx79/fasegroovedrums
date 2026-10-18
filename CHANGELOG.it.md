@@ -4,6 +4,13 @@
 
 Tutte le modifiche importanti di **Fase Groove Drums**.
 
+## [0.6.1] - 2026-10-18
+
+- I termini tecnici restano in inglese in tutte le lingue, come li dicono i produttori: gli
+  strumenti (kick, snare, clap, hi-hat, ride, shaker, conga, cowbell, tom, crash...), bar e beat,
+  fill e i nomi dei fill, ghost note, flam, velocity, swing, sample, mute, mixer, le sezioni del
+  brano (intro, main, break, build-up, drop, outro) e le forme di velocity.
+
 ## [0.6.0] - 2026-10-18
 
 - **Durata delle parti** (riga GROOVE): le parti A-D durano mezza battuta ciascuna (groove di 2
