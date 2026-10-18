@@ -484,9 +484,9 @@ static void testJackinGroove()
 {
     const int jackin = categoryIndex ("Jackin'");
     CHECK (jackin >= 0);
-    CHECK (genreSwing (jackin) >= 0.8f);
+    CHECK (genreSwing (jackin) >= 0.7f && genreSwing (jackin) <= 1.0f);
 
-    // Random jackin beats: four on the floor, open hats on the offbeats, closed hats never on them.
+    // Random jackin beats: four on the floor, the clap on 2 and 4, a hat on every offbeat.
     for (std::uint32_t seed = 1; seed < 60; ++seed)
     {
         const auto p = makeRandomPattern (seed, (float) (seed % 5) / 4.0f, jackin);
@@ -494,10 +494,10 @@ static void testJackinGroove()
         {
             if (i < 29)
                 CHECK (isHit (p[Lane::kick][(size_t) i]) == (i % 4 == 0));
-            if (i % 4 == 2)
-                CHECK (! isHit (p[Lane::closedHat][(size_t) i]));
+            if (i % 4 == 2 && i != 14 && i != 30)   // (an open hat accent can take the last offbeat)
+                CHECK (isHit (p[Lane::closedHat][(size_t) i]) || isHit (p[Lane::openHat][(size_t) i]));
         }
-        CHECK (countHits (p[Lane::openHat]) >= 6);
+        CHECK (isHit (p[Lane::clap][4]) && isHit (p[Lane::clap][12]));
     }
 
     // The jackin grooves keep the clap on 2 and 4.
@@ -549,6 +549,7 @@ static void testDrumFeel()
     CHECK (std::abs (onsets (e, 42)[0] - 1.25 * stepLength) < 1.0e-9);
     CHECK (std::abs (onsets (e, 36)[0]) < 1.0e-9);
     s.grooveTemplate.active = false;
+    s.accentGroove = 0.0f;   // compare with the hat as written
     const int loud = [&] { for (const auto& n : GrooveEngine::renderClip (s, 4.0)) if (n.isNoteOn() && n.note == 42) return n.velocity; return 0; }();
     s.grooveTemplate.active = true;
     const int soft = [&] { for (const auto& n : GrooveEngine::renderClip (s, 4.0)) if (n.isNoteOn() && n.note == 42) return n.velocity; return 0; }();

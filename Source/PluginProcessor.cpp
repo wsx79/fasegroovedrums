@@ -124,7 +124,7 @@ juce::AudioProcessorValueTreeState::ParameterLayout FaseGrooveDrumsProcessor::cr
     add (std::make_unique<AudioParameterInt> (ParameterID { ParamIDs::velocity, 1 }, "Velocity", 1, 127, 100));
     unitFloat (ParamIDs::humanize, "Humanize", 0.0f, 1.0f, 0.15f);
     add (std::make_unique<AudioParameterInt> (ParameterID { ParamIDs::humanizeSeed, 1 }, "Feel seed", 0, 100000, 0));
-    unitFloat (ParamIDs::accents, "Accents", 0.0f, 1.0f, 0.6f);
+    unitFloat (ParamIDs::accents, "Accents", 0.0f, 1.0f, 0.85f);
     group ("feel", "Feel");
 
     // Song
@@ -683,20 +683,16 @@ juce::String FaseGrooveDrumsProcessor::samplePath (int lane) const
     return s != nullptr ? s->path : juce::String();
 }
 
-juce::StringArray FaseGrooveDrumsProcessor::loadKitFolder (const juce::File& folder)
+int FaseGrooveDrumsProcessor::laneFromWords (const juce::String& text)
 {
-    juce::StringArray loaded;
-    if (! folder.isDirectory())
-        return loaded;
-
     // The words drum sample names use, most specific first (an "open hat" is not a closed one).
     struct Rule { fgd::Lane lane; std::initializer_list<const char*> words; };
     static const Rule rules[] {
         { fgd::Lane::openHat,    { "openhat", "open", "oh", "ohh", "ophat", "hho" } },
-        { fgd::Lane::closedHat,  { "closedhat", "closed", "ch", "chh", "hhc", "hihat", "hat", "hh" } },
+        { fgd::Lane::closedHat,  { "closedhat", "closed", "ch", "chh", "hhc", "hihat", "hat", "hats", "hh" } },
         { fgd::Lane::kick,       { "kick", "bd", "kik", "bassdrum", "kck" } },
         { fgd::Lane::clap,       { "clap", "cp", "clp", "handclap" } },
-        { fgd::Lane::rim,        { "rimshot", "rim", "rs", "stick" } },
+        { fgd::Lane::rim,        { "rimshot", "rim", "rims", "rs", "stick" } },
         { fgd::Lane::snare,      { "snare", "sd", "snr", "sn" } },
         { fgd::Lane::ride,       { "ride", "rd" } },
         { fgd::Lane::crash,      { "crash", "cr", "cym", "cymbal", "splash" } },
@@ -704,42 +700,158 @@ juce::StringArray FaseGrooveDrumsProcessor::loadKitFolder (const juce::File& fol
         { fgd::Lane::tambourine, { "tambourine", "tamborine", "tamb", "tmb" } },
         { fgd::Lane::cowbell,    { "cowbell", "bell", "cb", "agogo" } },
         { fgd::Lane::conga,      { "conga", "bongo", "cga", "perc", "timbale" } },
-        { fgd::Lane::tom,        { "tom", "tm", "floortom" } },
+        { fgd::Lane::tom,        { "tom", "toms", "tm", "floortom" } },
     };
+
+    const auto name = text.toLowerCase();
+    const auto squashed = name.removeCharacters (" _-.()[]&+0123456789");
+    juce::StringArray tokens;
+    tokens.addTokens (name.replaceCharacters ("_-.()[]&+0123456789", "                   "), " ", {});
+    tokens.removeEmptyStrings();
+    for (const auto& rule : rules)
+        for (const auto* word : rule.words)
+        {
+            // Short words must be a word of their own ("ch", not "chord"); long ones anywhere.
+            const juce::String w (word);
+            if (w.length() <= 3 ? tokens.contains (w) : squashed.contains (w))
+                return (int) rule.lane;
+        }
+    return -1;
+}
+
+int FaseGrooveDrumsProcessor::laneFromSound (const juce::File& file)
+{
+    juce::AudioFormatManager formats;
+    formats.registerBasicFormats();
+    std::unique_ptr<juce::AudioFormatReader> reader (formats.createReaderFor (file));
+    if (reader == nullptr || reader->lengthInSamples <= 0 || reader->sampleRate <= 0.0)
+        return -1;
+
+    const double sr = reader->sampleRate;
+    const int length = (int) juce::jmin<juce::int64> (reader->lengthInSamples, (juce::int64) (sr * 2.0));
+    juce::AudioBuffer<float> audio ((int) juce::jlimit (1u, 2u, reader->numChannels), length);
+    reader->read (&audio, 0, length, 0, true, audio.getNumChannels() > 1);
+    std::vector<float> y ((size_t) length);
+    for (int i = 0; i < length; ++i)
+        y[(size_t) i] = audio.getNumChannels() > 1 ? 0.5f * (audio.getSample (0, i) + audio.getSample (1, i)) : audio.getSample (0, i);
+
+    // How long it rings (to 40 dB under its peak), how fast it starts, and where its energy is
+    // in the first 80 ms: sub, low-mid, mid, high-mid, highs.
+    int peakAt = 0;
+    float peak = 0.0f;
+    for (int i = 0; i < length; ++i)
+        if (std::abs (y[(size_t) i]) > peak) { peak = std::abs (y[(size_t) i]); peakAt = i; }
+    if (peak < 1.0e-4f)
+        return -1;
+    int end = length - 1;
+    while (end > peakAt && std::abs (y[(size_t) end]) < peak * 0.01f)
+        --end;
+    const double decay = (end - peakAt) / sr, attack = peakAt / sr;
+
+    const int window = juce::jmin (length, (int) (0.08 * sr));
+    auto bandEnergy = [&] (double lo, double hi)
+    {
+        std::vector<float> b (y.begin(), y.begin() + window);
+        for (int order = 0; order < 2; ++order)
+        {
+            juce::IIRFilter f;
+            if (lo > 0.0) { f.setCoefficients (juce::IIRCoefficients::makeHighPass (sr, lo)); f.processSamples (b.data(), window); f.reset(); }
+            if (hi > 0.0) { f.setCoefficients (juce::IIRCoefficients::makeLowPass (sr, hi)); f.processSamples (b.data(), window); }
+        }
+        double sum = 0.0;
+        for (float v : b) sum += (double) v * v;
+        return sum;
+    };
+    const double sub = bandEnergy (0.0, 150.0), lowMid = bandEnergy (150.0, 400.0), mid = bandEnergy (400.0, 1500.0),
+                 highMid = bandEnergy (1500.0, 6000.0), high = bandEnergy (6000.0, 0.0);
+    const double total = sub + lowMid + mid + highMid + high + 1.0e-12;
+    int crossings = 0;
+    for (int i = 1; i < window; ++i)
+        crossings += (y[(size_t) i - 1] < 0.0f) != (y[(size_t) i] < 0.0f);
+    const double noisy = crossings / (window / sr) / 10000.0;   // ~1 for noise-like hits
+
+    if (sub / total > 0.45)                       return (int) fgd::Lane::kick;
+    if (high / total > 0.45)
+    {
+        if (decay > 0.9)                          return (int) fgd::Lane::crash;
+        if (decay > 0.25)                         return (int) fgd::Lane::openHat;
+        return attack > 0.012 ? (int) fgd::Lane::shaker : (int) fgd::Lane::closedHat;
+    }
+    if ((highMid + high) / total > 0.5 && noisy > 0.35)
+        return lowMid / total > 0.1 ? (int) fgd::Lane::snare : (int) fgd::Lane::clap;
+    if ((sub + lowMid) / total > 0.5)             return (int) fgd::Lane::tom;
+    if (mid / total > 0.35)                       return decay < 0.06 ? (int) fgd::Lane::rim : (int) fgd::Lane::conga;
+    if (highMid / total > 0.35)                   return noisy > 0.35 ? (int) fgd::Lane::clap : (int) fgd::Lane::cowbell;
+    return -1;
+}
+
+std::vector<FaseGrooveDrumsProcessor::SampleInfo> FaseGrooveDrumsProcessor::scanSampleFolder (const juce::File& folder, int maxFiles)
+{
+    std::vector<SampleInfo> found;
+    if (! folder.isDirectory())
+        return found;
 
     auto files = folder.findChildFiles (juce::File::findFiles, true, "*.wav;*.aif;*.aiff;*.flac;*.mp3;*.ogg");
     files.sort();
-    std::array<bool, fgd::numLanes> taken {};
-    juce::Array<juce::File> used;   // a file is one drum only
-    for (const auto& rule : rules)
-        for (const auto& file : files)
-        {
-            if (taken[(size_t) rule.lane])
-                break;
-            if (used.contains (file))
-                continue;
-            const auto name = file.getFileNameWithoutExtension().toLowerCase();
-            const auto squashed = name.removeCharacters (" _-.()[]0123456789");
-            juce::StringArray tokens;
-            tokens.addTokens (name.replaceCharacters ("_-.()[]0123456789", "                 "), " ", {});
-            tokens.removeEmptyStrings();
-            bool match = false;
-            for (const auto* word : rule.words)
+    for (const auto& file : files)
+    {
+        if ((int) found.size() >= maxFiles)
+            break;
+        SampleInfo info;
+        info.file = file;
+        // Its name first, then the folders it sits in (nearest first), then its sound.
+        if ((info.lane = laneFromWords (file.getFileNameWithoutExtension())) >= 0)
+            info.source = SampleInfo::Source::name;
+        else
+            for (auto dir = file.getParentDirectory(); info.lane < 0 && dir.isAChildOf (folder.getParentDirectory()); dir = dir.getParentDirectory())
             {
-                const juce::String w (word);
-                // Short words must be a word of their own ("ch", not "chord"); long ones anywhere.
-                match = w.length() <= 3 ? tokens.contains (w) : squashed.contains (w);
-                if (match)
+                if ((info.lane = laneFromWords (dir.getFileName())) >= 0)
+                    info.source = SampleInfo::Source::folder;
+                if (dir == folder)
                     break;
             }
-            if (match && loadSample ((int) rule.lane, file))
+        if (info.lane < 0 && file.getSize() < 8 * 1024 * 1024 && (info.lane = laneFromSound (file)) >= 0)
+            info.source = SampleInfo::Source::sound;
+        found.push_back (info);
+    }
+    return found;
+}
+
+juce::StringArray FaseGrooveDrumsProcessor::loadKitFolder (const juce::File& folder)
+{
+    // For each drum, the first sample that says it by name, else by folder, else by sound.
+    juce::StringArray loaded;
+    const auto found = scanSampleFolder (folder);
+    for (int l = 0; l < fgd::numLanes; ++l)
+        for (auto source : { SampleInfo::Source::name, SampleInfo::Source::folder, SampleInfo::Source::sound })
+        {
+            const auto it = std::find_if (found.begin(), found.end(), [l, source] (const SampleInfo& i) { return i.lane == l && i.source == source; });
+            if (it != found.end() && loadSample (l, it->file))
             {
-                taken[(size_t) rule.lane] = true;
-                used.add (file);
-                loaded.add (fgd::laneName ((int) rule.lane));
+                loaded.add (fgd::laneName (l));
+                break;
             }
         }
+    sampleFolder = folder;
     return loaded;
+}
+
+void FaseGrooveDrumsProcessor::previewSampleFile (const juce::File& file)
+{
+    juce::AudioFormatManager formats;
+    formats.registerBasicFormats();
+    std::unique_ptr<juce::AudioFormatReader> reader (formats.createReaderFor (file));
+    if (reader == nullptr || reader->lengthInSamples <= 0 || reader->sampleRate <= 0.0)
+        return;
+    auto sample = std::make_shared<DrumSample>();
+    const int length = (int) juce::jmin<juce::int64> (reader->lengthInSamples, (juce::int64) (reader->sampleRate * 4.0));
+    sample->audio.setSize (juce::jlimit (1, 2, (int) reader->numChannels), length);
+    reader->read (&sample->audio, 0, length, 0, true, sample->audio.getNumChannels() > 1);
+    sample->sampleRate = reader->sampleRate;
+    sample->path = file.getFullPathName();
+    previewPosition = -1.0;
+    std::atomic_store (&previewSample, std::shared_ptr<const DrumSample> (std::move (sample)));
+    previewPosition = 0.0;
 }
 
 void FaseGrooveDrumsProcessor::clearAllSamples()
@@ -1036,6 +1148,24 @@ void FaseGrooveDrumsProcessor::processBlock (juce::AudioBuffer<float>& buffer, j
         outputGain.setTargetValue (juce::Decibels::decibelsToGain (raw (ParamIDs::volume)));
         outputGain.applyGain (buffer, numSamples);
     }
+
+    // A sample auditioned in the sample browser, on top of everything.
+    if (double pos = previewPosition.load(); pos >= 0.0)
+        if (const auto sample = std::atomic_load (&previewSample); sample != nullptr)
+        {
+            const double step = sample->sampleRate / sampleRate;
+            const int length = sample->audio.getNumSamples();
+            for (int i = 0; i < numSamples && pos < length - 1; ++i, pos += step)
+                for (int ch = 0; ch < buffer.getNumChannels(); ++ch)
+                {
+                    const int src = juce::jmin (ch, sample->audio.getNumChannels() - 1);
+                    const int at = (int) pos;
+                    const float frac = (float) (pos - at);
+                    const float v = sample->audio.getSample (src, at) * (1.0f - frac) + sample->audio.getSample (src, at + 1) * frac;
+                    buffer.addSample (ch, i, 0.8f * v);
+                }
+            previewPosition = pos < length - 1 ? pos : -1.0;
+        }
 
     samplesProcessed += numSamples;
     midi.swapWith (outMidi);
@@ -1461,6 +1591,8 @@ juce::ValueTree FaseGrooveDrumsProcessor::stateTree() const
     }
 
     juce::ValueTree sounds ("Samples");
+    if (sampleFolder != juce::File())
+        sounds.setProperty ("folder", sampleFolder.getFullPathName(), nullptr);
     for (int l = 0; l < fgd::numLanes; ++l)
         if (const auto path = samplePath (l); path.isNotEmpty())
             sounds.setProperty ("lane" + juce::String (l + 1), path, nullptr);
@@ -1538,6 +1670,8 @@ void FaseGrooveDrumsProcessor::applyStateTree (const juce::ValueTree& source)
 
     // Your own samples: loaded again from their files (only when they changed).
     const auto sounds = state.getChildWithName ("Samples");
+    if (const auto folder = sounds.getProperty ("folder").toString(); folder.isNotEmpty())
+        sampleFolder = juce::File (folder);
     for (int l = 0; l < fgd::numLanes; ++l)
     {
         const auto path = sounds.getProperty ("lane" + juce::String (l + 1)).toString();

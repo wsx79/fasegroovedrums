@@ -150,6 +150,23 @@ public:
     juce::StringArray loadKitFolder (const juce::File&);
     void clearAllSamples();
 
+    /** A sample found in a folder, and the drum it sounds like: recognised from its file name,
+        from its folder's name (Kicks, Hi Hats...) or, failing both, from its sound. */
+    struct SampleInfo
+    {
+        enum class Source { name, folder, sound, none };
+        juce::File file;
+        int lane = -1;
+        Source source = Source::none;
+    };
+    static std::vector<SampleInfo> scanSampleFolder (const juce::File& folder, int maxFiles = 4000);
+    static int laneFromWords (const juce::String& text);   // -1: no drum word in it
+    static int laneFromSound (const juce::File&);          // -1: can't tell
+    juce::File sampleFolder;                               // the last folder browsed (saved with the project)
+
+    /** Plays a sample file once, as it is (the sample browser). */
+    void previewSampleFile (const juce::File&);
+
     // Audio export of the guide sound (the built-in kit or your samples).
     enum class AudioExport { clip = 0, song, stems };
     /** Writes WAV file(s) into `target` (a file, or a folder for the stems); returns the files written. */
@@ -326,6 +343,8 @@ private:
 
     GuideDrums drums;
     DrumSamples samples;   // read and swapped with std::atomic_load / std::atomic_store
+    std::shared_ptr<const DrumSample> previewSample;   // the file being auditioned (atomic_load / atomic_store)
+    std::atomic<double> previewPosition { -1.0 };      // in the sample's own samples, -1 = silent
     juce::Reverb reverbFx;
     juce::SmoothedValue<float> outputGain;
 

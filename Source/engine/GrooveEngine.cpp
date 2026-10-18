@@ -69,13 +69,14 @@ namespace
 
     int lcm (int a, int b) noexcept { return a / std::gcd (a, b) * b; }
 
-    /** The level a played hat (or shaker...) has at each 16th of the beat: the offbeat 8th sings,
-        the downbeat is a little softer, the 16th before the beat softer still, the one after it
-        softest. */
-    double accentProfile (int stepInBeat) noexcept
+    /** The level a hat (or shaker, tambourine, ride) has at each 16th of the beat, as house
+        drummers and drum machines play it: the offbeat 8th sings, everything else is less than
+        half as loud, the 16th just after the beat the softest. Percussion has a gentler curve. */
+    double accentProfile (int lane, int stepInBeat) noexcept
     {
-        static constexpr double profile[] { 0.72, 0.52, 1.0, 0.6 };
-        return profile[stepInBeat & 3];
+        static constexpr double hats[] { 0.45, 0.28, 1.0, 0.4 };
+        static constexpr double percussion[] { 0.82, 0.55, 1.0, 0.8 };
+        return (lane == (int) Lane::conga || lane == (int) Lane::cowbell ? percussion : hats)[stepInBeat & 3];
     }
 
     /** Whether a drum keeps playing the groove under a fill. */
@@ -102,7 +103,8 @@ namespace
     {
         switch ((Lane) lane)
         {
-            case Lane::closedHat: case Lane::openHat: case Lane::ride: case Lane::shaker: case Lane::tambourine: return true;
+            case Lane::closedHat: case Lane::openHat: case Lane::ride: case Lane::shaker: case Lane::tambourine:
+            case Lane::conga: case Lane::cowbell: return true;
             default: return false;
         }
     }
@@ -335,7 +337,7 @@ void GrooveEngine::collectStep (long long step, const DrumSettings& s, const Dru
         {
             // The accent groove: written accents stay on top, the rest follows the beat.
             const double a = std::clamp ((double) s.accentGroove, 0.0, 1.0);
-            const double shape = 1.0 - a * (1.0 - accentProfile (stepInBar % 4));
+            const double shape = 1.0 - a * (1.0 - accentProfile (lane, stepInBar % 4));
             level *= symbol == 'X' ? std::max (shape, 0.9) : shape * (1.0 + 0.25 * a);
         }
         roll = lane == (int) Lane::kick ? 1 : std::clamp (roll, 1, 4);   // a roll would take the kick off the grid

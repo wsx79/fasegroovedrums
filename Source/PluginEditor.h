@@ -134,6 +134,8 @@ public:
     static constexpr int headerWidth = 112;
     /** Called when a drum's name is double-clicked: show it in the velocity view. */
     std::function<void (int lane)> onShowVelocity;
+    /** Called to choose a drum's sample in the sample browser. */
+    std::function<void (int lane)> onBrowseSamples;
     /** The drum row at a point (-1 outside), e.g. where a sample is dropped. */
     int laneAt (juce::Point<int>) const;
     void chooseSample (int lane);
@@ -344,6 +346,49 @@ private:
 };
 
 //==============================================================================
+/** The sample browser: a folder of samples, each recognised as a drum (by its name, its folder's
+    name or its sound). Pick a drum on the left, click a sample to hear it, USE it (or double-click). */
+class SampleBrowser : public juce::Component, private juce::ListBoxModel
+{
+public:
+    explicit SampleBrowser (FaseGrooveDrumsProcessor&);
+    ~SampleBrowser() override;
+    void paint (juce::Graphics&) override;
+    void resized() override;
+    void mouseDown (const juce::MouseEvent&) override;
+    bool keyPressed (const juce::KeyPress&) override;
+
+    /** Opens the browser on a folder (the last one if none), for a drum. */
+    void show (const juce::File& folder, int lane);
+    std::function<void (const juce::String&)> onMessage;
+
+private:
+    int getNumRows() override;
+    void paintListBoxItem (int row, juce::Graphics&, int width, int height, bool selected) override;
+    void listBoxItemClicked (int row, const juce::MouseEvent&) override;
+    void listBoxItemDoubleClicked (int row, const juce::MouseEvent&) override;
+    void selectedRowsChanged (int row) override;
+
+    juce::Rectangle<float> card() const;
+    juce::Rectangle<float> drumBounds (int lane) const;
+    void scan (const juce::File& folder);
+    void rebuildList();
+    void use (int row);
+    int countFor (int lane) const;
+
+    FaseGrooveDrumsProcessor& processor;
+    std::vector<FaseGrooveDrumsProcessor::SampleInfo> found;
+    std::vector<int> rows;   // indexes into found, for the drum shown
+    juce::File folder;
+    int lane = 0;
+    bool scanning = false, showAll = false;
+    juce::ListBox list;
+    juce::TextButton folderButton { "FOLDER..." }, autoButton { "AUTO KIT" }, allButton { "ALL FILES" }, closeButton { "CLOSE" };
+    std::unique_ptr<juce::FileChooser> chooser;
+    std::shared_ptr<std::atomic<bool>> alive = std::make_shared<std::atomic<bool>> (true);
+};
+
+//==============================================================================
 /** The mixer: a volume fader and a mute for each drum of the guide kit (and your samples). */
 class MixerView : public juce::Component
 {
@@ -500,6 +545,7 @@ private:
 
     SongOverlay songOverlay { processor };
     GrooveBrowser browser { processor };
+    SampleBrowser sampleBrowser { processor };
     AboutPanel about;
     std::vector<ParamCombo*> combos;
     juce::Rectangle<int> logoArea, displayArea;

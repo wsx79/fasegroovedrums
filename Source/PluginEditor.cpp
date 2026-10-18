@@ -833,6 +833,7 @@ void DrumGrid::showLaneMenu (int lane)
     menu.addSeparator();
     const auto sample = processor.samplePath (lane);
     menu.addItem (5, sample.isEmpty() ? tr ("Load your own sample...") : tr ("Sample") + ": " + juce::File (sample).getFileName() + " (" + tr ("change...") + ")");
+    menu.addItem (7, tr ("Choose it in the sample browser..."));
     menu.addItem (6, tr ("Back to the built-in sound"), sample.isNotEmpty());
 
     // The MIDI note the drum plays: the General MIDI drum notes by name, any other by number.
@@ -870,6 +871,7 @@ void DrumGrid::showLaneMenu (int lane)
         else if (result == 4)                     { if (safe->onShowVelocity != nullptr) safe->onShowVelocity (lane); }
         else if (result == 5)                     safe->chooseSample (lane);
         else if (result == 6)                     p.clearSample (lane);
+        else if (result == 7)                     { if (safe->onBrowseSamples != nullptr) safe->onBrowseSamples (lane); }
         else if (result == 999)                   p.setParameterFromUI (ParamIDs::note (lane), (float) fgd::defaultNote (lane));
         else if (result >= 1000 && result < 1128) p.setParameterFromUI (ParamIDs::note (lane), (float) (result - 1000));
         else if (result >= 2000)                  p.setParameterFromUI (ParamIDs::level (lane), (float) (result - 2000) / 100.0f);
@@ -2150,6 +2152,302 @@ bool GrooveBrowser::keyPressed (const juce::KeyPress& key)
 }
 
 //==============================================================================
+SampleBrowser::SampleBrowser (FaseGrooveDrumsProcessor& p) : processor (p)
+{
+    setWantsKeyboardFocus (true);
+    list.setModel (this);
+    list.setRowHeight (34);
+    list.setColour (juce::ListBox::backgroundColourId, Palette::field);
+    list.setColour (juce::ListBox::outlineColourId, Palette::panelEdge);
+    list.setOutlineThickness (1);
+    addAndMakeVisible (list);
+
+    Localisation::bindText (folderButton, "FOLDER...");
+    Localisation::bindTip (folderButton, "Choose a folder of samples (its subfolders too)");
+    folderButton.onClick = [this]
+    {
+        chooser = std::make_unique<juce::FileChooser> (tr ("Choose a folder of samples"), folder, "");
+        juce::Component::SafePointer<SampleBrowser> safe (this);
+        chooser->launchAsync (juce::FileBrowserComponent::openMode | juce::FileBrowserComponent::canSelectDirectories, [safe] (const juce::FileChooser& fc)
+        {
+            if (safe != nullptr && fc.getResult().isDirectory())
+                safe->scan (fc.getResult());
+        });
+    };
+    Localisation::bindText (autoButton, "AUTO KIT");
+    Localisation::bindTip (autoButton, "Every drum gets the first sample that suits it (then change any of them here)");
+    autoButton.onClick = [this]
+    {
+        if (folder.isDirectory() && onMessage != nullptr)
+        {
+            const auto loaded = processor.loadKitFolder (folder);
+            onMessage (loaded.isEmpty() ? tr ("No drum samples found in") + " " + folder.getFileName()
+                                        : folder.getFileName() + ": " + juce::String (loaded.size()) + " " + tr ("drums"));
+        }
+        list.repaint();
+        repaint();
+    };
+    Localisation::bindText (allButton, "ALL FILES");
+    Localisation::bindTip (allButton, "Also the other samples of the folder (any of them can play this drum)");
+    allButton.setClickingTogglesState (true);
+    allButton.onClick = [this] { showAll = allButton.getToggleState(); rebuildList(); };
+    Localisation::bindText (closeButton, "CLOSE");
+    closeButton.onClick = [this] { setVisible (false); };
+    for (auto* b : { &folderButton, &autoButton, &allButton, &closeButton })
+        addAndMakeVisible (b);
+}
+
+SampleBrowser::~SampleBrowser()
+{
+    *alive = false;
+}
+
+juce::Rectangle<float> SampleBrowser::card() const
+{
+    return getLocalBounds().toFloat().withSizeKeepingCentre (1040.0f, 700.0f);
+}
+
+juce::Rectangle<float> SampleBrowser::drumBounds (int l) const
+{
+    auto c = card().reduced (22.0f);
+    return { c.getX(), c.getY() + 64.0f + 44.0f * (float) l, 250.0f, 40.0f };
+}
+
+void SampleBrowser::resized()
+{
+    auto c = card().reduced (22.0f).toNearestInt();
+    auto top = c.removeFromTop (30);
+    closeButton.setBounds (top.removeFromRight (90));
+    top.removeFromRight (8);
+    allButton.setBounds (top.removeFromRight (100));
+    top.removeFromRight (8);
+    autoButton.setBounds (top.removeFromRight (100));
+    top.removeFromRight (8);
+    folderButton.setBounds (top.removeFromRight (110));
+    list.setBounds (c.getX() + 266, c.getY() + 34, c.getWidth() - 266, c.getHeight() - 60);
+}
+
+void SampleBrowser::show (const juce::File& f, int forLane)
+{
+    lane = juce::jlimit (0, fgd::numLanes - 1, forLane);
+    setVisible (true);
+    toFront (true);
+    grabKeyboardFocus();
+    const auto target = f.isDirectory() ? f : processor.sampleFolder;
+    if (target.isDirectory() && (target != folder || found.empty()))
+        scan (target);
+    else
+        rebuildList();
+    repaint();
+}
+
+void SampleBrowser::scan (const juce::File& f)
+{
+    folder = f;
+    processor.sampleFolder = f;
+    found.clear();
+    scanning = true;
+    rebuildList();
+    repaint();
+
+    // Reading the samples (and listening to the unnamed ones) takes a moment: in the background.
+    juce::Component::SafePointer<SampleBrowser> safe (this);
+    juce::Thread::launch ([f, safe]
+    {
+        auto result = FaseGrooveDrumsProcessor::scanSampleFolder (f);
+        juce::MessageManager::callAsync ([result = std::move (result), safe, f]() mutable
+        {
+            if (safe == nullptr || safe->folder != f)
+                return;
+            safe->found = std::move (result);
+            safe->scanning = false;
+            safe->rebuildList();
+            safe->repaint();
+        });
+    });
+}
+
+int SampleBrowser::countFor (int l) const
+{
+    return (int) std::count_if (found.begin(), found.end(), [l] (const auto& i) { return i.lane == l; });
+}
+
+void SampleBrowser::rebuildList()
+{
+    rows.clear();
+    std::vector<int> others;
+    for (int i = 0; i < (int) found.size(); ++i)
+        (found[(size_t) i].lane == lane ? rows : others).push_back (i);
+    std::stable_sort (rows.begin(), rows.end(), [this] (int a, int b) { return (int) found[(size_t) a].source < (int) found[(size_t) b].source; });
+    if (showAll)
+        rows.insert (rows.end(), others.begin(), others.end());
+    list.updateContent();
+    list.deselectAllRows();
+    list.repaint();
+}
+
+int SampleBrowser::getNumRows()
+{
+    return (int) rows.size();
+}
+
+void SampleBrowser::paintListBoxItem (int row, juce::Graphics& g, int width, int height, bool selected)
+{
+    if (! juce::isPositiveAndBelow (row, (int) rows.size()))
+        return;
+    const auto& info = found[(size_t) rows[(size_t) row]];
+    const bool inUse = processor.samplePath (lane) == info.file.getFullPathName();
+    const bool other = info.lane != lane;
+    auto r = juce::Rectangle<float> (0.0f, 0.0f, (float) width, (float) height).reduced (3.0f, 2.0f);
+
+    g.setColour (selected ? Palette::control.brighter (0.18f) : row % 2 == 0 ? Palette::control.withAlpha (0.5f) : Palette::field);
+    g.fillRoundedRectangle (r, 4.0f);
+    if (inUse)
+    {
+        g.setColour (laneColour (lane));
+        g.drawRoundedRectangle (r.reduced (0.5f), 4.0f, 1.5f);
+    }
+
+    IconButton::drawIcon (g, IconButton::Icon::play, r.withWidth (26.0f).reduced (7.0f), selected ? Palette::accent2 : Palette::dim);
+    auto text = r.withTrimmedLeft (30.0f);
+
+    // USE on the right, then the way it was recognised.
+    auto useArea = text.removeFromRight (64.0f).reduced (4.0f, 5.0f);
+    g.setColour (inUse ? laneColour (lane) : Palette::panelEdge.brighter (0.15f));
+    g.fillRoundedRectangle (useArea, 4.0f);
+    g.setColour (inUse ? Palette::background : Palette::text);
+    g.setFont (font (11.0f, true));
+    g.drawText (Localisation::upper (tr (inUse ? "in use" : "USE")), useArea, juce::Justification::centred);
+
+    const char* how = info.source == FaseGrooveDrumsProcessor::SampleInfo::Source::name ? "by name"
+                    : info.source == FaseGrooveDrumsProcessor::SampleInfo::Source::folder ? "by folder"
+                    : info.source == FaseGrooveDrumsProcessor::SampleInfo::Source::sound ? "by sound" : "unknown";
+    auto tag = text.removeFromRight (other ? 170.0f : 86.0f).reduced (4.0f, 8.0f);
+    g.setColour ((other && info.lane >= 0 ? laneColour (info.lane) : Palette::dim).withAlpha (0.25f));
+    g.fillRoundedRectangle (tag, 4.0f);
+    g.setColour (other && info.lane >= 0 ? laneColour (info.lane) : Palette::dim);
+    g.setFont (font (10.0f, true));
+    g.drawFittedText ((other && info.lane >= 0 ? tr (fgd::laneShortName (info.lane)) + " - " : juce::String()) + tr (how), tag.toNearestInt(),
+                      juce::Justification::centred, 1, 0.7f);
+
+    g.setColour (Palette::text);
+    g.setFont (font (13.0f, true));
+    g.drawFittedText (info.file.getFileNameWithoutExtension(), text.removeFromTop (text.getHeight() * 0.58f).toNearestInt(),
+                      juce::Justification::bottomLeft, 1, 0.7f);
+    g.setColour (Palette::dim);
+    g.setFont (font (10.0f));
+    g.drawFittedText (info.file.getParentDirectory().getRelativePathFrom (folder.getParentDirectory()), text.toNearestInt(),
+                      juce::Justification::topLeft, 1, 0.7f);
+}
+
+void SampleBrowser::selectedRowsChanged (int row)
+{
+    if (juce::isPositiveAndBelow (row, (int) rows.size()))
+        processor.previewSampleFile (found[(size_t) rows[(size_t) row]].file);
+}
+
+void SampleBrowser::listBoxItemClicked (int row, const juce::MouseEvent& e)
+{
+    if (e.x > list.getVisibleRowWidth() - 70)
+        use (row);
+    else if (row == list.getSelectedRow() && juce::isPositiveAndBelow (row, (int) rows.size()))
+        processor.previewSampleFile (found[(size_t) rows[(size_t) row]].file);   // again
+}
+
+void SampleBrowser::listBoxItemDoubleClicked (int row, const juce::MouseEvent&)
+{
+    use (row);
+}
+
+void SampleBrowser::use (int row)
+{
+    if (! juce::isPositiveAndBelow (row, (int) rows.size()))
+        return;
+    const auto& file = found[(size_t) rows[(size_t) row]].file;
+    if (processor.loadSample (lane, file) && onMessage != nullptr)
+        onMessage (tr (fgd::laneName (lane)) + ": " + file.getFileName());
+    list.repaint();
+    repaint();
+}
+
+void SampleBrowser::paint (juce::Graphics& g)
+{
+    g.fillAll (juce::Colours::black.withAlpha (0.78f));
+    const auto c = card();
+    g.setColour (Palette::panel);
+    g.fillRoundedRectangle (c, 10.0f);
+    g.setColour (Palette::panelEdge.brighter (0.3f));
+    g.drawRoundedRectangle (c, 10.0f, 1.0f);
+
+    auto inner = c.reduced (22.0f);
+    g.setColour (Palette::accent);
+    g.setFont (font (20.0f, true));
+    g.drawText (Localisation::upper (tr ("Sample browser")), inner.removeFromTop (30.0f), juce::Justification::centredLeft);
+    g.setColour (Palette::dim);
+    g.setFont (font (12.0f));
+    g.drawFittedText (folder.isDirectory() ? folder.getFullPathName() : tr ("Choose a folder of samples: kicks, claps, hats..."),
+                      c.reduced (22.0f).withTrimmedTop (32.0f).withHeight (18.0f).withWidth (560.0f).toNearestInt(), juce::Justification::centredLeft, 1, 0.7f);
+
+    // The drums: their sample now and how many the folder has for them.
+    for (int l = 0; l < fgd::numLanes; ++l)
+    {
+        auto r = drumBounds (l);
+        const bool on = l == lane;
+        g.setColour (on ? Palette::control.brighter (0.2f) : Palette::control);
+        g.fillRoundedRectangle (r, 5.0f);
+        g.setColour (laneColour (l));
+        g.fillRoundedRectangle (r.withWidth (4.0f), 2.0f);
+        if (on)
+            g.drawRoundedRectangle (r.reduced (0.5f), 5.0f, 1.2f);
+        auto t = r.reduced (12.0f, 3.0f);
+        g.setColour (Palette::dim);
+        g.setFont (font (11.0f));
+        g.drawText (juce::String (countFor (l)), t.removeFromRight (30.0f), juce::Justification::centredRight);
+        g.setColour (Palette::text);
+        g.setFont (font (13.0f, true));
+        g.drawText (tr (fgd::laneName (l)), t.removeFromTop (t.getHeight() * 0.55f), juce::Justification::bottomLeft);
+        const auto path = processor.samplePath (l);
+        g.setColour (path.isNotEmpty() ? laneColour (l) : Palette::dim);
+        g.setFont (font (10.0f));
+        g.drawFittedText (path.isNotEmpty() ? juce::File (path).getFileNameWithoutExtension() : tr ("Built-in"), t.toNearestInt(),
+                          juce::Justification::topLeft, 1, 0.7f);
+    }
+
+    auto hint = c.reduced (22.0f).removeFromBottom (20.0f).withTrimmedLeft (266.0f);
+    g.setColour (Palette::dim);
+    g.setFont (font (11.5f));
+    g.drawFittedText (scanning ? tr ("Scanning the folder...")
+                      : rows.empty() && folder.isDirectory() ? tr ("No samples for this drum in the folder (try ALL FILES)")
+                      : tr ("Click: listen (arrows: the next one). USE or double-click: this drum plays it. Drop a folder on the window to open it."),
+                      hint.toNearestInt(), juce::Justification::centredLeft, 1, 0.7f);
+}
+
+void SampleBrowser::mouseDown (const juce::MouseEvent& e)
+{
+    for (int l = 0; l < fgd::numLanes; ++l)
+        if (drumBounds (l).contains (e.position))
+        {
+            lane = l;
+            processor.audition (l);
+            rebuildList();
+            repaint();
+            return;
+        }
+    if (! card().contains (e.position))
+        setVisible (false);
+}
+
+bool SampleBrowser::keyPressed (const juce::KeyPress& key)
+{
+    if (key == juce::KeyPress::escapeKey)
+    {
+        setVisible (false);
+        return true;
+    }
+    return false;
+}
+
+//==============================================================================
 MixerView::MixerView (FaseGrooveDrumsProcessor& p) : processor (p)
 {
     for (int l = 0; l < fgd::numLanes; ++l)
@@ -2580,6 +2878,7 @@ FaseGrooveDrumsEditor::FaseGrooveDrumsEditor (FaseGrooveDrumsProcessor& p)
     clearButton.onClick = [this] { processor.clearGrid(); grid.refresh(); velocityView.refresh(); };
     grid.onShowVelocity = [this] (int lane) { selectLane (lane); setView (1); };
     grid.onSelectLane = [this] (int lane) { selectLane (lane); };
+    grid.onBrowseSamples = [this] (int lane) { selectLane (lane); sampleBrowser.show ({}, lane); };
     for (juce::Component* c : std::initializer_list<juce::Component*> { &gridTab, &velocityTab, &mixerTab, &fillTab, &newRhythmButton, &myGroovesButton,
                                                                         &importButton, &templateButton, &clearButton, &grid })
         show (*c);
@@ -2622,6 +2921,8 @@ FaseGrooveDrumsEditor::FaseGrooveDrumsEditor (FaseGrooveDrumsProcessor& p)
 
     content.addChildComponent (songOverlay);
     content.addChildComponent (browser);
+    content.addChildComponent (sampleBrowser);
+    sampleBrowser.onMessage = [this] (const juce::String& text) { showMessage (text); };
     content.addChildComponent (about);
 
     combos = { &partLengthCombo, &genreCombo, &sectionCombo, &fillsCombo, &variationCombo, &fillStyleCombo, &kitCombo, &channelCombo };
@@ -2848,6 +3149,7 @@ void FaseGrooveDrumsEditor::layout()
 
     songOverlay.setBounds (content.getLocalBounds());
     browser.setBounds (content.getLocalBounds());
+    sampleBrowser.setBounds (content.getLocalBounds());
     about.setBounds (content.getLocalBounds());
 }
 
@@ -3287,6 +3589,7 @@ void FaseGrooveDrumsEditor::showTemplateMenu()
 void FaseGrooveDrumsEditor::showKitMenu()
 {
     juce::PopupMenu menu;
+    menu.addItem (3, tr ("Sample browser: choose the samples of a folder..."));
     menu.addItem (1, tr ("Load a kit folder (samples matched by name)..."));
     menu.addItem (2, tr ("Every drum back to the built-in kit"));
     juce::Component::SafePointer<FaseGrooveDrumsEditor> safe (this);
@@ -3296,13 +3599,22 @@ void FaseGrooveDrumsEditor::showKitMenu()
             return;
         if (result == 2)
             safe->processor.clearAllSamples();
+        if (result == 3)
+            safe->sampleBrowser.show ({}, safe->selectedLane);
+        if (result == 3 && ! safe->processor.sampleFolder.isDirectory())
+            result = 1;   // no folder yet: choose one
         if (result != 1)
             return;
         safe->chooser = std::make_unique<juce::FileChooser> (tr ("Load a kit folder"), juce::File(), "");
         safe->chooser->launchAsync (juce::FileBrowserComponent::openMode | juce::FileBrowserComponent::canSelectDirectories, [safe] (const juce::FileChooser& fc)
         {
             if (safe != nullptr && fc.getResult().isDirectory())
-                safe->loadKitFolder (fc.getResult());
+            {
+                if (safe->sampleBrowser.isVisible())
+                    safe->sampleBrowser.show (fc.getResult(), safe->selectedLane);
+                else
+                    safe->loadKitFolder (fc.getResult());
+            }
         });
     });
 }
@@ -3365,7 +3677,7 @@ void FaseGrooveDrumsEditor::filesDropped (const juce::StringArray& files, int x,
     for (const auto& f : files)
         if (juce::File (f).isDirectory())
         {
-            loadKitFolder (juce::File (f));
+            sampleBrowser.show (juce::File (f), selectedLane);
             return;
         }
 

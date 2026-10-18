@@ -602,13 +602,39 @@ namespace
         writeTestWav (kit.getChildFile ("hh closed.wav"), 1.1f);
         writeTestWav (kit.getChildFile ("chord stab.wav"), 0.3f);
         const auto loaded = p.loadKitFolder (kit);
-        CHECK (loaded.size() == 4);
+        CHECK (loaded.size() >= 4);   // (the chord stab may be taken for a drum by its sound)
         CHECK (p.samplePath ((int) fgd::Lane::kick).endsWith ("BD_Punchy 01.wav"));
         CHECK (p.samplePath ((int) fgd::Lane::snare).endsWith ("Snare Tight.wav"));
         CHECK (p.samplePath ((int) fgd::Lane::openHat).endsWith ("Open Hat 3.wav"));
         CHECK (p.samplePath ((int) fgd::Lane::closedHat).endsWith ("hh closed.wav"));
         p.clearAllSamples();
         CHECK (p.samplePath ((int) fgd::Lane::kick).isEmpty());
+
+        // The sample browser: recognised by name, by folder, or by sound.
+        auto library = temp.getChildFile ("Library");
+        library.getChildFile ("Kicks").createDirectory();
+        writeTestWav (library.getChildFile ("Kicks").getChildFile ("Deep One.wav"), 0.01f);
+        writeTestWav (library.getChildFile ("CH 01.wav"), 1.1f);
+        writeTestWav (library.getChildFile ("mystery 7.wav"), 0.012f);   // a low thump, no name
+        const auto scanned = FaseGrooveDrumsProcessor::scanSampleFolder (library);
+        CHECK (scanned.size() == 3);
+        for (const auto& info : scanned)
+        {
+            const auto name = info.file.getFileNameWithoutExtension();
+            if (name == "Deep One")  CHECK (info.lane == (int) fgd::Lane::kick && info.source == FaseGrooveDrumsProcessor::SampleInfo::Source::folder);
+            if (name == "CH 01")     CHECK (info.lane == (int) fgd::Lane::closedHat && info.source == FaseGrooveDrumsProcessor::SampleInfo::Source::name);
+            if (name == "mystery 7") CHECK (info.lane == (int) fgd::Lane::kick && info.source == FaseGrooveDrumsProcessor::SampleInfo::Source::sound);
+        }
+        CHECK (FaseGrooveDrumsProcessor::laneFromWords ("Toms") == (int) fgd::Lane::tom);
+        CHECK (FaseGrooveDrumsProcessor::laneFromWords ("Hi Hats") == (int) fgd::Lane::closedHat);
+        CHECK (FaseGrooveDrumsProcessor::laneFromWords ("Chord stab") == -1);
+        p.previewSampleFile (library.getChildFile ("CH 01.wav"));
+        {
+            juce::AudioBuffer<float> out (2, 512);
+            juce::MidiBuffer none;
+            p.processBlock (out, none);
+            CHECK (out.getMagnitude (0, 512) > 0.01f);
+        }
 
         // Audio export: a loop exactly as long as the clip, the song, and the stems.
         p.selectGroove (0);
