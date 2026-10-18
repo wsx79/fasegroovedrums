@@ -180,6 +180,12 @@ DrumPattern makeRandomPattern (std::uint32_t seed, float density, int genre)
             if (c[(size_t) i] != '.')
                 p[lane][(size_t) i] = p[lane][(size_t) (i + 16)] = c[(size_t) i];
     };
+    auto setLoop = [&p] (Lane lane, const char* line)  // both bars, replacing the lane
+    {
+        const auto c = compact (line);
+        for (int i = 0; i < randomBeatLength && i < (int) c.size(); ++i)
+            p[lane][(size_t) i] = c[(size_t) i];
+    };
     auto pickCell = [&r] (std::initializer_list<const char*> cells) { return *(cells.begin() + r.nextInt ((int) cells.size())); };
 
     // ---- Kick: on the grid, as the genre wants it ----
@@ -225,10 +231,28 @@ DrumPattern makeRandomPattern (std::uint32_t seed, float density, int genre)
                                                                                          : pickCell ({ "xg.x xg.x xg.x xg.x", "xgxx xg.x xgxx xg.x" }));
         for (int i = 2; i < randomBeatLength; i += 4)   // keep the offbeats for the open hat
             p[Lane::closedHat][(size_t) i] = '.';
+        if (genre == jackin && r.chance (0.35f))
+        {
+            // The raw jack clap: syncopated hits around the beats, a different answer in bar 2.
+            setLoop (Lane::clap, ".x.. X... X... X... ..x. X... X.x. ....");
+            if (r.chance (0.5f))
+                setLoop (Lane::snare, "x... x... x... .... x... x... x... ....");
+        }
+        else
+        {
+            if (r.chance (0.5f))
+                p[Lane::clap][3] = p[Lane::clap][19] = 'g';   // the clap's pick-up into beat 2
+            if (r.chance (0.35f))
+                p[Lane::clap][11] = p[Lane::clap][27] = 'g';  // ...and into beat 4
+            if (r.chance (0.3f))
+                p[Lane::clap][29] = 'x';                      // an extra clap closing the loop
+        }
         if (r.chance (0.5f))
-            p[Lane::clap][3] = p[Lane::clap][19] = 'g';   // the clap's pick-up into beat 2
-        if (r.chance (0.35f))
-            p[Lane::clap][11] = p[Lane::clap][27] = 'g';  // ...and into beat 4
+            p[Lane::snare][15] = p[Lane::snare][31] = 'g';    // short snare ghosts closing each bar
+        if (r.chance (0.4f))
+            p[Lane::kick][(size_t) (r.chance (0.5f) ? 31 : 30)] = 'x';   // a soft kick turning the loop round
+        if (density > 0.3f && r.chance (0.5f))
+            p[Lane::closedHat][15] = p[Lane::closedHat][31] = 'X';       // the hat lifting the end of each bar
         if (genre == jackinPiano && density > 0.4f)
             setBar (r.chance (0.5f) ? Lane::shaker : Lane::tambourine, r.chance (0.5f) ? "xxxx xxxx xxxx xxxx" : ".... x... .... x...");
         if (density > 0.4f)
@@ -236,7 +260,7 @@ DrumPattern makeRandomPattern (std::uint32_t seed, float density, int genre)
             {
                 case 0:  setBar (Lane::cowbell, pickCell ({ "x..x ..x. ..x. x...", "..x. .x.. ..x. ...." })); break;
                 case 1:  setBar (Lane::tom, "..x. .x.. x..x .x.."); break;
-                default: setBar (Lane::rim, pickCell ({ "...x ..x. .x.. ...x", "...x .... .x.. ...." })); break;
+                default: setBar (Lane::rim, pickCell ({ "...x ..x. .x.. ...x", "...x .... .x.. ....", ".x.. ...x .x.. .x.." })); break;
             }
         if (density > 0.5f && r.chance (0.5f))
             p[Lane::rim][31] = 'x';                       // a rim answering at the end of bar 2

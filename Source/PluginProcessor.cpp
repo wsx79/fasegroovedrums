@@ -567,7 +567,7 @@ void FaseGrooveDrumsProcessor::totalRandom()
     }
 
     setParameterFromUI (ParamIDs::density, 0.25f + 0.6f * r.nextFloat());
-    setParameterFromUI (ParamIDs::swing, juce::jlimit (0.0f, 0.75f, fgd::genreSwing (style) + (r.nextFloat() - 0.5f) * 0.12f));
+    setParameterFromUI (ParamIDs::swing, juce::jlimit (0.0f, 1.0f, fgd::genreSwing (style) + (r.nextFloat() - 0.5f) * 0.12f));
     setParameterFromUI (ParamIDs::humanize, 0.05f + 0.35f * r.nextFloat());
     setParameterFromUI (ParamIDs::fillStyle, (float) r.nextInt (fgd::numFillStyles));
     if (r.nextInt (3) == 0)

@@ -4,6 +4,16 @@
 
 All notable changes to **Fase Groove Drums**.
 
+## [0.7.1] - 2026-10-18
+
+- **Heavier jack**: the Jackin' swing goes up to 90% (Jackin' Piano 75%), the classic heavy
+  Chicago shuffle.
+- The random Jackin' beat can now use the **raw jack clap** (syncopated claps around the beats,
+  a different answer in bar 2, with a soft layer on the beats), an extra clap closing the loop,
+  short snare ghosts at the end of each bar, a soft kick turning the loop round (still on the
+  grid), an accented closed hat lifting the end of each bar and rims on the in-between 16ths.
+- Three new Jackin' grooves: Raw Jack Claps, Chicago Layers, Rim Jack.
+
 ## [0.7.0] - 2026-10-18
 
 - **Jackin' sounds like jackin'**: the Jackin' grooves are rewritten around the classic Chicago

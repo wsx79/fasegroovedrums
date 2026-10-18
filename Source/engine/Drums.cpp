@@ -337,6 +337,15 @@ const std::vector<DrumPattern>& drumPatterns()
         groove ("Warehouse Jack", "Jackin'",
                 { { K, fourFloor }, { C, backbeat }, { RD, "..X. ..X. ..X. ..X." }, { CH, "xg.x xg.x xg.x xg.x" },
                   { R, "...x ..x. .... .x.." } }),
+        groove ("Raw Jack Claps", "Jackin'",
+                { { K, fourFloor }, { C, ".x.. X... X... X... ..x. X... X.x. ...." }, { S, "x... x... x... .... x... x... x... ...." },
+                  { OH, offbeats }, { CH, "xg.x xg.x xg.x xg.X" } }),
+        groove ("Chicago Layers", "Jackin'",
+                { { K, "X... X... X... X... X... X... X... X..g" }, { C, ".... X... .... X... .... X... .... X.x." },
+                  { S, ".... x... .... x..g .... x... .... x.gg" }, { OH, offbeats }, { CH, "xg.g xg.g xg.g xg.X" } }),
+        groove ("Rim Jack", "Jackin'",
+                { { K, fourFloor }, { C, backbeat }, { OH, offbeats }, { CH, "x..x x..x x..x x..X" },
+                  { R, ".x.. ...x .x.. .x.. .x.. ...x ...x .x.." } }),
     };
     return patterns;
 }
@@ -360,7 +369,7 @@ int categoryIndex (const std::string& category) noexcept
 
 float genreSwing (int category) noexcept
 {
-    static const float swing[] { 0.15f, 0.25f, 0.3f, 0.35f, 0.6f, 0.5f, 0.6f, 0.2f, 0.3f, 0.1f, 0.55f, 0.25f, 0.0f };
+    static const float swing[] { 0.15f, 0.25f, 0.3f, 0.35f, 0.9f, 0.75f, 0.6f, 0.2f, 0.3f, 0.1f, 0.55f, 0.25f, 0.0f };
     return category >= 0 && category < (int) std::size (swing) ? swing[category] : 0.2f;
 }
 
