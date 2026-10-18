@@ -405,7 +405,8 @@ static void testPartsSectionsAndLanes()
     }
     for (const auto& e : GrooveEngine::renderClip (s, 16.0))
         if (e.isNoteOn() && e.lane == (int) Lane::kick)
-            CHECK (e.velocity == 50);
+            if (std::abs (e.ppq - std::round (e.ppq)) < 1.0e-6)   // the hand-set kicks (a variation may add a pick-up)
+                CHECK (e.velocity == 50);
 
     // A section's own fill: only on its last bar, or none.
     std::vector<ArrangementPart> parts { { Section::main, 4, 0, (int) FillStyle::tomRun } };
@@ -506,6 +507,62 @@ static void testJackinGroove()
         {
             CHECK (isHit (g[Lane::clap][4]) && isHit (g[Lane::clap][12]));
         }
+
+    // Most of them have the 909 snare under the clap, and the random ones often do.
+    int withSnare = 0, jackinGrooves = 0, randomWithSnare = 0;
+    for (const auto& g : drumPatterns())
+        if (g.category == "Jackin'")
+        {
+            ++jackinGrooves;
+            withSnare += std::any_of (g[Lane::snare].begin(), g[Lane::snare].end(), isHit) ? 1 : 0;
+        }
+    CHECK (withSnare * 2 > jackinGrooves);
+    for (std::uint32_t seed = 1; seed < 60; ++seed)
+    {
+        const auto p = makeRandomPattern (seed, 0.6f, jackin);
+        randomWithSnare += std::any_of (p[Lane::snare].begin(), p[Lane::snare].end(), isHit) ? 1 : 0;
+    }
+    CHECK (randomWithSnare > 25);
+
+    // The clap lands a hair before the snare under it; the kick stays on the grid.
+    int index = -1;
+    for (size_t i = 0; i < drumPatterns().size(); ++i)
+        if (drumPatterns()[i].name == "Jack Hybrid")
+            index = (int) i;
+    CHECK (index >= 0);
+    auto s = straight();
+    s.pattern = index;
+    double clapAt = -1.0, snareAt = -1.0;
+    for (const auto& e : GrooveEngine::renderClip (s, 4.0))
+        if (e.isNoteOn() && e.ppq > 0.9 && e.ppq < 1.1)
+        {
+            if (e.lane == (int) Lane::clap) clapAt = e.ppq;
+            if (e.lane == (int) Lane::snare) snareAt = e.ppq;
+            if (e.lane == (int) Lane::kick) CHECK (std::abs (e.ppq - 1.0) < 1.0e-9);
+        }
+    CHECK (clapAt > 0.0 && snareAt > 0.0 && clapAt < snareAt);
+}
+
+static void testHatsOnTheSameStep()
+{
+    // Closed and open hat on the same step: only the open hat plays (it would be choked).
+    auto s = straight();
+    s.pattern = userPatternIndex();
+    for (int i = 0; i < userPatternLength; ++i)
+    {
+        s.user[(size_t) Lane::closedHat][(size_t) i] = 'x';
+        s.user[(size_t) Lane::openHat][(size_t) i] = i % 4 == 2 ? 'x' : '.';
+    }
+    int open = 0, closedWithOpen = 0;
+    for (const auto& e : GrooveEngine::renderClip (s, 4.0))
+        if (e.isNoteOn())
+        {
+            const int step = (int) std::lround (e.ppq * 4.0) % 4;
+            open += e.lane == (int) Lane::openHat ? 1 : 0;
+            closedWithOpen += e.lane == (int) Lane::closedHat && step == 2 ? 1 : 0;
+        }
+    CHECK (open == 4);   // one bar
+    CHECK (closedWithOpen == 0);
 }
 
 static void testDrumFeel()
@@ -622,6 +679,7 @@ int main()
     testPartsSectionsAndLanes();
     testPresets();
     testAccentGroove();
+    testHatsOnTheSameStep();
     testLanes();
     testRenderBasics();
     testSwingAndHumanize();

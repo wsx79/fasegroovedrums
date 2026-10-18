@@ -175,6 +175,9 @@ namespace
     const Cell clapCells[] {
         { ".... X... .... X...", 60 }, { ".... X..x .... X...", 8 }, { ".... Xg.. .... Xx..", 8 }, { ".... X... .... X..x", 5 },
         { ".... X... .... X.x.", 4 }, { ".... X... ..x. X...", 2 } };
+    const Cell jackSnareCells[] {
+        { ".... x... .... x...", 5 }, { "g... x... g... x...", 4 }, { ".... x..x .... x...", 4 }, { "...g x... ...g x...", 3 },
+        { ".... x... ..g. x..x", 3 } };
     const Cell shakerCells[] {
         { "..xx ..x. ..xx ..x.", 12 }, { "x..x ..x. ..x. x...", 7 }, { "xxxx xxxx xxxx xxxx", 6 }, { "..xx ..xx ..xg ..xx", 5 },
         { "g.gx g.xx ..xx g.xx", 5 }, { "..x. ..x. ..x. ..x.", 4 }, { "xgx. xgxx xgx. xgxx", 4 }, { "g.xg xgxg g.xg xgxg", 3 } };
@@ -219,7 +222,7 @@ namespace
             case soulful:     return { 0.3f,  0.3f,  0.3f,  0.55f, 0.35f, 0.6f,  0.3f,  0.3f,  0.15f, Lane::conga };
             case deep:        return { 0.15f, 0.0f,  0.3f,  0.4f,  0.0f,  0.55f, 0.3f,  0.3f,  0.0f, Lane::rim };
             case gospel:      return { 0.5f,  0.1f,  0.2f,  0.1f,  0.85f, 0.2f,  0.1f,  0.35f, 0.8f, Lane::conga };
-            case jackin:      return { 0.1f,  0.0f,  0.5f,  0.2f,  0.05f, 0.5f,  0.3f,  0.55f, 0.15f, Lane::cowbell };
+            case jackin:      return { 0.1f,  0.0f,  0.5f,  0.2f,  0.05f, 0.5f,  0.3f,  0.55f, 0.7f,  Lane::cowbell };
             case jackinPiano: return { 0.5f,  0.0f,  0.35f, 0.35f, 0.15f, 0.35f, 0.15f, 0.4f,  0.1f, Lane::rim };
             case afro:        return { 0.35f, 0.0f,  0.2f,  0.9f,  0.0f,  0.8f,  0.65f, 0.15f, 0.0f, Lane::conga };
             case funky:       return { 0.55f, 0.35f, 0.3f,  0.1f,  0.5f,  0.25f, 0.2f,  0.3f,  0.6f, Lane::cowbell };
@@ -288,7 +291,17 @@ DrumPattern makeRandomPattern (std::uint32_t seed, float density, int genre)
         setBar (Lane::clap, clapCell);
         if (genre == deep)
             soften (p[Lane::clap]);
-        if (r.chance (style.snare))
+        if (genre == jackin && r.chance (style.snare))
+        {
+            // The 909 snare under the jack clap: soft on the beats or loud swung pick-ups,
+            // and bar 2 turns round into the next loop.
+            setBar (Lane::snare, pickCell (r, jackSnareCells));
+            const auto turn = compact (pickOf ({ "..g. x..x", "..x. x.xx", ".... XgXX", "..g. x.x." }));
+            for (int i = 0; i < 8; ++i)
+                if (turn[(size_t) i] != '.')
+                    p[Lane::snare][(size_t) (24 + i)] = turn[(size_t) i];
+        }
+        else if (r.chance (style.snare))
             setBar (Lane::snare, genre == funky && r.chance (0.5f) ? ".... X... ..g. X..." : ".... x... .... x...");
     }
 

@@ -300,6 +300,11 @@ void GrooveEngine::collectStep (long long step, const DrumSettings& s, const Dru
         return std::clamp ((int) std::lround (v), 1, 127);
     };
 
+    const bool jackin = pattern.category.rfind ("Jackin", 0) == 0;
+    const bool hasSnare = std::any_of (pattern.lanes[(size_t) Lane::snare].begin(), pattern.lanes[(size_t) Lane::snare].end(), isHit);
+    // Jackin': the clap lands a hair before the 909 snare under it, so the two flam.
+    const double jackFlam = jackin && hasSnare ? -0.006 * std::clamp (s.tempo, 20.0, 400.0) / 60.0 : 0.0;
+
     auto timeFor = [&] (int lane, int salt)
     {
         // The kick is always exactly on the grid: no swing, no push or pull, no humanize.
@@ -309,6 +314,7 @@ void GrooveEngine::collectStep (long long step, const DrumSettings& s, const Dru
         // only ever delays a hit a little (a drummer sits on or behind the grid).
         const double shift = std::clamp ((double) s.laneShift[(size_t) lane], -40.0, 40.0) / 1000.0 * std::clamp (s.tempo, 20.0, 400.0) / 60.0;
         const double t = (double) step * stepLength + swingDelay * std::clamp ((double) s.laneSwing[(size_t) lane], 0.0, 2.0) + shift
+                       + (lane == (int) Lane::clap ? jackFlam : 0.0)
                        + human * laneLooseness (lane) * 0.025 * noise (step, seedSalt + salt);
         return step >= 0 ? std::max (t, 0.0) : t;
     };
@@ -378,6 +384,11 @@ void GrooveEngine::collectStep (long long step, const DrumSettings& s, const Dru
         char symbol = pattern.lanes[(size_t) lane][(size_t) pos];
         if (inFill && ! fillKeeps (style, lane, customLanes))
             continue;
+        // The open hat and the closed hat on the same step: the open hat (one hi-hat can't play
+        // both, and the closed one would choke it in a drum rack).
+        if (lane == (int) Lane::closedHat && isHit (symbol) && isHit (pattern.lanes[(size_t) Lane::openHat][(size_t) pos])
+            && ! s.muted[(size_t) Lane::openHat] && ! (inFill && ! fillKeeps (style, (int) Lane::openHat, customLanes)))
+            continue;
         // ...and now and then a soft note that isn't written: a hat or shaker 16th, or the clap's
         // ghost, just before the next bar.
         if (symbol == '.' && human > 0.0 && ! inFill && stepInBar >= 13 && stepInBar % 2 == 1 && phraseBar % 2 == 1)
@@ -388,6 +399,11 @@ void GrooveEngine::collectStep (long long step, const DrumSettings& s, const Dru
             if (plays && suits && lifeNoise (lane, 91) < 0.3 * human)
                 symbol = 'g';
         }
+        // Jackin': at the end of the phrase the 909 snare (or the clap, with no snare) turns the
+        // beat round with loud swung 16ths into the next bar.
+        if (symbol == '.' && human > 0.0 && ! inFill && phraseBar == 3 && stepInBar >= 13 && jackin
+            && lane == (hasSnare ? (int) Lane::snare : (int) Lane::clap) && lifeNoise (lane, 57) < 0.55)
+            symbol = stepInBar == 14 ? 'g' : 'x';
         add (lane, symbol, s.notes[(size_t) lane]);
     }
 

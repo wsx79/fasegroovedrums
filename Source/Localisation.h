@@ -35,6 +35,10 @@ namespace Localisation
     juce::String setting (const char* key, const juce::String& fallback = {});
     void setSetting (const char* key, const juce::var& value);
 
+    /** Tips when the mouse rests on a control (on by default). */
+    bool tipsEnabled();
+    void setTipsEnabled (bool);
+
     /** Upper case that also handles accented letters. */
     juce::String upper (const juce::String&);
 

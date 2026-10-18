@@ -229,7 +229,7 @@ private:
 class DragTile : public juce::Component, public juce::SettableTooltipClient
 {
 public:
-    DragTile (juce::String titleText = "DRAG MIDI TO YOUR DAW", juce::String subtitleText = "drag this tile onto a track")
+    DragTile (juce::String titleText = "DRAG MIDI TO DAW", juce::String subtitleText = "drag this tile onto a track")
         : title (std::move (titleText)), subtitle (std::move (subtitleText)) {}
     std::function<juce::StringArray()> createFiles;
     bool filled = false;   // the big orange tile of the export panel
@@ -281,25 +281,37 @@ private:
 };
 
 //==============================================================================
-/** Credits, links, shortcuts and licence: the gear, or a click on the logo. */
-class AboutPanel : public juce::Component
+/** OPTIONS, as in Fase Groove Piano: a SETTINGS tab (language, interface size, tips, updates,
+    shortcuts) and an ABOUT tab (credits, licence, links). OPTIONS, or a click on the logo. */
+class OptionsOverlay : public juce::Component
 {
 public:
-    AboutPanel();
+    OptionsOverlay();
+
+    std::function<void (float)> onScaleChosen;
+    std::function<void (bool)> onTipsChanged;
+    std::function<void()> onCheckUpdates;
+
+    juce::TextButton checkUpdatesButton;
+
+    void show (bool aboutTab, float currentScale);
+    void refreshText();
+
     void paint (juce::Graphics&) override;
     void resized() override;
-    void mouseDown (const juce::MouseEvent&) override;
+    void mouseUp (const juce::MouseEvent&) override;
 
 private:
-    juce::Rectangle<int> card() const;
-    juce::TextButton sourceButton { "SOURCE CODE" }, kofiButton { "DONATE: KO-FI" }, paypalButton { "DONATE: PAYPAL" },
-                     spotifyButton { "SPOTIFY" }, closeButton { "CLOSE" };
-    juce::ComboBox languageBox;
-    juce::Image artistLogo;
-public:
-    juce::ToggleButton updatesToggle;
-    juce::TextButton checkUpdatesButton { "CHECK FOR UPDATES" };
-    std::function<void()> onCheckUpdates;
+    juce::Rectangle<float> card() const { return getLocalBounds().toFloat().withSizeKeepingCentre (620.0f, 620.0f); }
+    void selectTab (bool about);
+
+    bool showingAbout = false;
+    juce::Image artist;
+    juce::TextButton settingsTab, aboutTab, closeButton;
+    juce::TextButton sourceButton, kofiButton, paypalButton, spotifyButton;
+    juce::Label languageLabel, sizeLabel;
+    juce::ComboBox languageBox, sizeBox;
+    juce::ToggleButton tipsToggle, updatesToggle;
 };
 
 //==============================================================================
@@ -405,6 +417,8 @@ private:
     int drumAt (juce::Point<float>) const;
     void chooseFolder();
     void scan (const juce::File& folder);   // adds the folder (or reads it again)
+    void showFoldersMenu();                 // the folders read, each one can be left out
+    void removeFolder (const juce::File& folder);
     void scanFinished();
     void timerCallback() override { repaint(); }
     juce::String relativePath (const juce::File&) const;
@@ -424,7 +438,7 @@ private:
     int lane = 0, dropLane = -1;
     bool scanning = false, showAll = false;
     juce::ListBox list;
-    juce::TextButton folderButton { "ADD FOLDER..." }, clearListButton { "CLEAR LIST" }, autoButton { "AUTO KIT" }, allButton { "ALL FILES" }, closeButton { "CLOSE" },
+    juce::TextButton folderButton { "ADD FOLDER..." }, foldersButton, clearListButton { "CLEAR LIST" }, autoButton { "AUTO KIT" }, allButton { "ALL FILES" }, closeButton { "CLOSE" },
                      chooseButton { "CHOOSE A FOLDER OF SAMPLES..." }, builtInButton { "BUILT-IN" }, fileButton { "ONE FILE..." },
                      allBuiltInButton { "ALL BUILT-IN" };
     std::unique_ptr<juce::FileChooser> chooser;
@@ -496,6 +510,10 @@ private:
         FaseGrooveDrumsEditor& editor;
     };
 
+    float currentScale() const;
+    void applyTips();
+    void translateHostWindow();
+    void parentHierarchyChanged() override;
     void layout();
     void paintContent (juce::Graphics&);
     int selectedClipBars() const;
@@ -523,7 +541,7 @@ private:
 
     FaseGrooveDrumsProcessor& processor;
     GrooveLookAndFeel lookAndFeel;
-    juce::TooltipWindow tooltips;
+    std::unique_ptr<juce::TooltipWindow> tooltips;
     Content content { *this };
 
     // Header
@@ -534,6 +552,7 @@ private:
     juce::ToggleButton sequencerToggle { "Sequencer" };
     juce::TextButton syncButton { "SYNC DAW" };
     juce::Slider tempoSlider;
+    juce::Label dawTempo;   // the DAW's tempo, in place of the slider while SYNC DAW is on
     std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment> syncAttachment, soundAttachment, crashAttachment, sequencerAttachment;
     std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> tempoAttachment;
 
@@ -588,11 +607,11 @@ private:
     SongOverlay songOverlay { processor };
     GrooveBrowser browser { processor };
     SampleBrowser sampleBrowser { processor };
-    AboutPanel about;
+    OptionsOverlay options;
     UpdateOverlay updateOverlay;
     Updater::Checker updateChecker;
     std::vector<ParamCombo*> combos;
-    juce::Rectangle<int> logoArea, displayArea;
+    juce::Rectangle<int> tempoArea, logoArea, displayArea;
     std::array<float, fgd::numLanes> lights {};
 
     // Undo history: a snapshot twice a second; a change pushes the previous one.

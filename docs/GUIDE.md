@@ -118,7 +118,7 @@ project. **CLEAR** empties the grid. The light next to each name flashes when th
 
 ## 11. Language
 
-**OPTIONS → Language**: English, Italiano, Español, Français, Deutsch or Português. The interface changes at once; the choice is kept for every project.
+**OPTIONS → SETTINGS → Language**: English, Italiano, Español, Français, Deutsch or Português. The interface changes at once; the choice is kept for every project.
 
 ## 12. Part length
 
@@ -185,6 +185,18 @@ project. **CLEAR** empties the grid. The light next to each name flashes when th
 
 - **Updates**: when a new version is out it is downloaded and shown with what's new; **INSTALL
   NOW** installs it (with the Windows setup, without the wizard), **LATER** or **SKIP THIS
-  VERSION**. In **OPTIONS**: *Check for updates when it opens* on / off and **CHECK FOR UPDATES**.
+  VERSION**. In **OPTIONS → SETTINGS**: *Check for updates automatically (GitHub)* on / off and **CHECK NOW**.
 - **Sample browser**: **ADD FOLDER...** adds one more folder (kicks from one, claps from
   another...), **CLEAR LIST** empties the list. While a big folder is read, a bar shows how far it is.
+
+## 17. New in 0.12
+
+- **OPTIONS** as in Fase Groove Piano: **SETTINGS** (language, interface size, tips on / off,
+  updates, shortcuts) and **ABOUT** (credits, licence, links). The header, the TRANSPORT & TEMPO
+  box and the MIDI drag tile have the piano's sizes and places, and the same words.
+- **Jackin'**: a 909 snare under the clap (soft on the beats, loud swung pick-ups, a turnaround at
+  the end of the loop); the clap lands a hair before the snare. With HUMANIZE the snare (or the
+  clap) turns every fourth bar round with swung 16ths. New: *Jack Hybrid*, *Jack Snare Turnaround*.
+- **Sample browser → FOLDERS READ**: the folders your samples come from; open one, read it again
+  or leave it out.
+- A closed hat and an open hat on the same step: the open hat plays.

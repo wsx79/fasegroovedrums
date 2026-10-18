@@ -708,7 +708,7 @@ namespace
 
     juce::StringArray wordsOf (const juce::String& text)
     {
-        // "HL_CH_Clap_001", "KickDrum 02", "Hi-Hat closed": lower-case words, digits dropped,
+        // "AB_XY_Clap_001", "KickDrum 02", "Hi-Hat closed": lower-case words, digits dropped,
         // camelCase split.
         juce::String spaced;
         for (int i = 0; i < text.length(); ++i)
@@ -889,7 +889,7 @@ std::vector<FaseGrooveDrumsProcessor::SampleInfo> FaseGrooveDrumsProcessor::scan
     if (files.size() > maxFiles)
         files.removeRange (maxFiles, files.size());
 
-    // A pack's codes ("HL_CH_..."): the short words most of its files start with don't count.
+    // A pack's codes ("AB_XY_..."): the short words most of its files start with don't count.
     juce::StringArray ignore;
     if (files.size() >= 4)
     {

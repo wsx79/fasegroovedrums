@@ -162,6 +162,16 @@ void bindItems (juce::ComboBox& box, const juce::StringArray& english, int first
     });
 }
 
+bool tipsEnabled()
+{
+    return setting ("tips", "1") != "0";
+}
+
+void setTipsEnabled (bool enabled)
+{
+    setSetting ("tips", enabled ? "1" : "0");
+}
+
 juce::String setting (const char* key, const juce::String& fallback)
 {
     if (auto settings = openSettings())

@@ -191,10 +191,11 @@ private:
             offset = note - fgd::defaultNote (lane);
         }
 
-        // The closed hat chokes the open hat, like on a real hi-hat.
+        // The closed hat chokes the open hat, like on a real hi-hat; not one that has only just
+        // started (a closed hat on the same step, a few ms later with the humanize, would silence it).
         if (lane == (int) fgd::Lane::closedHat)
             for (auto& v : voices)
-                if (v.active && v.lane == (int) fgd::Lane::openHat)
+                if (v.active && v.lane == (int) fgd::Lane::openHat && secondsPlayed (v) > 0.04)
                     v.choking = true;
 
         Voice* voice = nullptr;
@@ -383,6 +384,13 @@ private:
         if (v.time > v.maxTime)
             v.active = false;
         return out * v.gain;
+    }
+
+    static double secondsPlayed (const Voice& v) noexcept
+    {
+        if (v.sample != nullptr)
+            return v.sample->sampleRate > 0.0 ? v.samplePos / v.sample->sampleRate : 0.0;
+        return (double) v.time;
     }
 
     /** The user's sample, linearly interpolated; false when it has ended. */

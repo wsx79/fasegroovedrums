@@ -503,12 +503,14 @@ namespace
         save ("3-song");
         click ("CLOSE");
         click ("OPTIONS");
-        save ("4-about");
+        save ("4-options");
+        click ("ABOUT");
+        save ("4b-about");
         std::function<void (juce::Component&)> closeOverlays = [&] (juce::Component& c)
         {
             for (auto* child : c.getChildren())
             {
-                if (dynamic_cast<SongOverlay*> (child) != nullptr || dynamic_cast<AboutPanel*> (child) != nullptr
+                if (dynamic_cast<SongOverlay*> (child) != nullptr || dynamic_cast<OptionsOverlay*> (child) != nullptr
                     || dynamic_cast<GrooveBrowser*> (child) != nullptr)
                     child->setVisible (false);
                 closeOverlays (*child);
@@ -666,11 +668,11 @@ namespace
         CHECK (FaseGrooveDrumsProcessor::isNotADrum ("Deep Bass C"));
         CHECK (! FaseGrooveDrumsProcessor::isNotADrum ("Sub Kick 02"));
         CHECK (! FaseGrooveDrumsProcessor::isNotADrum ("Bass Drum 909"));
-        CHECK (! FaseGrooveDrumsProcessor::isNotADrum ("HL_CH_CLAP_001"));
+        CHECK (! FaseGrooveDrumsProcessor::isNotADrum ("AB_XY_CLAP_001"));
         {
             using L = fgd::Lane;
             const std::pair<const char*, L> names[] {
-                { "HL_CH_CLAP_001", L::clap }, { "HL_CH_CYMBAL_001", L::crash }, { "HL_CH_KICK_014", L::kick }, { "OH 01", L::openHat },
+                { "AB_XY_CLAP_001", L::clap }, { "AB_XY_CYMBAL_001", L::crash }, { "AB_XY_KICK_014", L::kick }, { "OH 01", L::openHat },
                 { "Open Hat 2", L::openHat }, { "HiHat Open", L::openHat }, { "Closed Hat", L::closedHat }, { "KickDrum02", L::kick },
                 { "BD_909", L::kick }, { "Perc Conga Hi", L::conga }, { "Shaker 3", L::shaker }, { "Tom Low", L::tom },
                 { "Ride Bell", L::ride }, { "SD Tight", L::snare }, { "Rimshot 808", L::rim }, { "Tamb Hit", L::tambourine } };
@@ -678,13 +680,13 @@ namespace
                 CHECK (FaseGrooveDrumsProcessor::laneFromWords (name) == (int) lane);
         }
 
-        // A pack whose every name starts with the same codes ("HL_CH_"): the codes don't count.
-        auto pack = temp.getChildFile ("HL_CH_SINGLE SHOTS");
+        // A pack whose every name starts with the same codes ("AB_XY_"): the codes don't count.
+        auto pack = temp.getChildFile ("AB_XY_SINGLE SHOTS");
         const std::pair<const char*, fgd::Lane> packFiles[] {
-            { "HL_CH_CLAPS/HL_CH_CLAP_001", fgd::Lane::clap }, { "HL_CH_CLAPS/HL_CH_CLAP_002", fgd::Lane::clap },
-            { "HL_CH_KICKS/HL_CH_KICK_001", fgd::Lane::kick }, { "HL_CH_HATS/HL_CH_HAT_001", fgd::Lane::closedHat },
-            { "HL_CH_HATS/HL_CH_OPEN HAT_001", fgd::Lane::openHat }, { "HL_CH_CRASH/HL_CH_CYMBAL_001", fgd::Lane::crash },
-            { "HL_CH_PERC/HL_CH_001", fgd::Lane::conga } };
+            { "AB_XY_CLAPS/AB_XY_CLAP_001", fgd::Lane::clap }, { "AB_XY_CLAPS/AB_XY_CLAP_002", fgd::Lane::clap },
+            { "AB_XY_KICKS/AB_XY_KICK_001", fgd::Lane::kick }, { "AB_XY_HATS/AB_XY_HAT_001", fgd::Lane::closedHat },
+            { "AB_XY_HATS/AB_XY_OPEN HAT_001", fgd::Lane::openHat }, { "AB_XY_CRASH/AB_XY_CYMBAL_001", fgd::Lane::crash },
+            { "AB_XY_PERC/AB_XY_001", fgd::Lane::conga } };
         for (const auto& [name, lane] : packFiles)
         {
             auto f = pack.getChildFile (juce::String (name) + ".wav");

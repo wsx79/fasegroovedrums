@@ -4,6 +4,29 @@
 
 All notable changes to **Fase Groove Drums**.
 
+## [0.12.0] - 2026-10-18
+
+- **The same interface as Fase Groove Piano** in the controls the two share: the header buttons
+  (PRESETS, TOTAL, undo / redo, full screen, STYLE, RESET, OPTIONS), the TRANSPORT & TEMPO box
+  (same size and places; with SYNC DAW on it shows the DAW's tempo, as the piano), the display,
+  and the same words in every language (TOTAL is TUTTO in Italian, as in the piano).
+- **OPTIONS like the piano's**: a SETTINGS tab (language, interface size, tips on / off, automatic
+  updates with CHECK NOW, the shortcuts) and an ABOUT tab with the same credits and links. Fully
+  translated.
+- **The standalone app's own Options menu** (audio / MIDI settings, save / load state) follows
+  the language too.
+- **The orange MIDI drag tile** is back, at the piano's size: DRAG MIDI TO DAW, with what it drags.
+- **Jackin' with more jack**: a 909 snare under the clap in most Jackin' grooves and random beats
+  (soft on the beats, loud swung pick-ups, a turnaround into the next loop); the clap lands a hair
+  before the snare so the two flam; with Humanize the snare (or the clap) turns the four-bar phrase
+  round with swung 16ths. Two new grooves: *Jack Hybrid* and *Jack Snare Turnaround*.
+- **Sample browser: FOLDERS READ** shows the folders your samples are read from (with how many
+  samples each); open one, read it again, or leave it out (the drums keep their samples).
+- Fixed: a choice in a menu (genre, fills, section, kit...) sometimes didn't stick and had to be
+  picked again.
+- Fixed: hi-hats skipped now and then. A closed hat on the same step as an open hat (a few ms
+  later with Humanize) choked it; now the open hat plays, in the guide sound and in your DAW.
+
 ## [0.11.0] - 2026-10-18
 
 - **Automatic updates**, as in Fase Groove Piano: when it opens it checks the releases page; a new
@@ -28,7 +51,7 @@ All notable changes to **Fase Groove Drums**.
 - An open hat is an accent wherever it is (no longer softened on the 16ths).
 - **Your samples, recognised for sure**: only by the file's name or its folder's name, whole words
   first (kick, snare, clap... beat the abbreviations, and the codes a pack puts in front of every
-  name, such as "HL_CH_", no longer count: "HL_CH_CLAP_001" is a clap). Samples whose name or
+  name, such as "AB_XY_", no longer count: "AB_XY_CLAP_001" is a clap). Samples whose name or
   folder says something else (guitar, bass, vocal, synth, chord, fx, loop...) are left out; the
   unnamed ones only get a "maybe" from their sound (in ALL FILES), never used by themselves.
 - **YOUR SAMPLES...** (Kit & sounds and Guide sound) opens the sample browser: the three steps are

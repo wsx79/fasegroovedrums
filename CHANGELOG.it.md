@@ -4,6 +4,32 @@
 
 Tutte le modifiche importanti di **Fase Groove Drums**.
 
+## [0.12.0] - 2026-10-18
+
+- **La stessa interfaccia di Fase Groove Piano** nei comandi che hanno in comune: i pulsanti in
+  alto (PRESET, TUTTO, annulla / ripeti, schermo intero, STILE, RESET, OPZIONI), il riquadro
+  TRASPORTO E TEMPO (stessa misura e stesse posizioni; con SYNC DAW acceso mostra il tempo della
+  DAW, come il piano), il display, e le stesse parole in ogni lingua (TOTAL ora è TUTTO, come nel piano).
+- **OPZIONI come quelle del piano**: una linguetta IMPOSTAZIONI (lingua, dimensione
+  dell'interfaccia, suggerimenti sì / no, aggiornamenti automatici con CONTROLLA ORA, le
+  scorciatoie) e una linguetta INFO con gli stessi crediti e link. Tutto tradotto.
+- **Il menu Options dell'app standalone** (impostazioni audio / MIDI, salva / carica lo stato)
+  segue anch'esso la lingua.
+- **Torna il riquadro arancione per trascinare il MIDI**, grande come nel piano: TRASCINA MIDI
+  NELLA DAW, con cosa trascina.
+- **Jackin' con più jack**: uno snare 909 sotto il clap nella maggior parte dei groove Jackin' e
+  dei beat casuali (piano sui beat, pick-up forti e swingati, un giro che porta al loop dopo); il
+  clap arriva un soffio prima dello snare, così i due fanno flam; con Umanizza lo snare (o il clap)
+  chiude la frase di quattro bar con 16esimi swingati. Due groove nuovi: *Jack Hybrid* e *Jack
+  Snare Turnaround*.
+- **Sample browser: CARTELLE LETTE** mostra le cartelle da cui vengono letti i tuoi sample (con
+  quanti sample ciascuna); aprine una, rileggila o toglila dalla lettura (gli strumenti tengono i
+  loro sample).
+- Corretto: una scelta in un menu a tendina (genere, fill, sezione, kit...) a volte non restava e
+  bisognava sceglierla di nuovo.
+- Corretto: gli hi-hat ogni tanto saltavano. Un closed hat sullo stesso passo di un open hat (pochi
+  ms dopo con Umanizza) lo zittiva; ora suona l'open hat, nel suono guida e nella tua DAW.
+
 ## [0.11.0] - 2026-10-18
 
 - **Aggiornamenti automatici**, come in Fase Groove Piano: all'apertura controlla la pagina delle
@@ -30,7 +56,7 @@ Tutte le modifiche importanti di **Fase Groove Drums**.
 - L'open hat è un accento ovunque sia (non viene più ammorbidito sui 16esimi).
 - **I tuoi sample, riconosciuti con certezza**: solo dal nome del file o della cartella, prima le
   parole intere (kick, snare, clap... vincono sulle sigle, e i codici che un pack mette davanti a
-  ogni nome, come "HL_CH_", non contano più: "HL_CH_CLAP_001" è un clap). I sample il cui nome o
+  ogni nome, come "AB_XY_", non contano più: "AB_XY_CLAP_001" è un clap). I sample il cui nome o
   cartella dice altro (guitar, bass, vocal, synth, chord, fx, loop...) sono esclusi; quelli senza
   nome hanno solo un "forse" dal suono (in TUTTI I FILE), mai usato da solo.
 - **I TUOI SAMPLE...** (Kit e suoni e Suono guida) apre il sample browser: i tre passi sono scritti

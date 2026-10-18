@@ -120,7 +120,7 @@ La prima modifica copia il groove mostrato nello **User pattern**, che si salva 
 
 ## 11. Lingua
 
-**OPZIONI → Lingua**: English, Italiano, Español, Français, Deutsch o Português. L'interfaccia cambia subito; la scelta vale per ogni progetto.
+**OPZIONI → IMPOSTAZIONI → Lingua**: English, Italiano, Español, Français, Deutsch o Português. L'interfaccia cambia subito; la scelta vale per ogni progetto.
 
 ## 12. Durata delle parti
 
@@ -189,8 +189,21 @@ La prima modifica copia il groove mostrato nello **User pattern**, che si salva 
 
 - **Aggiornamenti**: quando esce una nuova versione viene scaricata e mostrata con le novità;
   **INSTALLA ORA** la installa (con il setup di Windows, senza la procedura guidata), **PIÙ TARDI**
-  o **SALTA QUESTA VERSIONE**. In **OPZIONI**: *Cerca aggiornamenti all'apertura* acceso / spento e
-  **CERCA AGGIORNAMENTI**.
+  o **SALTA QUESTA VERSIONE**. In **OPZIONI → IMPOSTAZIONI**: *Controlla gli aggiornamenti in automatico (GitHub)*
+  acceso / spento e **CONTROLLA ORA**.
 - **Sample browser**: **AGGIUNGI CARTELLA...** aggiunge un'altra cartella (i kick da una, i clap da
   un'altra...), **SVUOTA LISTA** svuota l'elenco. Mentre legge una cartella grande, una barra
   mostra a che punto è.
+
+## 17. Novità della 0.12
+
+- **OPZIONI** come in Fase Groove Piano: **IMPOSTAZIONI** (lingua, dimensione dell'interfaccia,
+  suggerimenti sì / no, aggiornamenti, scorciatoie) e **INFO** (crediti, licenza, link). L'intestazione,
+  il riquadro TRASPORTO E TEMPO e il riquadro per trascinare il MIDI hanno le misure e le posizioni
+  del piano, e le stesse parole.
+- **Jackin'**: uno snare 909 sotto il clap (piano sui beat, pick-up forti e swingati, un giro alla
+  fine del loop); il clap arriva un soffio prima dello snare. Con UMANIZZA lo snare (o il clap)
+  chiude ogni quarta bar con 16esimi swingati. Nuovi: *Jack Hybrid*, *Jack Snare Turnaround*.
+- **Sample browser → CARTELLE LETTE**: le cartelle da cui arrivano i tuoi sample; aprine una,
+  rileggila o toglila dalla lettura.
+- Closed hat e open hat sullo stesso passo: suona l'open hat.
