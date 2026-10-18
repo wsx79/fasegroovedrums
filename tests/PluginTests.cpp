@@ -824,7 +824,7 @@ namespace
         and a busy drum with long samples never takes the voice of another drum. */
     void testGuideVoices()
     {
-        constexpr double rate = 44100.0;
+        static constexpr double rate = 44100.0;
         auto flat = [] (double seconds)
         {
             auto s = std::make_shared<DrumSample>();
