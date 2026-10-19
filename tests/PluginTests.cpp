@@ -733,6 +733,7 @@ namespace
         const auto link = FaseGrooveDrumsProcessor::linkFile();
         const auto backup = link.loadFileAsString();
         const bool existed = link.existsAsFile();
+        link.deleteFile();   // what another instance left there is not part of this test
         FaseGrooveDrumsProcessor a, b;
         a.setLinked (true);
         b.setLinked (true);
@@ -890,7 +891,11 @@ namespace
         p.setParameterFromUI (ParamIDs::variation, 0.0f);
         p.setParameterFromUI (ParamIDs::humanize, 0.0f);
         p.setParameterFromUI (ParamIDs::tempoSync, 0.0f);
-        p.setParameterFromUI (ParamIDs::tempo, 240.0f);
+        p.setParameterFromUI (ParamIDs::tempo, 180.0f);
+        const auto link = FaseGrooveDrumsProcessor::linkFile();
+        const auto backup = link.loadFileAsString();
+        const bool existed = link.existsAsFile();
+        link.deleteFile();
         p.setRateAndBufferSizeDetails (48000.0, 480);   // 10 ms blocks
         p.prepareToPlay (48000.0, 480);
         p.setLinked (true);
@@ -898,23 +903,24 @@ namespace
         juce::AudioBuffer<float> buffer (2, 480);
         std::vector<double> kicks;
         double ppq = 0.0;
-        for (int b = 0; b < 200; ++b)   // two seconds: eight beats at 240 BPM
+        for (int b = 0; b < 300; ++b)   // three seconds: nine beats at 180 BPM
         {
             juce::Thread::sleep (b % 3 == 0 ? 2 : b % 3 == 1 ? 17 : 11);   // ~10 ms, irregular
             juce::MidiBuffer midi;
             p.processBlock (buffer, midi);
             for (const auto m : midi)
                 if (m.getMessage().isNoteOn() && m.getMessage().getNoteNumber() == 36)
-                    kicks.push_back (p.uiPpq.load() + m.samplePosition / 12000.0);
+                    kicks.push_back (p.uiPpq.load() + m.samplePosition / 16000.0);
             ppq = p.uiPpq.load();
         }
         p.previewStop();
         p.setLinked (false);
+        if (existed) link.replaceWithText (backup); else link.deleteFile();
         // One kick per beat, in order, never two on the same beat.
-        CHECK (kicks.size() >= 6);
+        CHECK (kicks.size() >= 7);
         for (size_t i = 1; i < kicks.size(); ++i)
             CHECK (kicks[i] - kicks[i - 1] > 0.9 && kicks[i] - kicks[i - 1] < 1.1);
-        CHECK (ppq > 6.0);
+        CHECK (ppq > 7.0);
     }
 }
 
