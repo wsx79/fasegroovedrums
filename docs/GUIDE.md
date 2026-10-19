@@ -202,3 +202,25 @@ project. **CLEAR** empties the grid. The light next to each name flashes when th
 - **Sample browser → FOLDERS READ**: the folders your samples come from; open one, read it again
   or leave it out.
 - A closed hat and an open hat on the same step: the open hat plays.
+
+## 18. New in 0.13 to 0.15
+
+- **EDITOR** (left of the main window) opens the big editor: grid, velocity, mixer and fill views,
+  the brush (accent, hit, ghost, flam) and the groove tools. The main window stays small and shows
+  the groove and the faders. While you drag a clip the window shrinks to a small strip, as in
+  Fase Groove Piano.
+- **Song window:** the same layout as Fase Groove Piano's. The drag tiles and SAVE export by
+  instrument: ALL, KICK, SNARE (snare, clap, rim), CYMBALS (hats, ride, crash), PERCUSSION, TRACKS.
+- **Song form:** fills, crashes and turnarounds count from each section's start; a crash opens the
+  main part, the break, the drop and the outro. The **build-up** rolls from quarters to 32nds over the
+  whole section, soft to loud, and the kick stops two beats before the **drop**, which lifts the
+  groove (offbeat open hat, 16th shaker). The main part starts without hand percussion for 8 bars.
+- **GENRE FEEL** (song window, on): each genre's pocket per drum (laid-back deep backbeats, harder
+  garage hat swing, straighter afro hands). **BASS SPACE**: kick pick-ups only at the end of four
+  bars, never just before the one.
+- **Note maps** (top of the note menu): General MIDI, 16-pad drum rack, MPC pads, one note per drum
+  from C1. The closed hat cuts the open hat with a note-off; drums and percussion are held for a beat
+  (samplers in gate mode).
+- Steadier kick and backbeat, softer ghosts, humanize centred on the grid; a kick on an off 16th
+  swings with the hats. Exports are written to a temporary file first: a failed save never loses
+  the old clip.

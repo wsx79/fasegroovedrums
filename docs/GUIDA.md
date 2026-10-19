@@ -209,3 +209,26 @@ La prima modifica copia il groove mostrato nello **User pattern**, che si salva 
 - **Sample browser → CARTELLE LETTE**: le cartelle da cui arrivano i tuoi sample; aprine una,
   rileggila o toglila dalla lettura.
 - Closed hat e open hat sullo stesso passo: suona l'open hat.
+
+## 18. Novità dalla 0.13 alla 0.15
+
+- **EDITOR** (a sinistra nella finestra principale) apre l'editor grande: viste griglia, velocity,
+  mixer e fill, il pennello (accento, colpo, ghost, flam) e gli strumenti del groove. La finestra
+  principale resta piccola e mostra il groove e i fader. Mentre trascini una clip la finestra si
+  riduce a una piccola striscia, come in Fase Groove Piano.
+- **Finestra del brano:** stessa disposizione di Fase Groove Piano. Le tessere da trascinare e SALVA
+  esportano per strumento: TUTTO, KICK, RULLANTE (rullante, clap, rim), PIATTI (hi-hat, ride, crash),
+  PERCUSSIONI, TRACCE.
+- **Forma del brano:** fill, crash e giri contano dall'inizio di ogni sezione; un crash apre main,
+  break, drop e outro. Il **build-up** rulla da quarti a trentaduesimi su tutta la sezione, da piano
+  a forte, e il kick si ferma due tempi prima del **drop**, che alza il groove (open hat in levare,
+  shaker in sedicesimi). Il main parte senza percussioni a mano per 8 battute.
+- **GENERE** (finestra del brano, attivo): il pocket di ogni genere per strumento (backbeat deep più
+  indietro, swing degli hat più forte nel garage, mani afro più dritte). **SPAZIO BASSO**: colpi di
+  kick in levare solo a fine quattro battute, mai subito prima dell'uno.
+- **Mappe note** (in cima al menu delle note): General MIDI, drum rack a 16 pad, pad MPC, una nota
+  per strumento da C1. L'hat chiuso chiude l'aperto con un note-off; batteria e percussioni durano un
+  battito (campionatori in modalità gate).
+- Kick e backbeat più stabili, ghost più morbidi, humanize centrato sulla griglia; un kick su un
+  sedicesimo in levare segue lo swing degli hat. Gli export si scrivono prima in un file temporaneo:
+  un salvataggio fallito non perde mai la clip vecchia.
