@@ -1445,15 +1445,20 @@ SongOverlay::SongOverlay (FaseGrooveDrumsProcessor& p) : processor (p)
         addAndMakeVisible (fill);
     }
 
-    for (auto* b : { &allButton, &tracksButton })
+    for (int k = 0; k < FaseGrooveDrumsProcessor::numPartGroups; ++k)
+    {
+        auto* b = groupButtons.add (new juce::TextButton());
+        Localisation::bindText (*b, FaseGrooveDrumsProcessor::partGroupName (k));
+    }
+    for (auto* b : partButtonsInOrder())
     {
         b->setClickingTogglesState (true);
         b->setRadioGroupId (4321);
         addAndMakeVisible (b);
     }
     allButton.setToggleState (true, juce::dontSendNotification);
-    Localisation::bindText (allButton, "ONE TRACK");
-    Localisation::bindText (tracksButton, "ONE TRACK PER DRUM");
+    Localisation::bindText (allButton, "ALL");
+    Localisation::bindText (tracksButton, "TRACKS");
     Localisation::bindText (saveSongButton, "SAVE SONG .MID...");
     Localisation::bindText (saveSectionsButton, "ONE .MID PER SECTION...");
     Localisation::bindText (resetButton, "RESET SONG");
@@ -1500,7 +1505,12 @@ SongOverlay::SongOverlay (FaseGrooveDrumsProcessor& p) : processor (p)
 
 FaseGrooveDrumsProcessor::ClipPart SongOverlay::clipPart() const
 {
-    return tracksButton.getToggleState() ? FaseGrooveDrumsProcessor::ClipPart::tracks : FaseGrooveDrumsProcessor::ClipPart::all;
+    if (tracksButton.getToggleState())
+        return FaseGrooveDrumsProcessor::ClipPart::tracks;
+    for (int k = 0; k < groupButtons.size(); ++k)
+        if (groupButtons[k]->getToggleState())
+            return (FaseGrooveDrumsProcessor::ClipPart) ((int) FaseGrooveDrumsProcessor::ClipPart::group1 + k);
+    return FaseGrooveDrumsProcessor::ClipPart::all;
 }
 
 juce::Rectangle<float> SongOverlay::card() const
@@ -1623,10 +1633,15 @@ void SongOverlay::resized()
     auto parts = card().toNearestInt().reduced (28, 20).withTrimmedBottom (60).removeFromBottom (30);
     parts = parts.withLeft (sectionsTile.getX() + 130).withRight (saveSectionsButton.getRight());
     parts.removeFromLeft (90);   // "MIDI" label
-    allButton.setBounds (parts.removeFromLeft (parts.getWidth() / 3));
-    tracksButton.setBounds (parts);
-    allButton.setConnectedEdges (juce::Button::ConnectedOnRight);
-    tracksButton.setConnectedEdges (juce::Button::ConnectedOnLeft);
+    {
+        const auto buttons = partButtonsInOrder();   // as Fase Groove Piano's: all, the groups, tracks
+        const int w = parts.getWidth() / (int) buttons.size();
+        for (size_t k = 0; k < buttons.size(); ++k)
+        {
+            buttons[k]->setBounds (parts.removeFromLeft (k + 1 == buttons.size() ? parts.getWidth() : w));
+            buttons[k]->setConnectedEdges ((k > 0 ? juce::Button::ConnectedOnLeft : 0) | (k + 1 < buttons.size() ? juce::Button::ConnectedOnRight : 0));
+        }
+    }
 }
 
 void SongOverlay::paint (juce::Graphics& g)
@@ -1729,7 +1744,7 @@ void SongOverlay::paint (juce::Graphics& g)
     {
         auto label = allButton.getBounds().toFloat().withX ((float) allButton.getX() - 90.0f).withWidth (82.0f);
         g.setFont (font (10.5f, true));
-        g.drawText ("MIDI", label, juce::Justification::centredRight);
+        g.drawText (Localisation::upper (tr ("Instrument")), label, juce::Justification::centredRight);
     }
 }
 
@@ -3742,7 +3757,9 @@ FaseGrooveDrumsEditor::FaseGrooveDrumsEditor (FaseGrooveDrumsProcessor& p)
     // ---- Export MIDI ----
     notesBox.addItem ("All drums", 1);
     notesBox.addItem ("One track per drum", 2);
-    Localisation::bindItems (notesBox, { "All drums", "One track per drum" });
+    for (int k = 0; k < FaseGrooveDrumsProcessor::numPartGroups; ++k)
+        notesBox.addItem (FaseGrooveDrumsProcessor::partGroupName (k), 3 + k);
+    Localisation::bindItems (notesBox, { "All drums", "One track per drum", "KICK", "SNARE", "CYMBALS", "PERCUSSION" });
     notesBox.setSelectedId (1, juce::dontSendNotification);
     Localisation::bindTip (notesBox, "One drum track, or one MIDI track per drum (kick, snare, hats...)");
     const char* lengths[] { "Full loop", "1 bar", "2 bars", "4 bars", "8 bars", "16 bars", "Whole song" };
@@ -4764,7 +4781,7 @@ int FaseGrooveDrumsEditor::selectedClipBars() const
 
 FaseGrooveDrumsProcessor::ClipPart FaseGrooveDrumsEditor::selectedClipPart() const
 {
-    return notesBox.getSelectedId() == 2 ? FaseGrooveDrumsProcessor::ClipPart::tracks : FaseGrooveDrumsProcessor::ClipPart::all;
+    return (FaseGrooveDrumsProcessor::ClipPart) juce::jlimit (0, (int) FaseGrooveDrumsProcessor::ClipPart::group4, notesBox.getSelectedId() - 1);
 }
 
 void FaseGrooveDrumsEditor::saveMidiFile()

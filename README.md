@@ -29,7 +29,7 @@ then **drag it into your DAW as a MIDI clip** and play it with your own drums.
 
 ## Features
 
-- 🥁 **67 grooves in 13 genres**, the same as Fase Groove Piano: Piano House, Soulful, Deep,
+- 🥁 **70 grooves in 13 genres**, the same as Fase Groove Piano: Piano House, Soulful, Deep,
   Gospel, Jackin', Jackin' Piano, Garage & UK, Afro & Latin, Funky & Disco, '90s Piano House,
   Neo Soul & Broken, Chill & Pads, Dance Stabs.
 - 🎲 **NEW BEAT:** a random but musical beat in the genre you choose, from bare to busy (Density).

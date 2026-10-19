@@ -2,6 +2,9 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 #include "PluginProcessor.h"
+
+#include <algorithm>
+#include <iterator>
 #include "PluginEditor.h"
 #include "Localisation.h"
 
@@ -666,14 +669,14 @@ bool FaseGrooveDrumsProcessor::loadSample (int lane, const juce::File& file)
     sample->sampleRate = reader->sampleRate;
     sample->path = file.getFullPathName();
 
-    std::atomic_store (&samples[(size_t) lane], std::shared_ptr<const DrumSample> (std::move (sample)));
+    swapSample (samples[(size_t) lane], std::shared_ptr<const DrumSample> (std::move (sample)));
     return true;
 }
 
 void FaseGrooveDrumsProcessor::clearSample (int lane)
 {
     if (juce::isPositiveAndBelow (lane, fgd::numLanes))
-        std::atomic_store (&samples[(size_t) lane], std::shared_ptr<const DrumSample>());
+        swapSample (samples[(size_t) lane], {});
 }
 
 juce::String FaseGrooveDrumsProcessor::samplePath (int lane) const
@@ -992,7 +995,7 @@ void FaseGrooveDrumsProcessor::previewSampleFile (const juce::File& file)
     sample->sampleRate = reader->sampleRate;
     sample->path = file.getFullPathName();
     previewPosition = -1.0;
-    std::atomic_store (&previewSample, std::shared_ptr<const DrumSample> (std::move (sample)));
+    swapSample (previewSample, std::shared_ptr<const DrumSample> (std::move (sample)));
     previewPosition = 0.0;
 }
 
@@ -1354,10 +1357,43 @@ int FaseGrooveDrumsProcessor::clipLengthInBars (int bars) const
     return juce::jmax (1, fgd::GrooveEngine::loopLengthInSteps (currentSettings()) / 16);
 }
 
+const char* FaseGrooveDrumsProcessor::partGroupName (int group) noexcept
+{
+    static const char* const names[numPartGroups] { "KICK", "SNARE", "CYMBALS", "PERCUSSION" };
+    return names[juce::jlimit (0, numPartGroups - 1, group)];
+}
+
+bool FaseGrooveDrumsProcessor::laneInPart (ClipPart part, int lane) noexcept
+{
+    static const int g0[] { (int) fgd::Lane::kick };
+    static const int g1[] { (int) fgd::Lane::snare, (int) fgd::Lane::clap, (int) fgd::Lane::rim };
+    static const int g2[] { (int) fgd::Lane::closedHat, (int) fgd::Lane::openHat, (int) fgd::Lane::ride, (int) fgd::Lane::crash };
+    static const int g3[] { (int) fgd::Lane::shaker, (int) fgd::Lane::tambourine, (int) fgd::Lane::conga, (int) fgd::Lane::cowbell, (int) fgd::Lane::tom };
+    switch (part)
+    {
+        case ClipPart::group1: return std::find (std::begin (g0), std::end (g0), lane) != std::end (g0);
+        case ClipPart::group2: return std::find (std::begin (g1), std::end (g1), lane) != std::end (g1);
+        case ClipPart::group3: return std::find (std::begin (g2), std::end (g2), lane) != std::end (g2);
+        case ClipPart::group4: return std::find (std::begin (g3), std::end (g3), lane) != std::end (g3);
+        case ClipPart::all:
+        case ClipPart::tracks:
+        default: return true;
+    }
+}
+
 juce::MidiFile FaseGrooveDrumsProcessor::midiFromEvents (const std::vector<fgd::NoteEvent>& clipEvents, double beats,
                                                          const std::vector<fgd::GrooveEngine::Marker>* markers,
                                                          ClipPart part, const juce::String& name) const
 {
+    if (part != ClipPart::all && part != ClipPart::tracks)   // one group of instruments: its notes only
+    {
+        std::vector<fgd::NoteEvent> only;
+        for (const auto& e : clipEvents)
+            if (laneInPart (part, e.lane))
+                only.push_back (e);
+        return midiFromEvents (only, beats, markers, ClipPart::all, name);
+    }
+
     constexpr int ticksPerQuarter = 960;
     const int channel = juce::jlimit (1, 16, juce::roundToInt (raw (ParamIDs::midiChannel)));
 
@@ -1442,6 +1478,8 @@ juce::String FaseGrooveDrumsProcessor::clipFileName (int bars, ClipPart part) co
     name << (bars == songArrangement ? juce::String (" Song") : " " + juce::String (clipLengthInBars (bars)) + " bars");
     if (part == ClipPart::tracks)
         name << " (tracks)";
+    else if (part != ClipPart::all)
+        name << " (" << juce::String (partGroupName ((int) part - (int) ClipPart::group1)).toLowerCase() << ")";
     return juce::File::createLegalFileName (name.replace ("'", "")) + ".mid";
 }
 
@@ -2027,7 +2065,9 @@ juce::File FaseGrooveDrumsProcessor::writeSongSectionClip (int partIndex, ClipPa
     const auto sectionEvents = fgd::GrooveEngine::renderArrangement (currentSettings(), { section }, &markers);
     const auto name = "Drums " + sectionClipName (partIndex) + " - "
                     + juce::String (fgd::GrooveEngine::basePattern (currentSettings()).name)
-                    + " " + juce::String (juce::roundToInt (exportBpm())) + "bpm" + (part == ClipPart::tracks ? " (tracks)" : "");
+                    + " " + juce::String (juce::roundToInt (exportBpm())) + "bpm" + (part == ClipPart::tracks ? juce::String (" (tracks)")
+                       : part == ClipPart::all ? juce::String()
+                                               : " (" + juce::String (partGroupName ((int) part - (int) ClipPart::group1)).toLowerCase() + ")");
     auto file = folder.getChildFile (juce::File::createLegalFileName (name.replace ("'", "")) + ".mid");
     file.deleteFile();
 

@@ -22,7 +22,7 @@ and the groove plays with the guide kit.
 
 ## 2. The groove
 
-- **GROOVE:** 53 grooves in 13 genres (the same as Fase Groove Piano). **Random beat** is the
+- **GROOVE:** 70 grooves in 13 genres (the same as Fase Groove Piano). **Random beat** is the
   beat of NEW BEAT, **User pattern** the one edited on the grid.
 - **NEW BEAT:** a new random beat in the genre chosen in **NEW BEAT GENRE**. **DENSITY** goes from
   a bare kick-clap-hat to busy 16ths with percussion.

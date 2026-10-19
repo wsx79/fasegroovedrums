@@ -4,6 +4,13 @@
 
 All notable changes to **Fase Groove Drums**.
 
+## [0.14.0] - 2026-10-19
+
+- Export by instrument, as Fase Groove Piano's: ALL, KICK, SNARE (snare, clap, rim), CYMBALS (hats, ride, crash), PERCUSSION, TRACKS, in the song window and under EXPORT MIDI.
+- A replaced sample is freed on the message thread, never on the audio thread.
+- The README and the guide give the right number of grooves (70); a test keeps them in step.
+- New tests on every preset groove: clean notes, one track and the tracks per drum alike, the same settings the same clip.
+
 ## [0.13.2] - 2026-10-19
 
 - The interface always in the chosen language (some texts stayed in English when the plug-in opened).

@@ -227,7 +227,11 @@ public:
     void resetToDefaults();
 
     //==============================================================================
-    enum class ClipPart { all = 0, tracks };   // tracks: one MIDI file, one track per drum
+    enum class ClipPart { all = 0, tracks, group1, group2, group3, group4 };   // tracks: one MIDI file, one track per drum
+    /** The instrument groups of the export (as Fase Groove Piano's piano / bass / strings). */
+    static constexpr int numPartGroups = 4;
+    static const char* partGroupName (int group) noexcept;   // "KICK", "SNARE" ...
+    static bool laneInPart (ClipPart, int lane) noexcept;
     static juce::String sectionClipName (int partIndex);
     /** Pass as `bars` to export the whole song: intro, main, break, build-up, drop, outro. */
     static constexpr int songArrangement = -1;
@@ -374,6 +378,33 @@ private:
     GuideDrums drums;
     DrumSamples samples;   // read and swapped with std::atomic_load / std::atomic_store
     std::shared_ptr<const DrumSample> previewSample;   // the file being auditioned (atomic_load / atomic_store)
+
+    /** A sample replaced while the audio thread may still play it: kept here until nobody else
+        holds it, then freed on the message thread (never on the audio thread, mid-block). */
+    struct SampleBin : private juce::Timer
+    {
+        SampleBin() { startTimer (1000); }
+        ~SampleBin() override { stopTimer(); }
+        void retire (std::shared_ptr<const DrumSample> old)
+        {
+            if (old == nullptr)
+                return;
+            const juce::ScopedLock lock (mutex);
+            held.push_back (std::move (old));
+        }
+        void timerCallback() override
+        {
+            const juce::ScopedLock lock (mutex);
+            held.erase (std::remove_if (held.begin(), held.end(), [] (const auto& p) { return p.use_count() <= 1; }), held.end());
+        }
+        juce::CriticalSection mutex;
+        std::vector<std::shared_ptr<const DrumSample>> held;
+    };
+    SampleBin sampleBin;
+    void swapSample (std::shared_ptr<const DrumSample>& slot, std::shared_ptr<const DrumSample> next)
+    {
+        sampleBin.retire (std::atomic_exchange (&slot, std::move (next)));
+    }
     std::atomic<double> previewPosition { -1.0 };      // in the sample's own samples, -1 = silent
     juce::Reverb reverbFx;
     juce::SmoothedValue<float> outputGain;

@@ -87,7 +87,7 @@ static void testAccentGroove()
 static void testPresets()
 {
     const auto& presets = drumPatterns();
-    CHECK (presets.size() >= 50);
+    CHECK (presets.size() == 70);   // as the README and the guide say: change them together
 
     std::set<std::string> names;
     std::set<std::string> categories;

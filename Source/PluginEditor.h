@@ -275,6 +275,15 @@ private:
     juce::OwnedArray<IconButton> newButtons;
     juce::OwnedArray<juce::TextButton> originalButtons;
     juce::TextButton allButton { "ONE TRACK" }, tracksButton { "ONE TRACK PER DRUM" };
+    juce::OwnedArray<juce::TextButton> groupButtons;
+    std::vector<juce::TextButton*> partButtonsInOrder()
+    {
+        std::vector<juce::TextButton*> all { &allButton };
+        for (auto* b : groupButtons)
+            all.push_back (b);
+        all.push_back (&tracksButton);
+        return all;
+    }   // the instrument groups, between ONE TRACK and ONE TRACK PER ...
     juce::TextButton saveSongButton { "SAVE SONG .MID..." }, saveSectionsButton { "ONE .MID PER SECTION..." }, closeButton { "CLOSE" };
     juce::TextButton resetButton { "RESET SONG" };
     DragTile sectionTile { "DRAG THIS SECTION" }, sectionsTile { "DRAG ALL SECTIONS", "one clip per section" },

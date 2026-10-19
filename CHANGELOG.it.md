@@ -4,6 +4,13 @@
 
 Tutte le modifiche importanti di **Fase Groove Drums**.
 
+## [0.14.0] - 2026-10-19
+
+- Export per strumento, come in Fase Groove Piano: TUTTO, KICK, RULLANTE (rullante, clap, rim), PIATTI (hi-hat, ride, crash), PERCUSSIONI, TRACCE, nella finestra del brano e in EXPORT MIDI.
+- Un campione sostituito viene liberato nel thread dei messaggi, mai nel thread audio.
+- README e guida riportano il numero giusto di groove (70); un test li tiene allineati.
+- Nuovi test su ogni groove: note pulite, traccia unica e tracce per strumento coerenti, stesse impostazioni stessa clip.
+
 ## [0.13.2] - 2026-10-19
 
 - Interfaccia sempre nella lingua scelta (all'apertura alcuni testi restavano in inglese).
