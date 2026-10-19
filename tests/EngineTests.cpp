@@ -543,6 +543,35 @@ static void testJackinGroove()
     CHECK (clapAt > 0.0 && snareAt > 0.0 && clapAt < snareAt);
 }
 
+static void testGenresHaveDistinctGrooves()
+{
+    // Within every genre the grooves are different beats, not copies with one hit changed.
+    auto at = [] (const DrumPattern& g, int lane, int i)
+    {
+        const auto& line = g.lanes[(size_t) lane];
+        return line.empty() ? '.' : line[(size_t) i % line.size()];
+    };
+    for (const auto& category : grooveCategories())
+    {
+        std::vector<const DrumPattern*> grooves;
+        for (const auto& g : drumPatterns())
+            if (g.category == category)
+                grooves.push_back (&g);
+        CHECK (grooves.size() >= 4);
+        for (size_t a = 0; a < grooves.size(); ++a)
+            for (size_t b = a + 1; b < grooves.size(); ++b)
+            {
+                int different = 0;
+                for (int l = 0; l < numLanes; ++l)
+                    for (int i = 0; i < 32; ++i)
+                        different += isHit (at (*grooves[a], l, i)) != isHit (at (*grooves[b], l, i)) ? 1 : 0;
+                if (different < 10)
+                    std::printf ("  too alike in %s: %s / %s (%d)\n", category, grooves[a]->name.c_str(), grooves[b]->name.c_str(), different);
+                CHECK (different >= 10);
+            }
+    }
+}
+
 static void testJackinCharacter()
 {
     std::vector<const DrumPattern*> jack;
@@ -762,6 +791,7 @@ int main()
     testAccentGroove();
     testHatsOnTheSameStep();
     testJackinCharacter();
+    testGenresHaveDistinctGrooves();
     testLanes();
     testRenderBasics();
     testSwingAndHumanize();

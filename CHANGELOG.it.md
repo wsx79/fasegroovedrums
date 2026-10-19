@@ -4,6 +4,16 @@
 
 Tutte le modifiche importanti di **Fase Groove Drums**.
 
+## [0.12.3] - 2026-10-19
+
+- **Niente più groove quasi uguali**: ho confrontato colpo per colpo ogni coppia di groove, genere
+  per genere. I doppioni veri ora sono beat diversi: *Hands Up* (hi-hat a 16esimi, un crescendo di
+  snare verso il loop dopo) differiva di un solo colpo da *Dance Floor*; *Euro Dance* (pick-up di
+  snare, tambourine in controtempo) e *Stab Pump* (rim che spinge sul 16esimo prima di ogni beat,
+  senza snare) differivano di cinque; *Deep Three-Step Rim* ora suona davvero il rim 3-3-2, con una
+  risposta leggera di tom; *Jack Snare Turnaround* ha tambourine e rim suoi. Un test tiene distinti
+  i groove di ogni genere.
+
 ## [0.12.2] - 2026-10-19
 
 - **Ogni groove Jackin' con il suo carattere**: hi-hat con 16esimi ghost e pick-up invece della

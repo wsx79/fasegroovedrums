@@ -4,6 +4,15 @@
 
 All notable changes to **Fase Groove Drums**.
 
+## [0.12.3] - 2026-10-19
+
+- **No more look-alike grooves**: every pair of grooves was compared hit by hit, genre by genre.
+  The real doubles are now different beats: *Hands Up* (16th hats, a snare build into the next
+  loop) was one hit away from *Dance Floor*; *Euro Dance* (snare pick-ups, tambourine on the
+  offbeat) and *Stab Pump* (rim pushing on the 16th before each beat, no snare) were five hits
+  apart; *Deep Three-Step Rim* now really plays the 3-3-2 rim, with a soft tom answer; *Jack
+  Snare Turnaround* has its own tambourine and rim. A test keeps every genre's grooves apart.
+
 ## [0.12.2] - 2026-10-19
 
 - **Jackin' grooves each with their own character**: hats with ghost 16ths and pick-ups instead

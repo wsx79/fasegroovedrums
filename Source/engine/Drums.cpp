@@ -184,8 +184,8 @@ const std::vector<DrumPattern>& drumPatterns()
                 { { K, "x... x... x... x..." }, { C, ".... x... .... x..." }, { CH, "..x. ..x. ..x. ..x." },
                   { R, "..x. .x.. .... ...." }, { SH, "..xx ..x. ..xx ..x." } }),
         groove ("Deep Three-Step Rim", "Deep",
-                { { K, "x... x... x... x..." }, { C, ".... x... .... x..." }, { CH, "..x. ..x. ..x. ..x." },
-                  { R, "..x. .x.. x..x ..x." }, { SH, "..xx ..x. ..xx ..x." } }),
+                { { K, "x... x... x... x..." }, { C, ".... x... .... x..." }, { CH, "..x. ..xg ..x. ..xg" },
+                  { R, "x..x ..x. x..x ..x." }, { TM, ".... .... .... ..xg" } }),
         groove ("Deep Night", "Deep",
                 { { K, "x... x... x... x..." }, { C, ".... x... .... x..x" }, { CH, "x.x. x.x. x.x. x.x." },
                   { OH, ".... .... .... .x.." }, { SH, "g.gx g.xx ..xx g.xx" } }),
@@ -250,7 +250,7 @@ const std::vector<DrumPattern>& drumPatterns()
                   { CH, "..x. ..x. ..x. ..xx" }, { OH, ".... .... .... .x.." } }),
         groove ("Jack Snare Turnaround", "Jackin'",
                 { { K, fourFloor }, { C, backbeat }, { S, ".... x... .... x..x .... x... ..x. XgXX" }, { CH, "..x. ..x. ..x. ..x. ..x. ..x. ..x. .x.." },
-                  { CB, ".... .... .... ...x" }, { SH, "..xx ..x. ..xx ..x." } }),
+                  { R, ".... .... .... ...x" }, { T, ".... x... .... x..." } }),
         groove ("Rim Jack", "Jackin'",
                 { { K, "X... X... X... X..g X... X... X... X..." }, { C, backbeat }, { CH, "..xg ..x. ..xg ..x." }, { R, "..xx g... ..xx ...g" }, { SH, "..xx ..x. ..xx ..x." } }),
 
@@ -360,12 +360,13 @@ const std::vector<DrumPattern>& drumPatterns()
                 { { K, fourFloor }, { C, backbeat }, { S, ".... x... .... x..." }, { OH, offbeats },
                   { CH, "xx.x xx.x xx.x xx.x" } }),
         groove ("Euro Dance", "Dance Stabs",
-                { { K, fourFloor }, { S, backbeat }, { C, backbeat }, { OH, offbeats }, { CR, crashBar1 } }),
+                { { K, fourFloor }, { S, ".... X... .... X... .... X... .... X.xx" }, { C, backbeat }, { OH, offbeats },
+                  { CH, "x... x... x... x..." }, { T, "..x. ..x. ..x. ..x." }, { CR, crashBar1 } }),
         groove ("Stab Pump", "Dance Stabs",
-                { { K, fourFloor }, { OH, offbeats }, { C, backbeat } }),
+                { { K, fourFloor }, { OH, offbeats }, { C, ".... X... .... X..x" }, { R, "...x ...x ...x ...x" } }),
         groove ("Hands Up", "Dance Stabs",
-                { { K, fourFloor }, { S, backbeat }, { C, backbeat }, { OH, offbeats }, { CH, "xg.g xg.g xg.g xg.g" },
-                  { CR, crashBar1 } }),
+                { { K, fourFloor }, { S, ".... X... .... X... .... X... ..X. XXXX" }, { C, backbeat }, { OH, offbeats },
+                  { CH, "xxxx xxxx xxxx xxxx" }, { CR, crashBar1 } }),
     };
     return patterns;
 }
