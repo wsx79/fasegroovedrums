@@ -878,6 +878,46 @@ namespace
     }
 }
 
+
+namespace
+{
+    /** LINK and PLAY: the shared clock is the system time, read block by block with the jitter of a
+        real audio thread. Every kick plays once, none is lost, none twice. */
+    void testLinkedClockIsSmooth()
+    {
+        FaseGrooveDrumsProcessor p;
+        p.setParameterFromUI (ParamIDs::fills, 0.0f);
+        p.setParameterFromUI (ParamIDs::variation, 0.0f);
+        p.setParameterFromUI (ParamIDs::humanize, 0.0f);
+        p.setParameterFromUI (ParamIDs::tempoSync, 0.0f);
+        p.setParameterFromUI (ParamIDs::tempo, 240.0f);
+        p.setRateAndBufferSizeDetails (48000.0, 480);   // 10 ms blocks
+        p.prepareToPlay (48000.0, 480);
+        p.setLinked (true);
+        p.previewPlay();
+        juce::AudioBuffer<float> buffer (2, 480);
+        std::vector<double> kicks;
+        double ppq = 0.0;
+        for (int b = 0; b < 200; ++b)   // two seconds: eight beats at 240 BPM
+        {
+            juce::Thread::sleep (b % 3 == 0 ? 2 : b % 3 == 1 ? 17 : 11);   // ~10 ms, irregular
+            juce::MidiBuffer midi;
+            p.processBlock (buffer, midi);
+            for (const auto m : midi)
+                if (m.getMessage().isNoteOn() && m.getMessage().getNoteNumber() == 36)
+                    kicks.push_back (p.uiPpq.load() + m.samplePosition / 12000.0);
+            ppq = p.uiPpq.load();
+        }
+        p.previewStop();
+        p.setLinked (false);
+        // One kick per beat, in order, never two on the same beat.
+        CHECK (kicks.size() >= 6);
+        for (size_t i = 1; i < kicks.size(); ++i)
+            CHECK (kicks[i] - kicks[i - 1] > 0.9 && kicks[i] - kicks[i - 1] < 1.1);
+        CHECK (ppq > 6.0);
+    }
+}
+
 int main (int argc, char** argv)
 {
     juce::ScopedJuceInitialiser_GUI juce;
@@ -901,6 +941,7 @@ int main (int argc, char** argv)
     testGenreSwing();
     testV080();
     testGuideVoices();
+    testLinkedClockIsSmooth();
 
     if (failures == 0)
         std::printf ("All plug-in tests passed.\n");

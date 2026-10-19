@@ -4,6 +4,13 @@
 
 All notable changes to **Fase Groove Drums**.
 
+## [Unreleased]
+
+- **LINK and PLAY: no more stutters.** Linked, the play button's clock read the system time block by
+  block; that jitters, so notes played twice or not at all (a lost kick, the sound breaking up). The
+  beat now goes on smoothly and follows the shared clock gently.
+- **LINK** (was LINK PIANO) links with **Fase Groove Guitar** too.
+
 ## [0.12.3] - 2026-10-19
 
 - **No more look-alike grooves**: every pair of grooves was compared hit by hit, genre by genre.

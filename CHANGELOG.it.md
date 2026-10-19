@@ -4,6 +4,13 @@
 
 Tutte le modifiche importanti di **Fase Groove Drums**.
 
+## [Unreleased]
+
+- **LINK e PLAY: niente più scatti.** Con LINK attivo l'orologio del tasto play leggeva l'ora di
+  sistema a ogni blocco audio; quell'ora oscilla, e le note suonavano due volte o per niente (un kick
+  perso, il suono che si interrompe). Ora il tempo scorre continuo e segue con dolcezza l'orologio condiviso.
+- **LINK** (prima LINK PIANO) collega anche **Fase Groove Guitar**.
+
 ## [0.12.3] - 2026-10-19
 
 - **Niente più groove quasi uguali**: ho confrontato colpo per colpo ogni coppia di groove, genere
