@@ -4082,14 +4082,14 @@ void FaseGrooveDrumsEditor::layout()
 
     // Edit (20, 426, 830, 424): the biggest part of the window
     // The groove at a glance and the faders (20, 426, 830, 276); the editor over the window.
-    mainGrooveTab.setBounds (34, 450, 84, 30);
-    mainVolumeTab.setBounds (118, 450, 84, 30);
-    mainNewRhythm.setBounds (214, 450, 86, 30);
-    mainMyGrooves.setBounds (308, 450, 100, 30);
-    mainImport.setBounds (412, 450, 86, 30);
-    mainTemplate.setBounds (502, 450, 96, 30);
-    mainClear.setBounds (606, 450, 76, 30);
-    openEditorButton.setBounds (722, 450, 116, 30);
+    openEditorButton.setBounds (34, 450, 112, 30);
+    mainGrooveTab.setBounds (156, 450, 84, 30);
+    mainVolumeTab.setBounds (240, 450, 84, 30);
+    mainNewRhythm.setBounds (338, 450, 86, 30);
+    mainMyGrooves.setBounds (432, 450, 100, 30);
+    mainImport.setBounds (536, 450, 86, 30);
+    mainTemplate.setBounds (626, 450, 96, 30);
+    mainClear.setBounds (762, 450, 76, 30);
     overview.setBounds (30, 488, 810, 206);
     miniMixer.setBounds (30, 490, 810, 204);
 
@@ -4207,11 +4207,11 @@ void FaseGrooveDrumsEditor::paintContent (juce::Graphics& g)
     caption ("MIDI note", 34, 302);
     caption ("Level", 186, 300, 54);
     caption ("Volume", 242, 300, 58);
-    caption ("View", 34, 434);
-    caption ("New rhythm", 214, 434);
-    caption ("Groove", 308, 434);
-    caption ("Template", 502, 434, 96);
-    caption ("Edit", 722, 434, 116);
+    caption ("Edit", 34, 434, 112);
+    caption ("View", 156, 434);
+    caption ("New rhythm", 338, 434);
+    caption ("Groove", 432, 434);
+    caption ("Template", 626, 434, 96);
     caption ("Notes", 874, 456);
     caption ("Clip length", 1012, 456);
 
