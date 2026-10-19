@@ -35,7 +35,12 @@ struct DrumSettings
     int variationEvery = 0;                // 0 = off, else every 4 or 8 bars the last bar varies
 
     Section section = Section::main;
-    long long sectionStartBar = 0;         // where the section began (the drop's crash counts from there)
+    long long sectionStartBar = 0;         // where the section began: fills, crashes and variations count from there
+    int sectionBars = 0;                   // how long the section lasts (0: it goes on, as when playing live)
+    bool afterSectionFill = false;         // the section before ended with its own fill (a crash on our first bar)
+
+    bool genreFeel = true;                 // each genre's own pocket: how far each drum sits off the grid and swings
+    bool bassSpace = false;                // room for the bass: kick pick-ups only at the end of four bars, never just before the one
 
     std::uint32_t riffSeed = 1;            // used when pattern == randomPatternIndex()
     float density = 0.5f;
@@ -117,6 +122,21 @@ public:
     /** Length (in 16th steps) after which groove, variations and fills all repeat. */
     static int loopLengthInSteps (const DrumSettings& s) noexcept;
 
+    /** The groove for a set of settings, worked out ahead (on the message thread): render() uses
+        it instead of building its own when it matches, so the audio thread doesn't allocate. */
+    struct Prepared
+    {
+        DrumSettings key;
+        DrumPattern pattern;
+        std::array<DrumPattern, 4> variations;   // one turnaround per four-bar phrase, in turn
+        DrumPattern strongVariation;             // the end of eight bars: a bigger turnaround
+        int genre = -1;
+        bool fourFloor = true;
+    };
+    static void prepare (Prepared&, const DrumSettings&);
+    static bool samePattern (const DrumSettings& a, const DrumSettings& b) noexcept;
+    void setPrepared (const Prepared* p) noexcept { prepared = p; }
+
     /** Offline render of a whole clip starting at bar 1, with every note closed. */
     static std::vector<NoteEvent> renderClip (const DrumSettings& s, double lengthInBeats);
 
@@ -131,26 +151,24 @@ public:
 private:
     struct PendingOn { double ppq; int note; int velocity; double duration; int lane; std::size_t order = 0; };
 
-    const DrumPattern& patternFor (const DrumSettings& s);
-    void collectStep (long long step, const DrumSettings& s, const DrumPattern& pattern, const DrumPattern& variation);
+    const Prepared& patternFor (const DrumSettings& s);
+    void collectStep (long long step, const DrumSettings& s, const Prepared& resolved);
     void flushOffsUpTo (double ppq, bool inclusive, std::vector<NoteEvent>& out);
+    void emitPending (double startPpq, double endPpq, std::vector<NoteEvent>& out);
 
     std::array<double, 128> offTime {};   // < 0 when the note is not sounding
     std::array<int, 128> laneOf {};
     std::vector<PendingOn> pending;
     std::vector<int> scratch;
 
-    // Cache of the resolved pattern, rebuilt only when its inputs change.
-    DrumPattern cachedPattern, cachedVariation;
-    int cachedIndex = -1;
-    std::uint32_t cachedSeed = 0;
-    float cachedDensity = -1.0f;
-    int cachedGenre = -1;
-    Section cachedSection = Section::main;
-    std::array<std::array<char, userPatternLength>, numLanes> cachedUser {};
-    std::array<int, numSegments> cachedOrder {};
-    int cachedBars = 2;
-    std::uint32_t cachedSectionVariation = 0;
+    // The resolved pattern: the one prepared ahead when it matches, else built here (and kept,
+    // rebuilt only when its inputs change).
+    const Prepared* prepared = nullptr;
+    Prepared cache;
+    bool cacheValid = false;
+    // Offline renders: only the steps in [stepBegin, stepEnd) play (a clip's last pushed hit
+    // doesn't come round again at its end; a song part plays only its own bars).
+    long long stepBegin = 0, stepEnd = -1;   // stepEnd < stepBegin: every step
 };
 
 } // namespace fgd

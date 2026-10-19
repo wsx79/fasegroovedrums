@@ -249,6 +249,8 @@ private:
     }   // the instrument groups, between ONE TRACK and ONE TRACK PER ...
     juce::TextButton saveSongButton { "SAVE SONG .MID..." }, saveSectionsButton { "ONE .MID PER SECTION..." }, closeButton { "CLOSE" };
     juce::TextButton resetButton { "RESET SONG" };
+    juce::TextButton genreFeelButton { "GENRE FEEL" }, bassSpaceButton { "BASS SPACE" };
+    std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment> genreFeelAttachment, bassSpaceAttachment;
     DragTile sectionTile { "DRAG THIS SECTION" }, sectionsTile { "DRAG ALL SECTIONS", "one clip per section" },
              songTile { "DRAG THE WHOLE SONG", "every section, with markers" };
     std::unique_ptr<juce::FileChooser> chooser;

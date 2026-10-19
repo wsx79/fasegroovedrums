@@ -2,7 +2,7 @@
 
 *🇮🇹 [Guida in italiano](GUIDA.md)*
 
-This guide covers [v0.14.3](https://github.com/wsx79/fasegroovedrums/releases/tag/v0.14.3). The existing controls and their positions are retained; shared buttons, menus and colours have a common style.
+This guide covers [v0.15.0](https://github.com/wsx79/fasegroovedrums/releases/tag/v0.15.0). The existing controls and their positions are retained; shared buttons, menus and colours have a common style.
 
 ## 1. Installation
 

@@ -28,6 +28,28 @@ int defaultNote (int lane) noexcept
     return lane >= 0 && lane < numLanes ? notes[lane] : 36;
 }
 
+const char* noteMapName (int map) noexcept
+{
+    static const char* names[] { "General MIDI", "Drum rack (16 pads, C1-D#2)", "MPC pads (bank A)", "One note per drum from C1" };
+    return map >= 0 && map < numNoteMaps ? names[map] : "";
+}
+
+int noteMapNote (int map, int lane) noexcept
+{
+    // Lanes: kick, snare, clap, rim, closed hat, open hat, ride, shaker, tambourine, conga, cowbell, tom, crash.
+    static const int rack[] { 36, 38, 39, 37, 42, 46, 51, 44, 40, 47, 48, 43, 49 };   // every drum on one of the 16 pads
+    static const int mpc[]  { 36, 38, 40, 37, 42, 46, 51, 82, 44, 48, 47, 45, 49 };   // the MPC's default pads
+    if (lane < 0 || lane >= numLanes)
+        return 36;
+    switch (map)
+    {
+        case 1:  return rack[lane];
+        case 2:  return mpc[lane];
+        case 3:  return 36 + lane;
+        default: return defaultNote (lane);
+    }
+}
+
 int laneForGeneralMidiNote (int note) noexcept
 {
     switch (note)
@@ -230,7 +252,7 @@ const std::vector<DrumPattern>& drumPatterns()
                 { { K, "X... X... X... X.X." }, { C, ".... Xg.. .... Xx.." }, { CH, "..x. ..xx ..x. ..x." },
                   { TM, "xx.x x.xx .... ...." }, { S, ".... x..x .... x... .... x..x ..x. x.xx" } }),
         groove ("Jack Cowbell", "Jackin'",
-                { { K, "X... X... X... X... X... X..g X... X..." }, { C, backbeat }, { CH, "..x. x.xg ..x. x.x." }, { CB, "x..x ..x. ..x. x..." }, { SH, "..xx ..x. ..xx ..x." } }),
+                { { K, "X... X... X... X... X... X..g X... X..." }, { C, backbeat }, { CH, "..x. x.xg ..x. x.x." }, { CB, "x..x ..x. ..x. x..." }, { SH, "g.gx g.xx ..xx g.xx" } }),
         groove ("Percolator Jack", "Jackin'",
                 { { K, fourFloor }, { C, backbeat }, { CH, "g.x. g.x. g.x. g.xg" }, { CG, ".... .... .xxx x..." },
                   { TM, ".... .x.. .... ...." }, { OH, ".... .... .... ...x" } }),
@@ -238,7 +260,7 @@ const std::vector<DrumPattern>& drumPatterns()
                 { { K, fourFloor }, { C, ".... X... .... X..x .... X... .... X.x." }, { CH, "..xx ..x. ..x. ..x." }, { SH, "..xx ..x. ..xx ..x." },
                   { S, "...g .... ...g .... ...g .... ..g. ...x" } }),
         groove ("Warehouse Jack", "Jackin'",
-                { { K, "X... X... X... X... X... X... X... X.x." }, { C, backbeat }, { RD, "x... x... xx.. x..." }, { CH, "..x. ..x. ..xg ..x." }, { SH, "..xx ..x. ..xx ..x." } }),
+                { { K, "X... X... X... X... X... X... X... X.x." }, { C, backbeat }, { RD, "x... x... xx.. x..." }, { CH, "..x. ..x. ..xg ..x." }, { SH, "..x. ..xg ..x. .gx." } }),
         groove ("Raw Jack Claps", "Jackin'",
                 { { K, fourFloor }, { C, ".... X..x .... X..." }, { S, ".... .... ..x. ...." }, { CH, "..x. ..x. ..x. ..xx" },
                   { OH, ".... .... .... .x.." }, { SH, "..xx ..x. ..xx ..x." } }),
@@ -252,16 +274,16 @@ const std::vector<DrumPattern>& drumPatterns()
                 { { K, fourFloor }, { C, backbeat }, { S, ".... x... .... x..x .... x... ..x. XgXX" }, { CH, "..x. ..x. ..x. ..x. ..x. ..x. ..x. .x.." },
                   { R, ".... .... .... ...x" }, { T, ".... x... .... x..." } }),
         groove ("Rim Jack", "Jackin'",
-                { { K, "X... X... X... X..g X... X... X... X..." }, { C, backbeat }, { CH, "..xg ..x. ..xg ..x." }, { R, "..xx g... ..xx ...g" }, { SH, "..xx ..x. ..xx ..x." } }),
+                { { K, "X... X... X... X..g X... X... X... X..." }, { C, backbeat }, { CH, "..xg ..x. ..xg ..x." }, { R, "..xx g... ..xx ...g" }, { SH, "xgx. xgxx xgx. xgxx" } }),
 
         // ---- Jackin' Piano: the jack bounce under piano stabs ----
         groove ("Jackin' Piano Bounce", "Jackin' Piano",
                 { { K, fourFloor }, { C, backbeat }, { OH, "..x. ..x. ..x. ..x." }, { CH, "x... x... x... x..." },
-                  { SH, "..xx ..x. ..xx ..x." } }),
+                  { SH, "x..x ..x. ..x. x..." } }),
         groove ("Swing Jack Piano", "Jackin' Piano",
-                { { K, fourFloor }, { C, ".... X..x .... X..." }, { CH, "..x. ..x. ..x. ..xx" }, { OH, ".... .... .... .x.." }, { SH, "..xx ..x. ..xx ..x." } }),
+                { { K, fourFloor }, { C, ".... X..x .... X..." }, { CH, "..x. ..x. ..x. ..xx" }, { OH, ".... .... .... .x.." }, { SH, "..xx ..xx ..xg ..xx" } }),
         groove ("Jack Stab Beat", "Jackin' Piano",
-                { { K, "X... X... X... X.X." }, { C, backbeat }, { CH, "..x. x.x. ..x. x.x." }, { R, ".... .... .... ...x" }, { SH, "..xx ..x. ..xx ..x." } }),
+                { { K, "X... X... X... X.X." }, { C, backbeat }, { CH, "..x. x.x. ..x. x.x." }, { R, ".... .... .... ...x" }, { SH, "g.xg xgxg g.xg xgxg" } }),
         groove ("Piano Jack Groove", "Jackin' Piano",
                 { { K, fourFloor }, { C, ".... Xg.. .... Xx.." }, { OH, "..x. ..x. ..x. ..x." }, { CG, "x... .... .... ...." }, { SH, "..xx ..x. ..xx ..x." } }),
         groove ("Bouncy Jack Keys", "Jackin' Piano",

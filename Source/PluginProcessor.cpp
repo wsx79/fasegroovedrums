@@ -177,6 +177,11 @@ juce::AudioProcessorValueTreeState::ParameterLayout FaseGrooveDrumsProcessor::cr
     }
     group ("kit", "Kit");
 
+    // Added in 0.15 (last, so projects saved before keep every parameter where it was)
+    toggle (ParamIDs::genreFeel, "Genre feel", true);
+    toggle (ParamIDs::bassSpace, "Bass space", false);
+    group ("pocket", "Pocket");
+
     return layout;
 }
 
@@ -203,11 +208,43 @@ FaseGrooveDrumsProcessor::FaseGrooveDrumsProcessor()
         f = 0.0f;
     resetSong();
     linkTimer.startTimer (150);
+    preparePattern();
+    patternTimer.startTimer (40);
 }
 
 FaseGrooveDrumsProcessor::~FaseGrooveDrumsProcessor()
 {
+    patternTimer.stopTimer();
     linkTimer.stopTimer();
+}
+
+void FaseGrooveDrumsProcessor::preparePattern()
+{
+    // The groove (and its turnarounds) for the settings as they are now, built here so the audio
+    // thread never has to; the one it replaces is freed once the audio thread lets go of it.
+    retiredPatterns.erase (std::remove_if (retiredPatterns.begin(), retiredPatterns.end(),
+                                           [] (const auto& p) { return p.use_count() <= 1; }),
+                           retiredPatterns.end());
+    const auto settings = currentSettings();
+    const auto current = std::atomic_load (&preparedPattern);
+    if (current != nullptr && fgd::GrooveEngine::samePattern (current->key, settings))
+        return;
+    auto next = std::make_shared<fgd::GrooveEngine::Prepared>();
+    fgd::GrooveEngine::prepare (*next, settings);
+    std::atomic_store (&preparedPattern, std::shared_ptr<const fgd::GrooveEngine::Prepared> (std::move (next)));
+    if (current != nullptr)
+        retiredPatterns.push_back (current);
+}
+
+void FaseGrooveDrumsProcessor::applyNoteMap (int map)
+{
+    for (int l = 0; l < fgd::numLanes; ++l)
+        setParameterFromUI (ParamIDs::note (l), (float) fgd::noteMapNote (map, l));
+}
+
+juce::String FaseGrooveDrumsProcessor::missingSample (int lane) const
+{
+    return juce::isPositiveAndBelow (lane, fgd::numLanes) ? missingSamples[(size_t) lane] : juce::String();
 }
 
 bool FaseGrooveDrumsProcessor::isBusesLayoutSupported (const BusesLayout& layouts) const
@@ -268,6 +305,8 @@ fgd::DrumSettings FaseGrooveDrumsProcessor::currentSettings() const
     s.riffSeed = (std::uint32_t) juce::roundToInt (raw (ParamIDs::riffSeed));
     s.density = raw (ParamIDs::density);
     s.randomGenre = juce::roundToInt (raw (ParamIDs::genre));
+    s.genreFeel = raw (ParamIDs::genreFeel) > 0.5f;
+    s.bassSpace = raw (ParamIDs::bassSpace) > 0.5f;
 
     for (int l = 0; l < fgd::numLanes; ++l)
     {
@@ -671,13 +710,17 @@ bool FaseGrooveDrumsProcessor::loadSample (int lane, const juce::File& file)
     sample->path = file.getFullPathName();
 
     swapSample (samples[(size_t) lane], std::shared_ptr<const DrumSample> (std::move (sample)));
+    missingSamples[(size_t) lane] = {};
     return true;
 }
 
 void FaseGrooveDrumsProcessor::clearSample (int lane)
 {
     if (juce::isPositiveAndBelow (lane, fgd::numLanes))
+    {
         swapSample (samples[(size_t) lane], {});
+        missingSamples[(size_t) lane] = {};
+    }
 }
 
 juce::String FaseGrooveDrumsProcessor::samplePath (int lane) const
@@ -1200,12 +1243,33 @@ void FaseGrooveDrumsProcessor::processBlock (juce::AudioBuffer<float>& buffer, j
     double startPpq = 0.0;
     double linkCorrection = 0.0;   // see the linked clock below
     if (followHost)
+    {
         startPpq = hostPpq;
+        // A host whose position wobbles by a hair from block to block: go on from where the last
+        // block ended, or a hit right on the edge would play twice (or not at all).
+        if (wasRunning && std::abs (startPpq - expectedNextPpq) < 1.0 / samplesPerBeat)
+            startPpq = expectedNextPpq;
+    }
     else if (running)
     {
         // Linked: the shared clock, so the linked plug-ins play the same beat at the same time.
         // Else a free-running clock: from the start, or where PAUSE left it; REWIND jumps back.
-        if (const double anchor = linkAnchor.load(); linkOn.load() && preview && anchor >= 0.0)
+        double anchor = linkAnchor.load();
+        if (linkOn.load() && preview && anchor >= 0.0 && anchor == lastLinkAnchor && lastLinkBpm > 0.0
+            && std::abs (bpm - lastLinkBpm) > 1.0e-6)
+        {
+            // A new tempo keeps the beat where it is: the clock is moved at once (read with the
+            // new tempo from the old start it would jump), unless someone moved it meanwhile.
+            const double now = juce::Time::getMillisecondCounterHiRes();
+            const double moved = now - (now - anchor) * lastLinkBpm / bpm;
+            if (double expected = anchor; linkAnchor.compare_exchange_strong (expected, moved))
+                anchor = moved;
+            else
+                anchor = expected;
+        }
+        lastLinkAnchor = anchor;
+        lastLinkBpm = bpm;
+        if (linkOn.load() && preview && anchor >= 0.0)
         {
             // The shared clock is the system time, which doesn't move with the audio: read
             // block by block it jumps back and forth, and notes would play twice or not at all.
@@ -1239,7 +1303,10 @@ void FaseGrooveDrumsProcessor::processBlock (juce::AudioBuffer<float>& buffer, j
         if (! wasRunning || std::abs (startPpq - expectedNextPpq) > 0.05)
             engine.allNotesOff (startPpq, events);   // start, loop or jump
 
+        const auto ready = std::atomic_load (&preparedPattern);   // the message thread keeps it alive
+        engine.setPrepared (ready.get());
         engine.render (startPpq, startPpq + blockBeats + linkCorrection, settings, events);
+        engine.setPrepared (nullptr);
         expectedNextPpq = internalPpq = startPpq + blockBeats + linkCorrection;
 
         const auto step = (long long) std::floor (startPpq / fgd::stepLength);
@@ -1790,14 +1857,9 @@ void FaseGrooveDrumsProcessor::updateLink()
             }
         }
 
-    // We changed it: tell the others. A new tempo while playing keeps the position on the clock.
+    // We changed it: tell the others. (A new tempo while playing keeps the position on the clock:
+    // the audio thread moves the clock's start the moment the tempo changes.)
     auto now = localLinkState();
-    if (now.playing && now.anchor >= 0.0 && linkShared.bpm > 0.0f && std::abs (now.bpm - linkShared.bpm) >= 0.01f && ! now.sync)
-    {
-        const double t = juce::Time::getMillisecondCounterHiRes();
-        const double beat = (t - now.anchor) * linkShared.bpm / 60000.0;
-        linkAnchor = now.anchor = t - beat * 60000.0 / now.bpm;
-    }
     if (now.sameAs (linkShared))
         return;
 
@@ -1891,7 +1953,7 @@ juce::ValueTree FaseGrooveDrumsProcessor::stateTree() const
     if (! sampleFolders.isEmpty())
         sounds.setProperty ("folders", sampleFolders.joinIntoString ("\n"), nullptr);
     for (int l = 0; l < fgd::numLanes; ++l)
-        if (const auto path = samplePath (l); path.isNotEmpty())
+        if (const auto path = samplePath (l).isNotEmpty() ? samplePath (l) : missingSamples[(size_t) l]; path.isNotEmpty())
             sounds.setProperty ("lane" + juce::String (l + 1), path, nullptr);
 
     for (const auto* name : { "Grid", "Song", "Samples", "Fill", "Template", "Link" })
@@ -1977,9 +2039,17 @@ void FaseGrooveDrumsProcessor::applyStateTree (const juce::ValueTree& source)
     {
         const auto path = sounds.getProperty ("lane" + juce::String (l + 1)).toString();
         if (path == samplePath (l))
+        {
+            missingSamples[(size_t) l] = {};
             continue;
+        }
         if (path.isEmpty() || ! loadSample (l, juce::File (path)))
+        {
             clearSample (l);
+            // Not found (a drive not plugged in...): the built-in sound plays, but the project
+            // keeps the sample, so saving it again doesn't lose it.
+            missingSamples[(size_t) l] = path;
+        }
     }
 
     for (const auto* name : { "Grid", "Song", "Samples", "Fill", "Template", "Link" })

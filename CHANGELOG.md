@@ -4,6 +4,23 @@
 
 All notable changes to **Fase Groove Drums**.
 
+## [0.15.0] - 2026-10-19
+
+- Song: fills, crashes, turnarounds and phrases count from each section's start (a drop after a 4-bar build-up fills on its own 8th and 16th bars); a crash opens the main part, the break, the drop and the outro, and follows a section's own end fill.
+- Build-up: the snare roll and the crescendo run over the whole section (quarters, 8ths, 16ths, 32nds in the last bar, from soft to loud), and the kick stops for the last two beats before the drop.
+- The drop lifts the groove (offbeat open hat, 16th shaker when missing); the main part starts without hand percussion for 8 bars.
+- Every phrase has its own turnaround, a bigger one every eight bars; the humanized "life" changes every eight bars.
+- Clips: a drum pushed ahead no longer plays twice at the loop point; song exports keep notes across section boundaries at full length.
+- MIDI: the closed hat chokes the open hat with a note-off; longer notes for drums and percussion (samplers in gate mode); fill toms and congas never land on another drum's note.
+- Note maps for every drum at once: General MIDI, 16-pad drum rack, MPC pads, one note per drum from C1 (in the note menu).
+- GENRE FEEL (song window, on by default): each genre's pocket per drum (laid-back deep and neo-soul backbeats, harder garage hat swing, straighter afro hands). BASS SPACE: kick pick-ups only at the end of four bars, never just before the one.
+- A kick on an off 16th (two-step, broken beats) now swings with the hats; on the beat it never moves.
+- Steadier velocities: the kick and the backbeat barely vary with Humanize; softer hat and snare ghosts; the open hat accents the "and". Humanize centres hats on the grid. Snare and clap fills ramp from soft and end in 32nds; a crash follows only fills that close four bars.
+- Random beats: afro 3-against-4 figures (the clap often makes way for the clave), deep rim ghosts, garage snare ghosts before the one. Some jackin' shaker lines are more varied.
+- LINK: a tempo change while playing keeps the beat at once (no jump back and forth).
+- A missing sample (a drive not plugged in) is kept in the project instead of being lost on the next save.
+- The groove is built on the message thread: no allocation on the audio thread while editing; a host position wobbling by less than a sample no longer doubles a hit.
+
 ## [0.14.3] - 2026-10-19
 
 - Preserve early template/push hits at high tempos; regression checks compare different block sizes. README and privacy now describe the existing optional update check.

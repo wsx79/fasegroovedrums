@@ -1307,6 +1307,19 @@ SongOverlay::SongOverlay (FaseGrooveDrumsProcessor& p) : processor (p)
     closeButton.onClick = [this] { setVisible (false); };
     for (auto* b : { &saveSongButton, &saveSectionsButton, &resetButton, &closeButton })
         addAndMakeVisible (b);
+
+    // The pocket: each genre's own feel, and room for the bass.
+    Localisation::bindText (genreFeelButton, "GENRE FEEL");
+    Localisation::bindTip (genreFeelButton, "Each genre's own pocket: how far each drum sits behind or ahead of the beat and how much it swings");
+    Localisation::bindText (bassSpaceButton, "BASS SPACE");
+    Localisation::bindTip (bassSpaceButton, "Room for the bass: the kick's pick-ups only at the end of four bars, never just before the one");
+    for (auto* b : { &genreFeelButton, &bassSpaceButton })
+    {
+        b->setClickingTogglesState (true);
+        addAndMakeVisible (b);
+    }
+    genreFeelAttachment = std::make_unique<juce::AudioProcessorValueTreeState::ButtonAttachment> (p.apvts, ParamIDs::genreFeel, genreFeelButton);
+    bassSpaceAttachment = std::make_unique<juce::AudioProcessorValueTreeState::ButtonAttachment> (p.apvts, ParamIDs::bassSpace, bassSpaceButton);
 }
 
 FaseGrooveDrumsProcessor::ClipPart SongOverlay::clipPart() const
@@ -1422,6 +1435,8 @@ void SongOverlay::resized()
 
     // Bottom, as in Fase Groove Piano: the three drag tiles, then SAVE and CLOSE on one row.
     resetButton.setBounds (card().toNearestInt().reduced (28, 20).removeFromTop (30).removeFromRight (120).withSizeKeepingCentre (120, 28));
+    bassSpaceButton.setBounds (resetButton.getBounds().translated (-130, 0));
+    genreFeelButton.setBounds (bassSpaceButton.getBounds().translated (-130, 0));
     auto bottom = card().toNearestInt().reduced (28, 20).removeFromBottom (52);
     closeButton.setBounds (bottom.removeFromRight (72).withSizeKeepingCentre (72, 32));
     bottom.removeFromRight (10);
@@ -3377,6 +3392,10 @@ FaseGrooveDrumsEditor::FaseGrooveDrumsEditor (FaseGrooveDrumsProcessor& p)
     Localisation::bindItems (drumBox, laneNames);
     Localisation::bindTip (drumBox, "The drum you edit here (or click a pad, or its name on the grid)");
     drumBox.onChange = [this] { pickedFromMenu (drumBox); selectLane (drumBox.getSelectedId() - 1); };
+    // Every drum at once: a ready-made map for the sampler in use.
+    noteBox.addSectionHeading (tr ("Note map (every drum)"));
+    for (int map = 0; map < fgd::numNoteMaps; ++map)
+        noteBox.addItem (tr (fgd::noteMapName (map)), 1001 + map);
     for (int n = 0; n < 128; ++n)
     {
         if (n == 35) noteBox.addSectionHeading (tr ("General MIDI drums"));
@@ -3389,7 +3408,9 @@ FaseGrooveDrumsEditor::FaseGrooveDrumsEditor (FaseGrooveDrumsProcessor& p)
     noteBox.onChange = [this]
     {
         pickedFromMenu (noteBox);
-        if (const int id = noteBox.getSelectedId(); id > 0)
+        if (const int id = noteBox.getSelectedId(); id > 1000)
+            processor.applyNoteMap (id - 1001);
+        else if (id > 0)
             processor.setParameterFromUI (ParamIDs::note (selectedLane), (float) (id - 1));
     };
     laneDiceButton.iconColour = Palette::accent;

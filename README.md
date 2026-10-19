@@ -21,7 +21,7 @@
 
 ---
 
-**Current release: [v0.14.3](https://github.com/wsx79/fasegroovedrums/releases/tag/v0.14.3).** The existing layout and all controls are retained; common buttons, menus and colours follow the same family style.
+**Current release: [v0.15.0](https://github.com/wsx79/fasegroovedrums/releases/tag/v0.15.0).** The existing layout and all controls are retained; common buttons, menus and colours follow the same family style.
 
 **Fase Groove Drums** is the drum companion of
 [Fase Groove Piano](https://github.com/wsx79/fasegroovepiano): a VST3/AU instrument that

@@ -1060,6 +1060,68 @@ namespace
             CHECK (kicks[i] - kicks[i - 1] > 0.9 && kicks[i] - kicks[i - 1] < 1.1);
         CHECK (ppq > 7.0);
     }
+
+    void testLinkedTempoChangeKeepsTheBeat()
+    {
+        FaseGrooveDrumsProcessor p;
+        p.setParameterFromUI (ParamIDs::fills, 0.0f);
+        p.setParameterFromUI (ParamIDs::variation, 0.0f);
+        p.setParameterFromUI (ParamIDs::humanize, 0.0f);
+        p.setParameterFromUI (ParamIDs::tempoSync, 0.0f);
+        p.setParameterFromUI (ParamIDs::tempo, 180.0f);
+        const auto link = FaseGrooveDrumsProcessor::linkFile();
+        const auto backup = link.loadFileAsString();
+        const bool existed = link.existsAsFile();
+        link.deleteFile();
+        p.setRateAndBufferSizeDetails (48000.0, 480);
+        p.prepareToPlay (48000.0, 480);
+        p.setLinked (true);
+        p.previewPlay();
+        juce::AudioBuffer<float> buffer (2, 480);
+        double last = -1.0, biggestStep = 0.0;
+        const double start = juce::Time::getMillisecondCounterHiRes();
+        for (int b = 0; b < 200; ++b)
+        {
+            if (b == 120)   // much slower, mid-play: read from the old start the clock would jump back
+                p.setParameterFromUI (ParamIDs::tempo, 120.0f);
+            while (juce::Time::getMillisecondCounterHiRes() < start + b * 10.0)
+                juce::Thread::sleep (1);
+            juce::MidiBuffer midi;
+            p.processBlock (buffer, midi);
+            const double now = p.uiPpq.load();
+            if (last >= 0.0)
+                biggestStep = std::max (biggestStep, std::abs (now - last));
+            last = now;
+        }
+        p.previewStop();
+        p.setLinked (false);
+        if (existed) link.replaceWithText (backup); else link.deleteFile();
+        CHECK (biggestStep < 0.2);   // the position goes on smoothly, no jump
+    }
+
+    void testNoteMapsAndMissingSamples()
+    {
+        FaseGrooveDrumsProcessor p;
+        p.applyNoteMap (1);
+        for (int l = 0; l < fgd::numLanes; ++l)
+            CHECK (p.laneNote (l) == fgd::noteMapNote (1, l) && p.laneNote (l) >= 36 && p.laneNote (l) <= 51);
+        p.applyNoteMap (0);
+        CHECK (p.laneNote ((int) fgd::Lane::shaker) == 82);
+
+        // A project's sample that isn't there (a drive not plugged in) is kept when saving again.
+        const auto missing = juce::File::getSpecialLocation (juce::File::tempDirectory).getChildFile ("fgd-not-there").getChildFile ("kick.wav");
+        auto state = juce::ValueTree::fromXml (p.snapshot());
+        auto sounds = state.getChildWithName ("Samples");
+        sounds.setProperty ("lane1", missing.getFullPathName(), nullptr);
+        p.restoreSnapshot (state.toXmlString());
+        CHECK (p.samplePath (0).isEmpty());
+        CHECK (p.missingSample (0) == missing.getFullPathName());
+        FaseGrooveDrumsProcessor q;
+        q.restoreSnapshot (p.snapshot());
+        CHECK (q.missingSample (0) == missing.getFullPathName());
+        q.clearSample (0);
+        CHECK (q.missingSample (0).isEmpty());
+    }
 }
 
 int main (int argc, char** argv)
@@ -1089,6 +1151,8 @@ int main (int argc, char** argv)
     testV080();
     testGuideVoices();
     testLinkedClockIsSmooth();
+    testLinkedTempoChangeKeepsTheBeat();
+    testNoteMapsAndMissingSamples();
 
     if (failures == 0)
         std::printf ("All plug-in tests passed.\n");

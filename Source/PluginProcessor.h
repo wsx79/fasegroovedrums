@@ -40,6 +40,9 @@ namespace ParamIDs
     inline constexpr const char* reverb      = "reverb";
     inline constexpr const char* volume      = "volume";
 
+    inline constexpr const char* genreFeel   = "genreFeel";     // each genre's own pocket (push and swing per drum)
+    inline constexpr const char* bassSpace   = "bassSpace";     // kick pick-ups only at the end of four bars
+
     inline juce::String segment (int index) { return "segment" + juce::String (index + 1); }
     inline juce::String mute (int lane)  { return "mute" + juce::String (lane + 1); }
     inline juce::String note (int lane)  { return "note" + juce::String (lane + 1); }
@@ -202,6 +205,10 @@ public:
     bool isLaneMuted (int lane) const { return raw (ParamIDs::mute (lane)) > 0.5f; }
     void setLaneMuted (int lane, bool muted) { setParameterFromUI (ParamIDs::mute (lane), muted ? 1.0f : 0.0f); }
     int laneNote (int lane) const { return juce::roundToInt (raw (ParamIDs::note (lane))); }
+    /** Every drum's note at once, from a ready-made map (fgd::noteMapName). */
+    void applyNoteMap (int map);
+    /** A sample of the project that wasn't found when it loaded (kept, so saving doesn't lose it). */
+    juce::String missingSample (int lane) const;
 
     // Your own sounds: a sample (WAV, AIFF, FLAC, MP3...) in place of a drum's built-in sound.
     static bool isAudioFile (const juce::File&);
@@ -374,6 +381,20 @@ private:
                                    const std::vector<fgd::GrooveEngine::Marker>*, ClipPart, const juce::String& name) const;
 
     fgd::GrooveEngine engine;
+    // The groove worked out ahead on the message thread (the audio thread only reads it), and the
+    // old ones kept until the audio thread has let go of them.
+    std::shared_ptr<const fgd::GrooveEngine::Prepared> preparedPattern;
+    std::vector<std::shared_ptr<const fgd::GrooveEngine::Prepared>> retiredPatterns;
+    void preparePattern();
+    struct PatternTimer : juce::Timer
+    {
+        explicit PatternTimer (FaseGrooveDrumsProcessor& p) : owner (p) {}
+        void timerCallback() override { owner.preparePattern(); }
+        FaseGrooveDrumsProcessor& owner;
+    };
+    PatternTimer patternTimer { *this };
+    std::array<juce::String, fgd::numLanes> missingSamples;   // message thread
+    double lastLinkAnchor = -1.0, lastLinkBpm = 0.0;           // audio thread: the linked clock as last played
     std::vector<fgd::NoteEvent> events;
     juce::MidiBuffer outMidi;
     std::array<int, 128> noteChannels {};   // channel used by each generated note-on

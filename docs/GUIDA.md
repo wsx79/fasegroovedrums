@@ -2,7 +2,7 @@
 
 *🇬🇧 [English guide](GUIDE.md)*
 
-Questa guida descrive la [v0.14.3](https://github.com/wsx79/fasegroovedrums/releases/tag/v0.14.3). Controlli e posizioni sono conservati; pulsanti, menu e colori comuni hanno uno stile uniforme.
+Questa guida descrive la [v0.15.0](https://github.com/wsx79/fasegroovedrums/releases/tag/v0.15.0). Controlli e posizioni sono conservati; pulsanti, menu e colori comuni hanno uno stile uniforme.
 
 ## 1. Installazione
 

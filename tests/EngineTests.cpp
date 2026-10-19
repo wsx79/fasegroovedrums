@@ -48,6 +48,17 @@ namespace
         return std::none_of (on.begin(), on.end(), [] (const auto& p) { return p.second; });
     }
 
+    /** A kick where it belongs: exactly on the beat or an 8th, or on an off 16th taking the swing
+        (at most a dotted 16th late), never pushed or humanized. */
+    bool kickOnGrid (double ppq)
+    {
+        const double steps = ppq / stepLength;
+        if (std::abs (steps - std::round (steps)) < 1.0e-9)
+            return true;
+        const double below = std::floor (steps);
+        return (long long) below % 2 != 0 && steps - below <= 0.5 + 1.0e-9;
+    }
+
     int countOns (const std::vector<NoteEvent>& events, int note = -1)
     {
         return (int) std::count_if (events.begin(), events.end(),
@@ -281,7 +292,7 @@ static void testFillsAndVariations()
 
     s.fillStyle = FillStyle::snareRoll;
     const auto roll = GrooveEngine::renderClip (s, 16.0);
-    CHECK (countOns (roll, 38) == 6);   // 8ths then 16ths over the last two beats of bar 4
+    CHECK (countOns (roll, 38) == 10);   // 8ths, then 32nds over the last beat of bar 4
 
     s.fillStyle = FillStyle::tomRun;
     std::set<int> toms;
@@ -441,10 +452,7 @@ static void testKickAlwaysOnTheGrid()
         s.randomGenre = pattern % 13;
         for (const auto& e : GrooveEngine::renderClip (s, 32.0))
             if (e.isNoteOn() && e.lane == (int) Lane::kick)
-            {
-                const double steps = e.ppq / stepLength;
-                CHECK (std::abs (steps - std::round (steps)) < 1.0e-9);
-            }
+                CHECK (kickOnGrid (e.ppq));
     }
 
     // A flam on the kick has no grace note.
@@ -646,7 +654,7 @@ static void testJackinCharacter()
                 open[(size_t) e.note] += e.isNoteOn() ? 1 : -1;
                 CHECK (open[(size_t) e.note] >= 0 && open[(size_t) e.note] <= 1);
                 if (e.lane == (int) Lane::kick && e.isNoteOn())
-                    CHECK (std::abs (e.ppq * 4.0 - std::round (e.ppq * 4.0)) < 1.0e-9);   // the kick on the grid
+                    CHECK (kickOnGrid (e.ppq));   // the kick on the grid (an off 16th swings)
             }
             for (int n : open)
                 CHECK (n == 0);
@@ -795,7 +803,12 @@ static void testEarlyTemplateHitsAcrossBlocks()
     s.grooveTemplate.active = true;
     s.grooveTemplate.timing.fill (-0.5f);
     s.grooveTemplate.level.fill (1.0f);
-    const auto whole = GrooveEngine::renderClip (s, 16.0);
+    std::vector<NoteEvent> whole;   // one block (a clip would leave out the next time round's early hits)
+    {
+        GrooveEngine once;
+        once.render (0.0, 16.0, s, whole);
+        once.allNotesOff (16.0, whole);
+    }
     GrooveEngine engine;
     std::vector<NoteEvent> small;
     for (double t = 0.0; t < 16.0; t += 0.019)
@@ -807,8 +820,155 @@ static void testEarlyTemplateHitsAcrossBlocks()
                && std::abs (whole[i].ppq - small[i].ppq) < 1.0e-8);
 }
 
+static void testSongPhrasesAndSeams()
+{
+    auto onsAt = [] (const std::vector<NoteEvent>& e, int note, double from, double to)
+    {
+        return (int) std::count_if (e.begin(), e.end(), [=] (const NoteEvent& n) { return n.isNoteOn() && n.note == note && n.ppq >= from && n.ppq < to; });
+    };
+
+    // Fills count from the section's start: after a 6-bar intro, an 8-bar main part fills on its own last bar.
+    auto s = straight();
+    s.pattern = 2;   // no toms of its own
+    s.fillEveryBars = 8;
+    s.fillStyle = FillStyle::tomRun;
+    const auto song = GrooveEngine::renderArrangement (s, { { Section::intro, 6 }, { Section::main, 8 } });
+    CHECK (wellFormed (song));
+    int toms = 0;
+    for (const auto& e : song)
+        if (e.isNoteOn() && e.lane == (int) Lane::tom)
+        {
+            ++toms;
+            CHECK (e.ppq >= 13 * 4.0 && e.ppq < 14 * 4.0);
+        }
+    CHECK (toms == 4);
+
+    // A section's own fill brings a crash on the next one, whatever the Fills setting.
+    s.fillEveryBars = 0;
+    auto withFill = GrooveEngine::renderArrangement (s, { { Section::intro, 4, 0, (int) FillStyle::snareRoll }, { Section::buildup, 4 } });
+    CHECK (onsAt (withFill, 49, 16.0 - 1.0e-9, 16.0 + 1.0e-6) == 1);
+    withFill = GrooveEngine::renderArrangement (s, { { Section::intro, 4, 0, -2 }, { Section::buildup, 4 } });
+    CHECK (onsAt (withFill, 49, 0.0, 32.0) == 0);
+
+    // The build-up rises over the whole section: no restart after two bars, louder at the end,
+    // and the kick stops for its last two beats.
+    s.pattern = 0;
+    const auto build = GrooveEngine::renderArrangement (s, { { Section::buildup, 4 } });
+    CHECK (onsAt (build, 38, 8.0, 12.0) > onsAt (build, 38, 0.0, 4.0));
+    CHECK (onsAt (build, 38, 12.0, 16.0) >= onsAt (build, 38, 8.0, 12.0));
+    int first = 0, last = 0;
+    for (const auto& e : build)
+        if (e.isNoteOn() && e.note == 38)
+            (e.ppq < 4.0 ? first : last) = std::max (e.ppq < 4.0 ? first : last, e.velocity);
+    CHECK (first < last);
+    CHECK (onsAt (build, 36, 14.0, 16.0) == 0);
+
+    // A hat pushed ahead: a clip doesn't play the next time round's first hat at its end...
+    auto p = straight();
+    p.pattern = 0;
+    p.laneShift[(size_t) Lane::closedHat] = -6.0f;
+    const auto clip = GrooveEngine::renderClip (p, 8.0);
+    CHECK (onsAt (clip, 42, 7.9, 8.0) == 0);
+    CHECK (onsAt (clip, 42, 0.0, 1.0e-9) == 1);
+    // ...and in a song the next part's first hat keeps its length.
+    const auto parts = GrooveEngine::renderArrangement (p, { { Section::main, 2 }, { Section::main, 2 } });
+    bool early = false;
+    for (size_t i = 0; i < parts.size(); ++i)
+        if (parts[i].isNoteOn() && parts[i].note == 42 && parts[i].ppq > 7.9 && parts[i].ppq < 8.0)
+            for (size_t j = i + 1; j < parts.size(); ++j)
+                if (parts[j].note == 42)
+                {
+                    early = ! parts[j].isNoteOn() && parts[j].ppq > 8.1;
+                    break;
+                }
+    CHECK (early);
+}
+
+static void testMidiChokeMapsAndBassSpace()
+{
+    // The closed hat closes the open hat in MIDI too.
+    auto s = straight();
+    s.pattern = userPatternIndex();
+    s.user[(size_t) Lane::openHat][2] = 'x';
+    s.user[(size_t) Lane::closedHat][3] = 'x';
+    bool choked = false;
+    for (const auto& e : GrooveEngine::renderClip (s, 4.0))
+        if (e.note == 46 && ! e.isNoteOn())
+            choked = std::abs (e.ppq - 0.75) < 1.0e-9;
+    CHECK (choked);
+
+    // The note maps: a 16-pad rack keeps every drum on its pads, each on its own note.
+    for (int map = 0; map < numNoteMaps; ++map)
+    {
+        std::set<int> used;
+        for (int l = 0; l < numLanes; ++l)
+        {
+            used.insert (noteMapNote (map, l));
+            if (map == 1)
+                CHECK (noteMapNote (map, l) >= 36 && noteMapNote (map, l) <= 51);
+        }
+        CHECK ((int) used.size() == numLanes);
+        CHECK (std::string (noteMapName (map)).size() > 0);
+    }
+    // A tom run never lands on another drum's note.
+    auto t = straight();
+    t.pattern = 2;
+    t.fillEveryBars = 1;
+    t.fillStyle = FillStyle::tomRun;
+    for (int l = 0; l < numLanes; ++l)
+        t.notes[(size_t) l] = noteMapNote (3, l);
+    for (const auto& e : GrooveEngine::renderClip (t, 4.0))
+        if (e.isNoteOn() && e.lane == (int) Lane::tom)
+            for (int l = 0; l < numLanes; ++l)
+                CHECK (l == (int) Lane::tom || e.note != t.notes[(size_t) l]);
+
+    // Bass space: a four-on-the-floor kick's pick-up only at the end of four bars.
+    auto b = straight();
+    b.pattern = userPatternIndex();
+    for (int i = 0; i < userPatternLength; ++i)
+        b.user[(size_t) Lane::kick][(size_t) i] = i % 4 == 0 || i % 16 == 14 ? 'x' : '.';
+    CHECK (countOns (GrooveEngine::renderClip (b, 16.0), 36) == 20);
+    b.bassSpace = true;
+    CHECK (countOns (GrooveEngine::renderClip (b, 16.0), 36) == 17);
+
+    // A kick on an off 16th swings with the hats; on the beat it never moves.
+    auto k = straight();
+    k.pattern = userPatternIndex();
+    k.user[(size_t) Lane::kick][0] = 'x';
+    k.user[(size_t) Lane::kick][3] = 'x';
+    k.swing = 1.0f;
+    std::vector<double> kicks;
+    for (const auto& e : GrooveEngine::renderClip (k, 4.0))
+        if (e.isNoteOn() && e.note == 36)
+            kicks.push_back (e.ppq);
+    CHECK (kicks.size() == 2 && std::abs (kicks[0]) < 1.0e-9 && std::abs (kicks[1] - (0.75 + stepLength / 3.0)) < 1.0e-9);
+
+    // A groove prepared ahead plays exactly as the one the engine builds itself.
+    auto d = straight();
+    d.pattern = 5;
+    d.variationEvery = 4;
+    GrooveEngine::Prepared ready;
+    GrooveEngine::prepare (ready, d);
+    GrooveEngine a, c;
+    a.setPrepared (&ready);
+    std::vector<NoteEvent> ea, ec;
+    a.render (0.0, 32.0, d, ea);
+    c.render (0.0, 32.0, d, ec);
+    CHECK (ea.size() == ec.size());
+    for (size_t i = 0; i < std::min (ea.size(), ec.size()); ++i)
+        CHECK (ea[i].note == ec[i].note && ea[i].velocity == ec[i].velocity && ea[i].ppq == ec[i].ppq);
+
+    // The drop lifts the groove: the open hat on the offbeats.
+    auto soulful = drumPatterns()[5];   // Soulful Sunday: no open hat
+    fitPattern (soulful, 32);
+    CHECK (countHits (soulful[Lane::openHat]) == 0);
+    CHECK (countHits (applySection (soulful, Section::drop)[Lane::openHat]) == 8);
+}
+
 int main()
 {
+    testSongPhrasesAndSeams();
+    testMidiChokeMapsAndBassSpace();
     testEarlyTemplateHitsAcrossBlocks();
     testDrumFeel();
     testNewFills();

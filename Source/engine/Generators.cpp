@@ -144,7 +144,22 @@ DrumPattern applySection (const DrumPattern& source, Section section)
             break;
         }
 
-        case Section::drop:   // the full groove (the engine adds a crash every 8 bars)
+        case Section::drop:
+        {
+            // The full groove, lifted: the open hat on every offbeat when no open hat plays, and
+            // a 16th shaker when neither shaker nor tambourine does (the engine adds a crash
+            // every 8 bars).
+            if (! any (Lane::openHat))
+                for (int i = 2; i < len; i += 4)
+                {
+                    p[Lane::openHat][(size_t) i] = 'x';
+                    p[Lane::closedHat][(size_t) i] = '.';
+                }
+            if (! any (Lane::shaker) && ! any (Lane::tambourine))
+                p[Lane::shaker].assign ((size_t) len, 'x');
+            break;
+        }
+
         case Section::main:
         default:
             break;
@@ -374,6 +389,32 @@ DrumPattern makeRandomPattern (std::uint32_t seed, float density, int genre)
             case 1:  if (p[Lane::clap][31] == '.' && p[Lane::clap][28] != '.') p[Lane::clap][31] = 'x'; break;
             default: if (p[Lane::conga][31] == '.') p[Lane::conga][31] = 'x'; break;
         }
+
+    // ---- What sets the genre apart (its own dice, so the layers above stay as they were) ----
+    Random accent (seed * 2246822519u + 3266489917u);
+    if (genre == afro)
+    {
+        // Three against four: a dotted-8th figure on the congas (or the shaker), and with the
+        // clave the clap often gives way.
+        if (accent.chance (0.5f))
+            setBar (! std::any_of (p[Lane::conga].begin(), p[Lane::conga].end(), isHit) ? Lane::conga : Lane::shaker, "x..x ..x. .x.. x..x");
+        if (std::any_of (p[Lane::rim].begin(), p[Lane::rim].end(), isHit) && accent.chance (0.4f))
+            p[Lane::clap].assign ((size_t) randomBeatLength, '.');
+    }
+    else if (genre == deep && accent.chance (0.5f))
+    {
+        // Soft rim ghosts off the grid's strong points.
+        for (int at : { 3, 11, 19, 27 })
+            if (p[Lane::rim][(size_t) at] == '.')
+                p[Lane::rim][(size_t) at] = 'g';
+    }
+    else if (garageBeat && accent.chance (0.6f))
+    {
+        // The garage snare's ghost on the last 16th, into the next bar.
+        for (int at : { 15, 31 })
+            if (p[Lane::snare][(size_t) at] == '.')
+                p[Lane::snare][(size_t) at] = 'g';
+    }
 
     normalisePattern (p, randomBeatLength);
     return p;

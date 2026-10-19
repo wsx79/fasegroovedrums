@@ -21,7 +21,7 @@
 
 ---
 
-**Versione attuale: [v0.14.3](https://github.com/wsx79/fasegroovedrums/releases/tag/v0.14.3).** Il layout e tutti i controlli restano presenti; pulsanti, menu e colori comuni seguono lo stesso stile nei tre plugin.
+**Versione attuale: [v0.15.0](https://github.com/wsx79/fasegroovedrums/releases/tag/v0.15.0).** Il layout e tutti i controlli restano presenti; pulsanti, menu e colori comuni seguono lo stesso stile nei tre plugin.
 
 **Fase Groove Drums** è il compagno di batteria di
 [Fase Groove Piano](https://github.com/wsx79/fasegroovepiano): uno strumento VST3/AU che

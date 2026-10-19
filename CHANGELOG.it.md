@@ -4,6 +4,23 @@
 
 Tutte le modifiche importanti di **Fase Groove Drums**.
 
+## [0.15.0] - 2026-10-19
+
+- Brano: fill, crash, variazioni e frasi contano dall'inizio di ogni sezione (un drop dopo un build-up di 4 bar fa il fill sui suoi bar 8 e 16); un crash apre la parte principale, il break, il drop e l'outro, e segue il fill finale di una sezione.
+- Build-up: il rullo di rullante e il crescendo coprono tutta la sezione (quarti, ottavi, sedicesimi, trentaduesimi nell'ultimo bar, da piano a forte) e la cassa si ferma negli ultimi due battiti prima del drop.
+- Il drop alza il groove (open hat in levare, shaker in sedicesimi se mancano); la parte principale inizia senza percussioni a mano per 8 bar.
+- Ogni frase ha la sua variazione, una più ampia ogni otto bar; la "vita" dell'umanizzazione cambia ogni otto bar.
+- Clip: uno strumento in anticipo non suona più due volte al punto di loop; l'export del brano tiene le note a cavallo delle sezioni alla loro durata piena.
+- MIDI: il charleston chiuso strozza quello aperto con un note-off; note più lunghe per batteria e percussioni (sampler in modalità gate); tom e conga dei fill non finiscono mai sulla nota di un altro strumento.
+- Mappe note per tutti gli strumenti insieme: General MIDI, drum rack a 16 pad, pad MPC, una nota per strumento da C1 (nel menu della nota).
+- FEEL DEL GENERE (finestra del brano, attivo di default): il pocket di ogni genere per strumento (backbeat rilassato in deep e neo soul, swing più marcato sugli hi-hat garage, mani più dritte nell'afro). SPAZIO AL BASSO: riprese della cassa solo alla fine di quattro bar, mai subito prima dell'uno.
+- Una cassa su un sedicesimo in levare (two-step, broken beat) ora swinga con gli hi-hat; sul battito non si sposta mai.
+- Velocity più stabili: cassa e backbeat variano appena con Umanizza; ghost di hi-hat e rullante più morbidi; l'open hat accenta il levare. Umanizza centra gli hi-hat sulla griglia. I fill di rullante e clap partono piano e finiscono in trentaduesimi; il crash segue solo i fill che chiudono quattro bar.
+- Beat casuali: figure afro 3 contro 4 (il clap spesso lascia spazio alla clave), ghost di rim nel deep, ghost di rullante garage prima dell'uno. Alcune linee di shaker jackin' sono più varie.
+- LINK: un cambio di tempo durante la riproduzione mantiene subito il beat (nessun salto avanti e indietro).
+- Un sample mancante (un disco non collegato) resta nel progetto invece di perdersi al salvataggio successivo.
+- Il groove viene preparato sul thread dei messaggi: nessuna allocazione sul thread audio durante le modifiche; una posizione dell'host che oscilla di meno di un campione non raddoppia più un colpo.
+
 ## [0.14.3] - 2026-10-19
 
 - Corretti i colpi anticipati da template e push ai tempi elevati; test di indipendenza dalla dimensione dei blocchi. README e privacy descrivono il controllo aggiornamenti facoltativo già presente.
