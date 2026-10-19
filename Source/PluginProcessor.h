@@ -376,6 +376,7 @@ private:
     fgd::GrooveEngine engine;
     std::vector<fgd::NoteEvent> events;
     juce::MidiBuffer outMidi;
+    std::array<int, 128> noteChannels {};   // channel used by each generated note-on
     std::atomic<int> auditionRequest { -1 };   // lane * 128 + velocity
 
     GuideDrums drums;

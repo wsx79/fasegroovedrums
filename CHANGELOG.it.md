@@ -4,6 +4,14 @@
 
 Tutte le modifiche importanti di **Fase Groove Drums**.
 
+## [0.14.3] - 2026-10-19
+
+- I rilasci MIDI mantengono il canale della nota iniziale, anche cambiando canale durante la riproduzione.
+- I preset vecchi ripristinano i valori predefiniti dei parametri mancanti, senza ereditare il preset precedente.
+- MIDI Start e Song Position Pointer aggiornano la posizione del clock nel blocco corrente.
+- L’ordinamento degli eventi simultanei evita il buffer temporaneo di stable_sort.
+- Gestione dei blocchi audio vuoti senza posizioni di campione non valide.
+
 ## [0.14.2] - 2026-10-19
 
 - Export più sicuri: ogni .mid (e .wav) si scrive prima in un file temporaneo; quello esistente viene sostituito solo quando il nuovo è completo (disco pieno o permessi mancanti lasciano il file vecchio).

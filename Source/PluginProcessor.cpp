@@ -1129,6 +1129,7 @@ void FaseGrooveDrumsProcessor::processBlock (juce::AudioBuffer<float>& buffer, j
     juce::ScopedNoDenormals noDenormals;
 
     const int numSamples = buffer.getNumSamples();
+    if (numSamples == 0) return;
     const double sampleRate = getSampleRate() > 0.0 ? getSampleRate() : 44100.0;
     buffer.clear();
 
@@ -1138,7 +1139,7 @@ void FaseGrooveDrumsProcessor::processBlock (juce::AudioBuffer<float>& buffer, j
 
     // ---- MIDI in: the clock drives the standalone app; notes pass through (and play the kit) ----
     outMidi.clear();
-    const double clockPpqAtStart = clockPpq;
+    double clockPpqAtStart = clockPpq;
     for (const auto meta : midi)
     {
         const auto m = meta.getMessage();
@@ -1153,10 +1154,10 @@ void FaseGrooveDrumsProcessor::processBlock (juce::AudioBuffer<float>& buffer, j
                 clockPpq += 1.0 / 24.0;
             continue;
         }
-        if (m.isMidiStart())           { clockRunning = true; clockPpq = 0.0; continue; }
-        if (m.isMidiContinue())        { clockRunning = true; continue; }
+        if (m.isMidiStart())           { clockRunning = true; clockPpq = clockPpqAtStart = 0.0; continue; }
+        if (m.isMidiContinue())        { clockRunning = true; clockPpqAtStart = clockPpq; continue; }
         if (m.isMidiStop())            { clockRunning = false; continue; }
-        if (m.isSongPositionPointer()) { clockPpq = m.getSongPositionPointerMidiBeat() / 4.0; continue; }
+        if (m.isSongPositionPointer()) { clockPpq = clockPpqAtStart = m.getSongPositionPointerMidiBeat() / 4.0; continue; }
 
         outMidi.addEvent (m, meta.samplePosition);
     }
@@ -1188,6 +1189,7 @@ void FaseGrooveDrumsProcessor::processBlock (juce::AudioBuffer<float>& buffer, j
     hostBpm = juce::jlimit (20.0, 400.0, dawBpm);
     const double bpm = tempoSynced ? hostBpm.load() : juce::jlimit (20.0, 400.0, (double) raw (ParamIDs::tempo));
     lastBpm = bpm;
+    settings.tempo = bpm;
     const double samplesPerBeat = sampleRate * 60.0 / bpm;
     const double blockBeats = numSamples / samplesPerBeat;
 
@@ -1259,11 +1261,16 @@ void FaseGrooveDrumsProcessor::processBlock (juce::AudioBuffer<float>& buffer, j
         const int pos = juce::jlimit (0, numSamples - 1, (int) std::floor ((e.ppq - startPpq) * samplesPerBeat));
         if (e.isNoteOn())
         {
+            noteChannels[(size_t) e.note] = channel;
             outMidi.addEvent (juce::MidiMessage::noteOn (channel, e.note, (juce::uint8) e.velocity), pos);
             laneFlash[(size_t) juce::jlimit (0, fgd::numLanes - 1, e.lane)] = (float) e.velocity / 127.0f;
         }
         else
-            outMidi.addEvent (juce::MidiMessage::noteOff (channel, e.note), pos);
+        {
+            auto& original = noteChannels[(size_t) e.note];
+            outMidi.addEvent (juce::MidiMessage::noteOff (original > 0 ? original : channel, e.note), pos);
+            original = 0;
+        }
     }
 
     // A pad played by hand.
@@ -1944,6 +1951,8 @@ void FaseGrooveDrumsProcessor::applyStateTree (const juce::ValueTree& source)
     }
     if (const auto link = state.getChildWithName ("Link"); link.isValid())
         setLinked ((bool) link.getProperty ("on", false));
+    else
+        setLinked (false);
     const auto locks = grid.getProperty ("locks").toString();
     for (int i = 0; i < fgd::numSegments; ++i)
         segmentLocked[(size_t) i] = locks.substring (i, i + 1) == "1";
@@ -1976,6 +1985,17 @@ void FaseGrooveDrumsProcessor::applyStateTree (const juce::ValueTree& source)
     for (const auto* name : { "Grid", "Song", "Samples", "Fill", "Template", "Link" })
         state.removeChild (state.getChildWithName (name), nullptr);
     state.removeProperty ("editorScale", nullptr);
+    // APVTS retains the current value when a parameter child is absent. Old presets
+    // must instead restore defaults for parameters added after that preset was saved.
+    for (auto* parameter : getParameters())
+        if (auto* ranged = dynamic_cast<juce::RangedAudioParameter*> (parameter))
+            if (! state.getChildWithProperty ("id", ranged->paramID).isValid())
+            {
+                juce::ValueTree child ("PARAM");
+                child.setProperty ("id", ranged->paramID, nullptr);
+                child.setProperty ("value", ranged->convertFrom0to1 (ranged->getDefaultValue()), nullptr);
+                state.appendChild (child, nullptr);
+            }
     apvts.replaceState (state);
 }
 

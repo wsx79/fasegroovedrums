@@ -129,7 +129,7 @@ public:
     static FillStyle effectiveFillStyle (FillStyle style, long long bar) noexcept;
 
 private:
-    struct PendingOn { double ppq; int note; int velocity; double duration; int lane; };
+    struct PendingOn { double ppq; int note; int velocity; double duration; int lane; std::size_t order = 0; };
 
     const DrumPattern& patternFor (const DrumSettings& s);
     void collectStep (long long step, const DrumSettings& s, const DrumPattern& pattern, const DrumPattern& variation);
