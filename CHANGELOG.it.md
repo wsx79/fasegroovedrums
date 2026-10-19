@@ -4,6 +4,10 @@
 
 Tutte le modifiche importanti di **Fase Groove Drums**.
 
+## [0.14.1] - 2026-10-19
+
+- Trascinando una clip la finestra si riduce subito alla piccola striscia di Fase Groove Piano (prima aspettava il rilascio, quindi spesso non succedeva) e torna grande da sola.
+
 ## [0.14.0] - 2026-10-19
 
 - Export per strumento, come in Fase Groove Piano: TUTTO, KICK, RULLANTE (rullante, clap, rim), PIATTI (hi-hat, ride, crash), PERCUSSIONI, TRACCE, nella finestra del brano e in EXPORT MIDI.

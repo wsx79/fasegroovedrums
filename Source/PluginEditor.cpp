@@ -1385,7 +1385,7 @@ void DragTile::mouseDrag (const juce::MouseEvent& e)
     repaint();
     juce::Component::SafePointer<FaseGrooveDrumsEditor> editor (findParentComponentOfClass<FaseGrooveDrumsEditor>());
     if (editor != nullptr)
-        juce::MessageManager::callAsync ([editor] { if (editor != nullptr) editor->enterMiniMode(); });
+        editor->enterMiniMode();   // at once, as Fase Groove Piano (a deferred call may wait for the drop)
     juce::Component::SafePointer<DragTile> safe (this);
     juce::DragAndDropContainer::performExternalDragDropOfFiles (files, false, this, [safe, editor]
     {
@@ -3952,8 +3952,8 @@ void FaseGrooveDrumsEditor::MiniStrip::paint (juce::Graphics& g)
     g.setColour (Palette::accent);
     g.fillRoundedRectangle (r, 8.0f);
     g.setColour (Palette::background);
-    g.setFont (font (15.0f, true));
-    g.drawFittedText (tr ("Drop the clip on a track"), r.reduced (10.0f, 4.0f).toNearestInt(), juce::Justification::centred, 2, 0.8f);
+    g.setFont (font (12.0f, true));
+    g.drawFittedText (tr ("Drop the clip on a track"), r.reduced (8.0f, 2.0f).toNearestInt(), juce::Justification::centred, 1, 0.8f);
 }
 
 void FaseGrooveDrumsEditor::enterMiniMode()
@@ -3961,13 +3961,14 @@ void FaseGrooveDrumsEditor::enterMiniMode()
     if (miniMode || isFullScreen())
         return;
     miniMode = true;
+    miniStartedAt = juce::Time::getMillisecondCounter();
     fullSize = { getWidth(), getHeight() };
     content.setAlpha (0.0f);   // still there (the drag belongs to its tile), not seen
     addAndMakeVisible (miniStrip);
     miniStrip.toFront (false);
     getConstrainer()->setFixedAspectRatio (0.0);
-    setResizeLimits (120, 40, designWidth * 2, designHeight * 2);
-    setSize (280, 64);
+    setResizeLimits (120, 20, designWidth * 2, designHeight * 2);
+    setSize (240, 28);   // the strip of Fase Groove Piano
 }
 
 void FaseGrooveDrumsEditor::exitMiniMode()
@@ -4398,6 +4399,15 @@ void FaseGrooveDrumsEditor::stepGroove (int delta)
 
 void FaseGrooveDrumsEditor::timerCallback()
 {
+    if (miniMode)
+    {
+        // Safety net (as Fase Groove Piano): back to full size once the drag is over, even if
+        // the drop was never reported.
+        if (juce::Time::getMillisecondCounter() - miniStartedAt > 800
+            && ! juce::ModifierKeys::getCurrentModifiersRealtime().isAnyMouseButtonDown())
+            exitMiniMode();
+        return;
+    }
     // The light, cheap things 30 times a second; the rest 10 times.
     const bool slowTick = (++uiTicks % 3) == 0;
     if (slowTick)

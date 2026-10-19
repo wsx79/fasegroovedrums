@@ -711,6 +711,7 @@ private:
     };
     MiniStrip miniStrip;
     bool miniMode = false;
+    juce::uint32 miniStartedAt = 0;
     juce::Point<int> fullSize;
     // Undo history: a snapshot only after the mouse has changed something (not polled).
     int pendingSnapshot = 0;

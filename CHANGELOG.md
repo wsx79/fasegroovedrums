@@ -4,6 +4,10 @@
 
 All notable changes to **Fase Groove Drums**.
 
+## [0.14.1] - 2026-10-19
+
+- Dragging a clip: the window shrinks at once to the small strip of Fase Groove Piano (it waited for the drop before, so it often didn't), and comes back by itself.
+
 ## [0.14.0] - 2026-10-19
 
 - Export by instrument, as Fase Groove Piano's: ALL, KICK, SNARE (snare, clap, rim), CYMBALS (hats, ride, crash), PERCUSSION, TRACKS, in the song window and under EXPORT MIDI.
