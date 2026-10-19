@@ -4,7 +4,7 @@
 
 Tutte le modifiche importanti di **Fase Groove Drums**.
 
-## [Unreleased]
+## [0.13.0] - 2026-10-19
 
 - **Finestra più piccola ed editor grande.** La finestra principale mostra il groove a colpo d'occhio
   (clic per modificarlo) e, in una seconda scheda, i fader dei volumi; restano lì i dadi, I MIEI

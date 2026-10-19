@@ -4,7 +4,7 @@
 
 All notable changes to **Fase Groove Drums**.
 
-## [Unreleased]
+## [0.13.0] - 2026-10-19
 
 - **A smaller window and a big editor.** The main window shows the groove at a glance (click it to
   edit) and, in a second tab, the volume faders; the dice, MY GROOVES, IMPORT, TEMPLATE and CLEAR
