@@ -543,6 +543,87 @@ static void testJackinGroove()
     CHECK (clapAt > 0.0 && snareAt > 0.0 && clapAt < snareAt);
 }
 
+static void testJackinCharacter()
+{
+    std::vector<const DrumPattern*> jack;
+    for (const auto& g : drumPatterns())
+        if (g.category == "Jackin'")
+            jack.push_back (&g);
+    CHECK (jack.size() >= 10);
+
+    auto at = [] (const DrumPattern& g, int lane, int i)   // the groove's step, its line repeated to 32
+    {
+        const auto& line = g.lanes[(size_t) lane];
+        return line.empty() ? '.' : line[(size_t) i % line.size()];
+    };
+
+    // No two jackin grooves are (almost) the same beat.
+    for (size_t a = 0; a < jack.size(); ++a)
+        for (size_t b = a + 1; b < jack.size(); ++b)
+        {
+            int different = 0;
+            for (int l = 0; l < numLanes; ++l)
+                for (int i = 0; i < 32; ++i)
+                    different += isHit (at (*jack[a], l, i)) != isHit (at (*jack[b], l, i)) ? 1 : 0;
+            CHECK (different >= 6);
+        }
+
+    // Their hats aren't all the same offbeat line, ghosts and accents are part of them, and
+    // some kicks have a ghost or a pick-up (always on the grid).
+    std::set<std::string> hatLines;
+    int withGhosts = 0, kickVariations = 0;
+    for (const auto* g : jack)
+    {
+        std::string hats;
+        bool ghost = false;
+        for (int i = 0; i < 32; ++i)
+        {
+            hats += at (*g, (int) Lane::closedHat, i);
+            for (int l = 0; l < numLanes; ++l)
+                ghost = ghost || at (*g, l, i) == 'g';
+        }
+        hatLines.insert (hats);
+        withGhosts += ghost ? 1 : 0;
+        bool variation = false;
+        for (int i = 0; i < 32; ++i)
+            variation = variation || (isHit (at (*g, (int) Lane::kick, i)) && i % 4 != 0);
+        kickVariations += variation ? 1 : 0;
+    }
+    CHECK ((int) hatLines.size() * 3 >= (int) jack.size() * 2);
+    CHECK (withGhosts * 3 >= (int) jack.size() * 2);
+    CHECK (kickVariations >= 4 && kickVariations * 2 < (int) jack.size());   // most stay straight and strong
+
+    // The same seed, the same random beat.
+    const int jackin = categoryIndex ("Jackin'");
+    for (std::uint32_t seed = 1; seed < 20; ++seed)
+        CHECK (makeRandomPattern (seed, 0.5f, jackin).lanes == makeRandomPattern (seed, 0.5f, jackin).lanes);
+
+    // Played with swing, humanize and fills: the MIDI is in order and every note ends.
+    for (size_t i = 0; i < drumPatterns().size(); ++i)
+        if (drumPatterns()[i].category == "Jackin'")
+        {
+            DrumSettings s;
+            s.pattern = (int) i;
+            s.swing = genreSwing (jackin);
+            s.humanize = 0.3f;
+            s.fillEveryBars = 4;
+            const auto events = GrooveEngine::renderClip (s, 64.0);
+            std::array<int, 128> open {};
+            double last = 0.0;
+            for (const auto& e : events)
+            {
+                CHECK (e.ppq >= last - 1.0e-9);
+                last = e.ppq;
+                open[(size_t) e.note] += e.isNoteOn() ? 1 : -1;
+                CHECK (open[(size_t) e.note] >= 0 && open[(size_t) e.note] <= 1);
+                if (e.lane == (int) Lane::kick && e.isNoteOn())
+                    CHECK (std::abs (e.ppq * 4.0 - std::round (e.ppq * 4.0)) < 1.0e-9);   // the kick on the grid
+            }
+            for (int n : open)
+                CHECK (n == 0);
+        }
+}
+
 static void testHatsOnTheSameStep()
 {
     // Closed and open hat on the same step: only the open hat plays (it would be choked).
@@ -680,6 +761,7 @@ int main()
     testPresets();
     testAccentGroove();
     testHatsOnTheSameStep();
+    testJackinCharacter();
     testLanes();
     testRenderBasics();
     testSwingAndHumanize();

@@ -167,6 +167,9 @@ namespace
         { "..x. ..x. ..x. ..x.", 39 }, { "x.x. x.x. x.x. x.x.", 16 }, { "..x. ..x. ..x. ..xx", 15 }, { "..x. x.x. ..x. x.x.", 9 },
         { "..x. ..x. ..xx ..x.", 7 }, { "..x. ..xx ..x. ..x.", 5 }, { "..xx ..x. ..x. ..x.", 5 }, { ".xxx .xxx .xxx .xxx", 4 },
         { "..xx x.x. ..x. ..x.", 3 } };
+    const Cell jackHatCells[] {
+        { "..x. ..xg ..x. ..x.", 6 }, { "..x. .gx. ..x. .gxx", 5 }, { "g.x. g.x. g.x. g.xg", 4 }, { "..xg ..x. ..xg ..x.", 4 },
+        { "x.xg x.x. x.xg x.xx", 3 }, { "..x. x.xg ..x. x.x.", 3 }, { "..x. ..x. ..x. ..x.", 2 } };
     const Cell busyHatCells[] { { "xxxx xxxx xxxx xxxx", 3 }, { "x.xx x.xx x.xx x.xx", 1 }, { ".xxx .xxx .xxx .xxx", 1 } };
     const Cell underOpenHatCells[] { { "x... x... x... x...", 3 }, { "xx.x .x.x xx.x .x.x", 2 }, { "x..x x..x x..x x..x", 1 } };   // never on the offbeat
     const Cell openAccentCells[] {
@@ -277,6 +280,8 @@ DrumPattern makeRandomPattern (std::uint32_t seed, float density, int genre)
         setBar (Lane::kick, genre == deep || chillBeat ? "x... x... x... x..." : "X... X... X... X...");
     if (genre != deep && ! chillBeat && ! brokenBeat && ! garageBeat && r.chance (0.15f * more))
         p[Lane::kick][30] = 'x';                                  // a kick pick-up into the next loop
+    else if (genre == jackin && r.chance (0.35f))
+        p[Lane::kick][31] = 'g';                                  // a ghost kick into the next loop (on the grid)
 
     const bool halfTime = chillBeat && p[Lane::kick][4] == '.';
     const char* clapCell = halfTime ? ".... .... X... ...." : r.chance (style.clapVariation * more) ? pickCell (r, clapCells) : ".... X... .... X...";
@@ -317,6 +322,8 @@ DrumPattern makeRandomPattern (std::uint32_t seed, float density, int genre)
         if (r.chance (0.6f * more))
             setBar (Lane::closedHat, pickCell (r, underOpenHatCells));
     }
+    else if (genre == jackin)
+        setBar (Lane::closedHat, pickCell (r, jackHatCells));   // the offbeat with ghosts and pick-ups around it
     else
         setBar (Lane::closedHat, r.chance (style.busyHats * more) ? pickCell (r, busyHatCells) : pickCell (r, hatCells));
 

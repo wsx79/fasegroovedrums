@@ -4,6 +4,16 @@
 
 All notable changes to **Fase Groove Drums**.
 
+## [0.12.2] - 2026-10-19
+
+- **Jackin' grooves each with their own character**: hats with ghost 16ths and pick-ups instead
+  of the same offbeat line, and in a few grooves a ghost kick or a kick pick-up into the next bar
+  (always on the grid; most kicks stay straight and strong). The random Jackin' beat uses the same
+  hat vocabulary and sometimes a ghost kick at the end of the loop.
+- New tests on the music itself: no two Jackin' grooves are the same beat, ghosts and kick
+  variations are there, and the MIDI played with swing, humanize and fills is in order, every
+  note ends and the kick stays on the grid.
+
 ## [0.12.1] - 2026-10-18
 
 - **No sound cuts another one short** in the guide sound: each drum keeps at most four voices of

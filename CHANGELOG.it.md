@@ -4,6 +4,16 @@
 
 Tutte le modifiche importanti di **Fase Groove Drums**.
 
+## [0.12.2] - 2026-10-19
+
+- **Ogni groove Jackin' con il suo carattere**: hi-hat con 16esimi ghost e pick-up invece della
+  stessa linea in controtempo, e in alcuni groove un ghost kick o un pick-up di kick verso la bar
+  dopo (sempre sulla griglia; la maggior parte dei kick resta dritta e potente). Il beat casuale
+  Jackin' usa le stesse linee di hi-hat e a volte un ghost kick alla fine del loop.
+- Nuovi test sulla musica stessa: nessun groove Jackin' è lo stesso beat di un altro, ghost e
+  variazioni del kick ci sono, e il MIDI suonato con swing, umanizza e fill è in ordine, ogni nota
+  si chiude e il kick resta sulla griglia.
+
 ## [0.12.1] - 2026-10-18
 
 - **Nessun suono ne taglia un altro** nel suono guida: ogni strumento usa al massimo quattro voci
