@@ -521,14 +521,18 @@ void GrooveEngine::render (double startPpq, double endPpq, const DrumSettings& s
     // Swing, a template, a drum pulled behind and humanize delay a hit (by < 3 steps), so look back
     // a little; a drum pushed ahead and a flam's grace note come before their step, so look ahead too.
     const auto firstStep = (long long) std::floor (startPpq / stepLength) - 3;
-    const auto lastStep  = (long long) std::floor (endPpq / stepLength) + 2;
+    // A negative template plus a 40 ms push and flam can precede three steps at high tempos.
+    const auto lastStep  = (long long) std::floor (endPpq / stepLength) + 3;
     for (auto step = firstStep; step <= lastStep; ++step)
         collectStep (step, s, pattern, cachedVariation);
 
     pending.erase (std::remove_if (pending.begin(), pending.end(),
                                    [&] (const PendingOn& p) { return p.ppq < startPpq || p.ppq >= endPpq || p.note < 0 || p.note > 127; }),
                    pending.end());
-    std::stable_sort (pending.begin(), pending.end(), [] (const PendingOn& a, const PendingOn& b) { return a.ppq < b.ppq; });
+    for (size_t i = 0; i < pending.size(); ++i)
+        pending[i].order = i;
+    std::sort (pending.begin(), pending.end(), [] (const PendingOn& a, const PendingOn& b)
+    { return a.ppq < b.ppq || (a.ppq == b.ppq && a.order < b.order); });
 
     for (const auto& p : pending)
     {

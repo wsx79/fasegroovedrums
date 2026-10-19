@@ -4,6 +4,16 @@
 
 All notable changes to **Fase Groove Drums**.
 
+## [0.14.3] - 2026-10-19
+
+- Preserve early template/push hits at high tempos; regression checks compare different block sizes. README and privacy now describe the existing optional update check.
+- Shared Piano/Drums/Guitar control theme: matching buttons, menus, embedded Inter fonts, focus and active states; existing layouts are preserved.
+- Note-offs keep the channel used by their note-on, including a channel change while playing.
+- Old presets restore defaults for missing parameters instead of inheriting the previous preset.
+- MIDI Start and Song Position Pointer replace the old clock position in the current block.
+- Equal-time event ordering no longer needs the temporary allocation used by stable_sort.
+- Empty audio blocks are handled without invalid sample positions.
+
 ## [0.14.2] - 2026-10-19
 
 - Safer exports: every .mid (and .wav) is written to a temporary file first; the one already there is replaced only once the new one is complete (a full disk or no permission keeps the old file).
