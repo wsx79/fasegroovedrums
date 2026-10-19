@@ -6,6 +6,11 @@ Tutte le modifiche importanti di **Fase Groove Drums**.
 
 ## [Unreleased]
 
+- **Finestra più piccola ed editor grande.** La finestra principale mostra il groove a colpo d'occhio
+  (clic per modificarlo) e, in una seconda scheda, i fader dei volumi; restano lì i dadi, I MIEI
+  GROOVE, IMPORTA, TEMPLATE e SVUOTA. **EDITOR...** apre l'editor sopra tutta la finestra, come il
+  piano roll di Fase Groove Piano: trasporto, pennello (accento, colpo, ghost, flam), griglia,
+  velocity, mixer e fill. Il menu col tasto destro di uno step lo cancella o lo sposta di un sedicesimo.
 - **LINK e PLAY: niente più scatti.** Con LINK attivo l'orologio del tasto play leggeva l'ora di
   sistema a ogni blocco audio; quell'ora oscilla, e le note suonavano due volte o per niente (un kick
   perso, il suono che si interrompe). Ora il tempo scorre continuo e segue con dolcezza l'orologio condiviso.

@@ -443,6 +443,8 @@ namespace
         auto click = [&] (const juce::String& text) { if (auto* b = findButton (*editor, tr (text)); b != nullptr && b->onClick) b->onClick(); };
 
         save ("1-main");
+        click ("EDITOR...");
+        save ("1b-editor");
         click ("VELOCITY");
         p.applyVelocityShape ((int) fgd::Lane::closedHat, 0);
         save ("2-velocity");

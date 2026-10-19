@@ -6,6 +6,11 @@ All notable changes to **Fase Groove Drums**.
 
 ## [Unreleased]
 
+- **A smaller window and a big editor.** The main window shows the groove at a glance (click it to
+  edit) and, in a second tab, the volume faders; the dice, MY GROOVES, IMPORT, TEMPLATE and CLEAR
+  stay there. **EDITOR...** opens the editor over the whole window, as Fase Groove Piano's piano
+  roll: transport, a brush (accent, hit, ghost, flam), step grid, velocity, mixer and fill. The
+  right-click menu of a step can delete it or move it one 16th left or right.
 - **LINK and PLAY: no more stutters.** Linked, the play button's clock read the system time block by
   block; that jitters, so notes played twice or not at all (a lost kick, the sound breaking up). The
   beat now goes on smoothly and follows the shared clock gently.
