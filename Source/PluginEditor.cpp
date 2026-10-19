@@ -1763,10 +1763,7 @@ void SongOverlay::saveSong()
         if (safe == nullptr || file == juce::File())
             return;
         file = file.withFileExtension ("mid");
-        file.deleteFile();
-        juce::FileOutputStream stream (file);
-        if (stream.openedOk())
-            safe->processor.createMidiClip (FaseGrooveDrumsProcessor::songArrangement, part).writeTo (stream);
+        FaseGrooveDrumsProcessor::writeMidiFileSafely (safe->processor.createMidiClip (FaseGrooveDrumsProcessor::songArrangement, part), file);
     });
 }
 
@@ -4813,9 +4810,6 @@ void FaseGrooveDrumsEditor::saveMidiFile()
         if (file == juce::File())
             return;
         file = file.withFileExtension ("mid");
-        file.deleteFile();
-        juce::FileOutputStream stream (file);
-        if (stream.openedOk())
-            safe->processor.createMidiClip (bars, part).writeTo (stream);
+        FaseGrooveDrumsProcessor::writeMidiFileSafely (safe->processor.createMidiClip (bars, part), file);
     });
 }

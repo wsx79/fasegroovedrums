@@ -216,14 +216,15 @@ bool FaseGrooveDrumsProcessor::isBusesLayoutSupported (const BusesLayout& layout
     return out == juce::AudioChannelSet::mono() || out == juce::AudioChannelSet::stereo();
 }
 
-void FaseGrooveDrumsProcessor::prepareToPlay (double sampleRate, int)
+void FaseGrooveDrumsProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
 {
     drums.prepare (sampleRate);
     reverbFx.setSampleRate (sampleRate);
     reverbFx.reset();
     outputGain.reset (sampleRate, 0.05);
     outputGain.setCurrentAndTargetValue (juce::Decibels::decibelsToGain (raw (ParamIDs::volume)));
-    events.reserve (1024);
+    // Room for the largest blocks (offline rendering too): no growing on the audio thread.
+    events.reserve ((size_t) juce::jmax (8192, samplesPerBlock / 2));
 }
 
 juce::AudioProcessorEditor* FaseGrooveDrumsProcessor::createEditor()
@@ -1451,6 +1452,20 @@ juce::MidiFile FaseGrooveDrumsProcessor::midiFromEvents (const std::vector<fgd::
     return file;
 }
 
+bool FaseGrooveDrumsProcessor::writeMidiFileSafely (const juce::MidiFile& midi, const juce::File& target)
+{
+    juce::TemporaryFile temp (target);
+    {
+        juce::FileOutputStream out (temp.getFile());
+        if (! out.openedOk() || ! midi.writeTo (out))
+            return false;
+        out.flush();
+        if (out.getStatus().failed())
+            return false;
+    }
+    return temp.overwriteTargetFileWithTemporary();
+}
+
 juce::MidiFile FaseGrooveDrumsProcessor::createMidiClip (int bars, ClipPart part) const
 {
     const auto settings = currentSettings();
@@ -1500,14 +1515,7 @@ juce::File FaseGrooveDrumsProcessor::writeMidiClip (int bars, ClipPart part) con
         folder = juce::File::getSpecialLocation (juce::File::tempDirectory);
 
     auto file = folder.getChildFile (clipFileName (bars, part));
-    file.deleteFile();
-
-    juce::FileOutputStream stream (file);
-    if (! stream.openedOk())
-        return {};
-
-    createMidiClip (bars, part).writeTo (stream);
-    return file;
+    return writeMidiFileSafely (createMidiClip (bars, part), file) ? file : juce::File();
 }
 
 //==============================================================================
@@ -1584,17 +1592,20 @@ juce::Array<juce::File> FaseGrooveDrumsProcessor::writeAudio (AudioExport mode, 
 
     auto write = [&] (const juce::File& file, const juce::AudioBuffer<float>& audio)
     {
-        file.deleteFile();
+        // Whole or not at all: a temporary file first, the one already there replaced only
+        // once the new one is complete.
+        juce::TemporaryFile temp (file);
         juce::WavAudioFormat wav;
-        std::unique_ptr<juce::OutputStream> stream (file.createOutputStream());
+        std::unique_ptr<juce::OutputStream> stream (temp.getFile().createOutputStream());
         if (stream == nullptr)
             return;
         const auto options = juce::AudioFormatWriterOptions().withSampleRate (sampleRate).withNumChannels (2).withBitsPerSample (24);
+        bool ok = false;
         if (auto writer = wav.createWriterFor (stream, options))
-        {
-            writer->writeFromAudioSampleBuffer (audio, 0, audio.getNumSamples());
+            ok = writer->writeFromAudioSampleBuffer (audio, 0, audio.getNumSamples()) && writer->flush();
+        // (the writer is gone here: the file is closed)
+        if (ok && temp.overwriteTargetFileWithTemporary())
             written.add (file);
-        }
     };
 
     if (mode == AudioExport::song)
@@ -2069,13 +2080,7 @@ juce::File FaseGrooveDrumsProcessor::writeSongSectionClip (int partIndex, ClipPa
                        : part == ClipPart::all ? juce::String()
                                                : " (" + juce::String (partGroupName ((int) part - (int) ClipPart::group1)).toLowerCase() + ")");
     auto file = folder.getChildFile (juce::File::createLegalFileName (name.replace ("'", "")) + ".mid");
-    file.deleteFile();
-
-    juce::FileOutputStream stream (file);
-    if (! stream.openedOk())
-        return {};
-    midiFromEvents (sectionEvents, section.bars * 4.0, &markers, part, name).writeTo (stream);
-    return file;
+    return writeMidiFileSafely (midiFromEvents (sectionEvents, section.bars * 4.0, &markers, part, name), file) ? file : juce::File();
 }
 
 int FaseGrooveDrumsProcessor::saveSongSections (const juce::File& folder, ClipPart part) const
@@ -2087,8 +2092,8 @@ int FaseGrooveDrumsProcessor::saveSongSections (const juce::File& folder, ClipPa
         if (const auto file = writeSongSectionClip (i, part); file.existsAsFile())
         {
             const auto target = folder.getChildFile (juce::String (i + 1).paddedLeft ('0', 2) + " " + file.getFileName());
-            target.deleteFile();
-            if (file.copyFileTo (target))
+            juce::TemporaryFile temp (target);   // the one already there stays until the copy is whole
+            if (file.copyFileTo (temp.getFile()) && temp.overwriteTargetFileWithTemporary())
                 ++written;
         }
     return written;

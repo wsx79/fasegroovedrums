@@ -4,6 +4,11 @@
 
 All notable changes to **Fase Groove Drums**.
 
+## [0.14.2] - 2026-10-19
+
+- Safer exports: every .mid (and .wav) is written to a temporary file first; the one already there is replaced only once the new one is complete (a full disk or no permission keeps the old file).
+- Room reserved for very large audio blocks (offline rendering): nothing grows on the audio thread.
+
 ## [0.14.1] - 2026-10-19
 
 - Dragging a clip: the window shrinks at once to the small strip of Fase Groove Piano (it waited for the drop before, so it often didn't), and comes back by itself.
