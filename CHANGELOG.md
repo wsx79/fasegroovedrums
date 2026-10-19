@@ -4,6 +4,12 @@
 
 All notable changes to **Fase Groove Drums**.
 
+## [0.13.1] - 2026-10-19
+
+- Much lighter interface: the undo history is saved only after an edit (no more snapshots of the whole state twice a second) and the panels refresh 10 times a second, the lights 30.
+- While a clip is dragged the window shrinks to a small strip, as in Fase Groove Piano, so the DAW's tracks are in view.
+- The song window laid out as Fase Groove Piano's: the three drag tiles, SAVE and CLOSE on one row.
+
 ## [0.13.0] - 2026-10-19
 
 - **A smaller window and a big editor.** The main window shows the groove at a glance (click it to

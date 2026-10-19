@@ -905,9 +905,14 @@ namespace
         juce::AudioBuffer<float> buffer (2, 480);
         std::vector<double> kicks;
         double ppq = 0.0;
+        const double start = juce::Time::getMillisecondCounterHiRes();
         for (int b = 0; b < 300; ++b)   // three seconds: nine beats at 180 BPM
         {
-            juce::Thread::sleep (b % 3 == 0 ? 2 : b % 3 == 1 ? 17 : 11);   // ~10 ms, irregular
+            // ~10 ms a block on average but irregular, as a host's audio thread: paced on the
+            // clock (a busy machine oversleeps; the blocks still keep real time).
+            const double due = start + b * 10.0 + (b % 3 == 0 ? -6.0 : b % 3 == 1 ? 5.0 : 0.0);
+            while (juce::Time::getMillisecondCounterHiRes() < due)
+                juce::Thread::sleep (1);
             juce::MidiBuffer midi;
             p.processBlock (buffer, midi);
             for (const auto m : midi)

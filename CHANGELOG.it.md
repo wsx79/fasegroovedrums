@@ -4,6 +4,12 @@
 
 Tutte le modifiche importanti di **Fase Groove Drums**.
 
+## [0.13.1] - 2026-10-19
+
+- Interfaccia molto più leggera: la cronologia annulla si salva solo dopo una modifica (non più copie dell'intero stato due volte al secondo) e i pannelli si aggiornano 10 volte al secondo, le luci 30.
+- Mentre trascini una clip la finestra si riduce a una piccola striscia, come in Fase Groove Piano, così vedi le tracce della DAW.
+- La finestra del brano intero disposta come quella di Fase Groove Piano: le tre tessere da trascinare, SALVA e CHIUDI su una riga.
+
 ## [0.13.0] - 2026-10-19
 
 - **Finestra più piccola ed editor grande.** La finestra principale mostra il groove a colpo d'occhio
