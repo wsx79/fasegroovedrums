@@ -21,6 +21,8 @@
 
 ---
 
+**Versione attuale: [v0.14.3](https://github.com/wsx79/fasegroovedrums/releases/tag/v0.14.3).** Il layout e tutti i controlli restano presenti; pulsanti, menu e colori comuni seguono lo stesso stile nei tre plugin.
+
 **Fase Groove Drums** è il compagno di batteria di
 [Fase Groove Piano](https://github.com/wsx79/fasegroovepiano): uno strumento VST3/AU che
 **scrive parti di batteria in MIDI** negli stessi 13 generi house. Scegli un groove (o generane uno
