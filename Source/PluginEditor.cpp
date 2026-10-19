@@ -3341,7 +3341,7 @@ FaseGrooveDrumsEditor::FaseGrooveDrumsEditor (FaseGrooveDrumsProcessor& p)
     grooveButton.onClick = [this] { browser.show(); };
     linkButton.setClickingTogglesState (true);
     linkButton.setColour (juce::TextButton::buttonOnColourId, Palette::accent2.darker (0.3f));
-    Localisation::bindTip (linkButton, "Link with Fase Groove Piano: the same genre, swing, tempo and play button in both, on the same beat (change it in either one)");
+    Localisation::bindTip (linkButton, "Link with Fase Groove Piano and Guitar: the same genre, swing, tempo and play button in all of them, on the same beat (change it in any one)");
     linkButton.onClick = [this] { processor.setLinked (linkButton.getToggleState()); };
     for (juce::Component* c : std::initializer_list<juce::Component*> { &grooveButton, &prevGroove, &nextGroove, &genreCombo, &newBeatButton, &densitySlider,
                                                                         &partLengthCombo, &linkButton })
@@ -3585,7 +3585,7 @@ FaseGrooveDrumsEditor::FaseGrooveDrumsEditor (FaseGrooveDrumsProcessor& p)
              { &gridTab, "STEP GRID" }, { &velocityTab, "VELOCITY" }, { &mixerTab, "MIXER" }, { &clearButton, "CLEAR" },
              { &myGroovesButton, "MY GROOVES" }, { &saveButton, "SAVE .MID..." }, { &songButton, "FULL SONG..." },
              { &fillTab, "FILL" }, { &templateButton, "TEMPLATE..." }, { &timingButton, "TIMING..." }, { &wavButton, "SAVE .WAV..." },
-             { &kitFolderButton, "YOUR SAMPLES..." }, { &linkButton, "LINK PIANO" } })
+             { &kitFolderButton, "YOUR SAMPLES..." }, { &linkButton, "LINK" } })
         Localisation::bindText (*b, english);
     Localisation::bind (content, [this] { content.repaint(); options.refreshText(); translateHostWindow(); });
 

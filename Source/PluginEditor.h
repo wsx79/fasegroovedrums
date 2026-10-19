@@ -601,7 +601,7 @@ private:
     juce::ComboBox notesBox, lengthBox;
     DragTile dragTile;
     juce::TextButton saveButton { "SAVE .MID..." }, songButton { "FULL SONG..." }, wavButton { "SAVE .WAV..." };
-    juce::TextButton kitFolderButton { "YOUR SAMPLES..." }, linkButton { "LINK PIANO" };
+    juce::TextButton kitFolderButton { "YOUR SAMPLES..." }, linkButton { "LINK" };
     std::unique_ptr<juce::FileChooser> chooser;
 
     SongOverlay songOverlay { processor };
