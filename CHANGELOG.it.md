@@ -4,6 +4,11 @@
 
 Tutte le modifiche importanti di **Fase Groove Drums**.
 
+## [0.16.0] - 2026-10-20
+
+- Tredici preset aggiuntivi `Arranger:`: palette, articolazioni e bilanciamenti coordinati con Fase Groove Arranger 0.4.7, incluso il nuovo Jackin nella direzione Da Funk Junkies.
+- Indici e valori dei preset precedenti conservati; nessuna riscrittura automatica dei progetti salvati e nessuna modifica al tema o alla disposizione dei controlli.
+
 ## [0.15.0] - 2026-10-19
 
 - Brano: fill, crash, variazioni e frasi contano dall'inizio di ogni sezione (un drop dopo un build-up di 4 bar fa il fill sui suoi bar 8 e 16); un crash apre la parte principale, il break, il drop e l'outro, e segue il fill finale di una sezione.

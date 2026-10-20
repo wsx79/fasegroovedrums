@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 #include "PluginProcessor.h"
+#include "FamilySoundProfiles.h"
 
 #include <algorithm>
 #include <iterator>
@@ -65,6 +66,20 @@ namespace
         { "Neo Soul & Broken", "Neo Soul Pocket",      0.40f, 0, fgd::FillStyle::snareRoll, 3, 2 },
         { "Chill & Pads",      "Chill House",          0.30f, 0, fgd::FillStyle::hatLift,   3, 2 },
         { "Dance Stabs",       "Dance Floor",          0.05f, 4, fgd::FillStyle::snareRoll, 0, 1 },
+        // Explicit ecosystem presets, appended so legacy indexes remain stable.
+        { fgfamily::names[0], "", 0,0, fgd::FillStyle::mix,0,0 },
+        { fgfamily::names[1], "", 0,0, fgd::FillStyle::mix,0,0 },
+        { fgfamily::names[2], "", 0,0, fgd::FillStyle::mix,0,0 },
+        { fgfamily::names[3], "", 0,0, fgd::FillStyle::mix,0,0 },
+        { fgfamily::names[4], "", 0,0, fgd::FillStyle::mix,0,0 },
+        { fgfamily::names[5], "", 0,0, fgd::FillStyle::mix,0,0 },
+        { fgfamily::names[6], "", 0,0, fgd::FillStyle::mix,0,0 },
+        { fgfamily::names[7], "", 0,0, fgd::FillStyle::mix,0,0 },
+        { fgfamily::names[8], "", 0,0, fgd::FillStyle::mix,0,0 },
+        { fgfamily::names[9], "", 0,0, fgd::FillStyle::mix,0,0 },
+        { fgfamily::names[10], "", 0,0, fgd::FillStyle::mix,0,0 },
+        { fgfamily::names[11], "", 0,0, fgd::FillStyle::mix,0,0 },
+        { fgfamily::names[12], "", 0,0, fgd::FillStyle::mix,0,0 },
     };
 
     int indexOfGroove (const char* name)
@@ -1131,6 +1146,36 @@ void FaseGrooveDrumsProcessor::applyStyle (int index)
 {
     if (! juce::isPositiveAndBelow (index, (int) std::size (styles)))
         return;
+
+    const int familyStart=(int)std::size(styles)-fgfamily::numGenres;
+    if(index>=familyStart){
+        const int genre=index-familyStart;const auto& a=fgfamily::sound(genre);
+        setParameterFromUI(ParamIDs::tempo,(float)fgfamily::tempos[(size_t)genre]);
+        setParameterFromUI(ParamIDs::swing,fgfamily::swing[(size_t)genre]);
+        setParameterFromUI(ParamIDs::section,0);
+        setParameterFromUI(ParamIDs::velocity,100);
+        setParameterFromUI(ParamIDs::variation,2);
+        setParameterFromUI(ParamIDs::pattern,(float)fgd::randomPatternIndex());
+        setParameterFromUI(ParamIDs::genre,(float)genre);
+        setParameterFromUI(ParamIDs::density,.55f);
+        setParameterFromUI(ParamIDs::humanize,.2f);
+        setParameterFromUI(ParamIDs::accents,.85f);
+        setParameterFromUI(ParamIDs::kit,(float)a.kit);
+        setParameterFromUI(ParamIDs::tone,(float)a.drumTone);
+        setParameterFromUI(ParamIDs::reverb,.025f);
+        setParameterFromUI(ParamIDs::volume,juce::Decibels::gainToDecibels(.225f));
+        setParameterFromUI(ParamIDs::fills,4);
+        setParameterFromUI(ParamIDs::fillStyle,(float)(int)fgd::FillStyle::mix);
+        setParameterFromUI(ParamIDs::genreFeel,1);
+        setParameterFromUI(ParamIDs::bassSpace,1);
+        for(int lane=0;lane<fgd::numLanes;++lane){
+            float gain=(float)fgfamily::drumLevels[(size_t)lane];if(genre==7&&(lane==7||lane==9))gain*=1.35f;
+            setParameterFromUI(ParamIDs::laneVolume(lane),juce::Decibels::gainToDecibels(gain));
+            setParameterFromUI(ParamIDs::level(lane),1);
+            setParameterFromUI(ParamIDs::mute(lane),0);
+        }
+        return;
+    }
 
     const auto& s = styles[index];
     setParameterFromUI (ParamIDs::pattern, (float) indexOfGroove (s.groove));

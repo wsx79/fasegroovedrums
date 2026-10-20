@@ -29,6 +29,8 @@
 the feel with swing and humanize, add fills and variations, listen with the built-in guide kit,
 then **drag it into your DAW as a MIDI clip** and play it with your own drums.
 
+**Arranger presets:** the style menu now includes thirteen `Arranger: …` entries coordinated with Fase Groove Arranger 0.4.7. Choose the same genre in Piano, Drums and Guitar and use LINK for key, tempo and transport. Jackin follows the requested funky/disco direction (Da Funk Junkies), with chopped hooks, articulated bass and percussive guitar. Earlier presets remain available and saved projects retain their settings; DAW levels and effects still contribute to the final mix.
+
 ## Features
 
 - 🥁 **70 grooves in 13 genres**, the same as Fase Groove Piano: Piano House, Soulful, Deep,

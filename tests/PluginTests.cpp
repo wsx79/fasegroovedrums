@@ -12,6 +12,8 @@
 #include "../Source/GuideDrums.h"
 
 #include <cstdio>
+#include "FamilyAudioEvidence.h"
+#include "../Source/FamilySoundProfiles.h"
 #include <set>
 
 namespace
@@ -205,9 +207,9 @@ namespace
     {
         FaseGrooveDrumsProcessor p;
         const auto names = FaseGrooveDrumsProcessor::styleNames();
-        CHECK (names.size() == (int) fgd::grooveCategories().size());
+        CHECK (names.size() == (int) fgd::grooveCategories().size()+fgfamily::numGenres);
 
-        for (int i = 0; i < names.size(); ++i)
+        for (int i = 0; i < (int)fgd::grooveCategories().size(); ++i)
         {
             p.applyStyle (i);
             const auto& groove = fgd::drumPatterns()[(size_t) juce::roundToInt (value (p, ParamIDs::pattern))];
@@ -1124,9 +1126,27 @@ namespace
     }
 }
 
+namespace {
+
+    void testFamilyPresets(){
+        FaseGrooveDrumsProcessor p;
+        const int first=p.styleNames().size()-fgfamily::numGenres;
+        for(int genre=0;genre<fgfamily::numGenres;++genre){
+            p.applyStyle(first+genre);const auto& a=fgfamily::sound(genre);
+            const auto settings=p.currentSettings();
+            CHECK(settings.randomGenre==genre);
+            CHECK(juce::roundToInt(value(p,ParamIDs::kit))==a.kit);
+            CHECK(std::abs(value(p,ParamIDs::tone)-a.drumTone)<.001);
+            CHECK(!fgd::GrooveEngine::renderClip(settings,32).empty());
+            CHECK(value(p,ParamIDs::laneVolume(0))<value(p,ParamIDs::laneVolume(1)));
+        }
+    }
+}
+
 int main (int argc, char** argv)
 {
     juce::ScopedJuceInitialiser_GUI juce;
+    if(argc>2&&juce::String(argv[1])=="--family-audio")return writeFamilyAudioEvidence<FaseGrooveDrumsProcessor>(juce::File::getCurrentWorkingDirectory().getChildFile(argv[2]),"Drums");
 
     if (argc > 3 && juce::String (argv[1]) == "--screenshots")
         Localisation::setCurrent ((Localisation::Language) juce::String (argv[3]).getIntValue());
@@ -1136,6 +1156,7 @@ int main (int argc, char** argv)
         return 0;
     }
 
+    testFamilyPresets();
     testOldPresetDefaults();
     testStateRoundTrip();
     testGridEditing();
