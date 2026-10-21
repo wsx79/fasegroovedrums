@@ -1106,6 +1106,8 @@ void FaseGrooveDrumsProcessor::totalRandom()
     auto& r = juce::Random::getSystemRandom();
     const int style = r.nextInt (styleNames().size());
     applyStyle (style);
+    const int genre = juce::jlimit (0, (int) fgd::grooveCategories().size() - 1,
+                                    juce::roundToInt (raw (ParamIDs::genre)));
 
     // Another groove of that genre, or a brand new beat in it.
     if (r.nextBool())
@@ -1114,14 +1116,14 @@ void FaseGrooveDrumsProcessor::totalRandom()
     {
         juce::Array<int> grooves;
         for (size_t i = 0; i < fgd::drumPatterns().size(); ++i)
-            if (fgd::drumPatterns()[i].category == fgd::grooveCategories()[(size_t) style])
+            if (fgd::drumPatterns()[i].category == fgd::grooveCategories()[(size_t) genre])
                 grooves.add ((int) i);
         if (! grooves.isEmpty())
             setParameterFromUI (ParamIDs::pattern, (float) grooves[r.nextInt (grooves.size())]);
     }
 
     setParameterFromUI (ParamIDs::density, 0.25f + 0.6f * r.nextFloat());
-    setParameterFromUI (ParamIDs::swing, juce::jlimit (0.0f, 1.0f, fgd::genreSwing (style) + (r.nextFloat() - 0.5f) * 0.12f));
+    setParameterFromUI (ParamIDs::swing, juce::jlimit (0.0f, 1.0f, fgd::genreSwing (genre) + (r.nextFloat() - 0.5f) * 0.12f));
     setParameterFromUI (ParamIDs::humanize, 0.05f + 0.35f * r.nextFloat());
     setParameterFromUI (ParamIDs::fillStyle, (float) r.nextInt ((int) fgd::FillStyle::custom));   // not the custom fill: it may be empty
     if (r.nextInt (3) == 0)
