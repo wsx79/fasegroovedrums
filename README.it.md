@@ -29,7 +29,7 @@
 nuovo), dai il feel con swing e humanize, aggiungi fill e variazioni, ascolta con il kit guida
 interno, poi **trascinalo nella DAW come clip MIDI** e suonalo con la tua batteria.
 
-**Preset Arranger:** nel menu degli stili trovi tredici nuove voci `Arranger: …`, coordinate con Fase Groove Arranger 0.4.7. Scegli lo stesso genere in Piano, Drums e Guitar e usa LINK per tonalità, tempo e trasporto. Il Jackin segue la direzione funky/disco indicata (Da Funk Junkies), con chops, basso articolato e chitarra percussiva. I preset precedenti restano disponibili e i progetti già salvati conservano le proprie scelte; i livelli e gli effetti della DAW partecipano sempre al mix finale.
+**Preset Arranger:** nel menu degli stili trovi tredici nuove voci `Arranger: …`, coordinate con Fase Groove Arranger 0.4.7. Scegli lo stesso genere in Piano, Drums e Guitar e usa LINK per tonalità, tempo e trasporto. Il Jackin segue la direzione funky/disco indicata, con chops, basso articolato e chitarra percussiva. I preset precedenti restano disponibili e i progetti già salvati conservano le proprie scelte; i livelli e gli effetti della DAW partecipano sempre al mix finale.
 
 ## Funzioni
 
