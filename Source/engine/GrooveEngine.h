@@ -145,8 +145,8 @@ public:
     static std::vector<NoteEvent> renderArrangement (const DrumSettings& s, const std::vector<ArrangementPart>& parts,
                                                      std::vector<Marker>* markers = nullptr);
 
-    /** The fill style a bar plays ("Mix" picks one per bar). */
-    static FillStyle effectiveFillStyle (FillStyle style, long long bar) noexcept;
+    /** The fill style a bar plays ("Mix" picks one per bar, from that genre's moves). */
+    static FillStyle effectiveFillStyle (FillStyle style, long long bar, int genre = -1) noexcept;
 
     /** Velocity a written step plays at before humanize (accent groove, ghosts, lane level, section).
         `step` is its place in the groove (the beat position, not a hand-set velocity). 0 if it is a rest. */

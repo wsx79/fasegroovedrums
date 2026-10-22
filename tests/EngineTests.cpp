@@ -1058,6 +1058,122 @@ static void testPreviewVelocityMatchesPlayback()
         }
 }
 
+static const DrumPattern* presetNamed (const char* name)
+{
+    for (const auto& p : drumPatterns())
+        if (p.name == name)
+            return &p;
+    return nullptr;
+}
+
+static int presetIndex (const char* name)
+{
+    const auto& presets = drumPatterns();
+    for (int i = 0; i < (int) presets.size(); ++i)
+        if (presets[(size_t) i].name == name)
+            return i;
+    return -1;
+}
+
+static int oddSixteenths (const DrumPattern& p)
+{
+    int odd = 0;
+    for (int l = 1; l < numLanes; ++l)
+        for (int i = 1; i < p.length(); i += 2)
+            odd += isHit (p.lanes[(size_t) l][(size_t) i]) ? 1 : 0;
+    return odd;
+}
+
+static void testStyleCoherence()
+{
+    // Chill does not grow the busy 16th shaker the house filler would add.
+    int chillOdd = 0, houseOdd = 0;
+    for (std::uint32_t seed = 1; seed <= 60; ++seed)
+    {
+        chillOdd += oddSixteenths (makeRandomPattern (seed, 0.0f, categoryIndex ("Chill & Pads")));
+        houseOdd += oddSixteenths (makeRandomPattern (seed, 0.0f, categoryIndex ("Piano House")));
+    }
+    CHECK (chillOdd < houseOdd);
+
+    const auto* twoStep = presetNamed ("Two-Step");
+    const auto* broken = presetNamed ("Broken Beat");
+    const auto* chill = presetNamed ("Chill House");
+    const auto* afro = presetNamed ("Afro Son Clave");
+    CHECK (twoStep != nullptr && broken != nullptr && chill != nullptr && afro != nullptr);
+
+    for (const DrumPattern* src : { twoStep, broken, chill })
+    {
+        const auto build = applySection (*src, Section::buildup);
+        const auto drop = applySection (*src, Section::drop);
+        CHECK (build[Lane::kick] == src->lanes[(size_t) Lane::kick]);
+        CHECK (build[Lane::closedHat] == src->lanes[(size_t) Lane::closedHat]);
+        CHECK (build[Lane::openHat] == src->lanes[(size_t) Lane::openHat]);
+        CHECK (countHits (build[Lane::snare]) > countHits ((*src)[Lane::snare]));
+        CHECK (drop[Lane::kick] == src->lanes[(size_t) Lane::kick]);
+        CHECK (drop[Lane::openHat] == src->lanes[(size_t) Lane::openHat]);
+        CHECK (drop[Lane::shaker] == src->lanes[(size_t) Lane::shaker]);
+    }
+
+    auto gained = [] (const std::string& before, const std::string& after, int step)
+    {
+        const char was = step < (int) before.size() ? before[(size_t) step] : '.';
+        const char now = step < (int) after.size() ? after[(size_t) step] : '.';
+        return ! isHit (was) && isHit (now);
+    };
+    int garageTom = 0, garageOpen = 0, garageChanged = 0;
+    int afroTom = 0, afroOpen = 0, afroPerc = 0;
+    int neoKick = 0, chillSame = 0, chillChanged = 0;
+    for (std::uint32_t seed = 1; seed <= 40; ++seed)
+    {
+        const auto g = makeVariation (*twoStep, seed);
+        const int end = g.length() - 16;
+        garageTom += gained ((*twoStep)[Lane::tom], g[Lane::tom], end + 15) ? 1 : 0;
+        garageOpen += g[Lane::openHat][(size_t) (end + 14)] == 'X' ? 1 : 0;
+        garageChanged += g.lanes != twoStep->lanes ? 1 : 0;
+
+        const auto a = makeVariation (*afro, seed);
+        const int aEnd = a.length() - 16;
+        afroTom += countHits (a[Lane::tom]) > countHits ((*afro)[Lane::tom]) ? 1 : 0;
+        afroOpen += a[Lane::openHat][(size_t) (aEnd + 14)] == 'X' ? 1 : 0;
+        afroPerc += (gained ((*afro)[Lane::conga], a[Lane::conga], aEnd + 15)
+                     || gained ((*afro)[Lane::shaker], a[Lane::shaker], aEnd + 15)
+                     || gained ((*afro)[Lane::rim], a[Lane::rim], aEnd + 14)) ? 1 : 0;
+
+        neoKick += makeVariation (*broken, seed)[Lane::kick] != (*broken)[Lane::kick] ? 1 : 0;
+        const bool same = makeVariation (*chill, seed).lanes == chill->lanes;
+        chillSame += same ? 1 : 0;
+        chillChanged += same ? 0 : 1;
+    }
+    CHECK (garageTom == 0 && garageOpen == 0 && garageChanged >= 35);
+    CHECK (afroTom == 0 && afroOpen == 0 && afroPerc >= 20);
+    CHECK (neoKick == 0);
+    CHECK (chillSame >= 8 && chillChanged >= 15);
+
+    auto hat = [] (int pattern, int step)
+    {
+        auto s = straight();
+        s.pattern = pattern;
+        s.accentGroove = 1.0f;
+        return GrooveEngine::previewStepVelocity (s, (int) Lane::closedHat, step, 'x');
+    };
+    const int jack = presetIndex ("Chicago 909");
+    const int neo = presetIndex ("Broken Beat");
+    CHECK (jack >= 0 && neo >= 0);
+    CHECK (hat (0, 2) > hat (0, 3));                 // piano house: the offbeat
+    CHECK (hat (jack, 3) > hat (jack, 2));           // jackin': the swung 16th
+    CHECK (hat (neo, 0) > hat (neo, 2));             // neo soul: the downbeat, softer hats
+
+    for (long long bar = 0; bar < 16; ++bar)
+    {
+        const auto house = GrooveEngine::effectiveFillStyle (FillStyle::mix, bar, 0);
+        const auto uk = GrooveEngine::effectiveFillStyle (FillStyle::mix, bar, categoryIndex ("Garage & UK"));
+        const auto pads = GrooveEngine::effectiveFillStyle (FillStyle::mix, bar, categoryIndex ("Chill & Pads"));
+        CHECK (house != FillStyle::mix && uk != FillStyle::mix && pads != FillStyle::mix);
+        CHECK (uk != FillStyle::tomRun && uk != FillStyle::kickBuild);
+        CHECK (pads != FillStyle::snareRoll && pads != FillStyle::tomRun && pads != FillStyle::kickBuild);
+    }
+}
+
 int main()
 {
     testPreviewVelocityMatchesPlayback();
@@ -1084,6 +1200,7 @@ int main()
     testSections();
     testRandomBeats();
     testFillsAndVariations();
+    testStyleCoherence();
     testUserPatternAndFlams();
     testArrangement();
 
