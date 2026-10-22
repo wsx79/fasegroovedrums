@@ -37,8 +37,9 @@ DrumPattern makeRandomPattern (std::uint32_t seed, float density, int genre);
     a drum the genre rarely uses gets a light, fitting part. Same seed = same line. */
 std::string makeRandomLane (Lane lane, std::uint32_t seed, float density, int genre);
 
-/** A variation of a groove for the turnaround bar: an open hat lift, a kick pick-up, a snare
-    or clap ghost before the next bar. Same seed = same variation. */
+/** A variation of a groove for the turnaround bar. House keeps its open-hat lift, kick pick-up,
+    clap flam, snare drag and tom; garage, afro, neo soul and chill use their own moves.
+    Same seed = same variation. */
 DrumPattern makeVariation (const DrumPattern& source, std::uint32_t seed);
 
 /** A song section's own version of a groove: the same kick and backbeat, with the hats, the
