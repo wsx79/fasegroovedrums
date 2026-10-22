@@ -4,6 +4,14 @@
 
 All notable changes to **Fase Groove Drums**.
 
+## [0.17.0] - 2026-10-22
+
+- Jackin' Piano no longer grows a 909 snare turnaround at the end of a phrase. That turnaround stays on Jackin' only.
+- Turnarounds follow the beat seed while playing, so live MIDI matches an exported clip.
+- NEW BEAT with locked parts writes one groove around those parts.
+- An edit on a 2-bar grid is still there when the groove is shown as four bars, unless that later bar was already changed on its own.
+- The velocity lane shows the accent groove for automatic hits: offbeat hats louder, ghosts softer.
+
 ## [0.16.0] - 2026-10-20
 
 - Thirteen additional `Arranger:` presets coordinate palettes, articulation and balance with Fase Groove Arranger 0.4.7, including the updated Jackin in the funky/disco direction.

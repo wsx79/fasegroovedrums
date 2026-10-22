@@ -4,6 +4,14 @@
 
 Tutte le modifiche importanti di **Fase Groove Drums**.
 
+## [0.17.0] - 2026-10-22
+
+- Jackin' Piano non aggiunge più il turnaround di rullante 909 a fine frase. Quel turnaround resta solo su Jackin'.
+- Le variazioni seguono il seed del beat anche in playback, così il MIDI dal vivo coincide con la clip esportata.
+- NEW BEAT con parti bloccate scrive un solo groove intorno a quelle parti.
+- Una modifica su una griglia di 2 bar resta quando il groove passa a quattro bar, salvo che quel bar successivo sia già stato cambiato da solo.
+- La corsia velocity mostra l'accent groove sui colpi automatici: charleston in levare più forti, ghost più morbidi.
+
 ## [0.16.0] - 2026-10-20
 
 - Tredici preset aggiuntivi `Arranger:`: palette, articolazioni e bilanciamenti coordinati con Fase Groove Arranger 0.4.7, incluso il nuovo Jackin nella direzione funky/disco.
