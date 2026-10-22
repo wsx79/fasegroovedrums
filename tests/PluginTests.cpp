@@ -1124,6 +1124,47 @@ namespace
         q.clearSample (0);
         CHECK (q.missingSample (0).isEmpty());
     }
+
+    void testLockedBeatAndFourBarCopy()
+    {
+        FaseGrooveDrumsProcessor p;
+        const int snare = (int) fgd::Lane::snare;
+        const int kick = (int) fgd::Lane::kick;
+
+        // A 2-bar edit is the same hit when the groove grows to four bars, while a bar
+        // that was already different stays as it was written.
+        p.editStep (snare, 0, 'X');
+        p.setStepVelocity (snare, 0, 40);
+        p.setParameterFromUI (ParamIDs::partLength, 1.0f);
+        CHECK (p.stepSymbol (snare, 32) == 'X');
+        CHECK (p.stepVelocity (snare, 32) == 40);
+        p.editStep (snare, 36, 'g');
+        p.setParameterFromUI (ParamIDs::partLength, 0.0f);
+        p.editStep (snare, 4, 'f');
+        p.setParameterFromUI (ParamIDs::partLength, 1.0f);
+        CHECK (p.stepSymbol (snare, 36) == 'g');
+        CHECK (p.stepSymbol (snare, 4) == 'f');
+
+        // Locked part stays; the other parts are one new beat, not four unrelated ones.
+        p.setParameterFromUI (ParamIDs::partLength, 0.0f);
+        p.clearGrid();
+        for (int i = 0; i < 8; ++i)
+            p.editStep (kick, i, 'X');
+        p.setSegmentLocked (0, true);
+        const float density = value (p, ParamIDs::density);
+        const int genre = juce::roundToInt (value (p, ParamIDs::genre));
+        p.rollNewBeat();
+        CHECK (juce::roundToInt (value (p, ParamIDs::pattern)) == fgd::userPatternIndex());
+        auto fresh = fgd::makeRandomPattern ((std::uint32_t) juce::roundToInt (value (p, ParamIDs::riffSeed)), density, genre);
+        fgd::fitPattern (fresh, 32);
+        for (int l = 0; l < fgd::numLanes; ++l)
+            for (int i = 0; i < 32; ++i)
+            {
+                const char want = i < 8 ? (l == kick ? 'X' : '.') : fresh.lanes[(size_t) l][(size_t) i];
+                CHECK (p.stepSymbol (l, i) == want);
+            }
+        p.setSegmentLocked (0, false);
+    }
 }
 
 namespace {
@@ -1174,6 +1215,7 @@ int main (int argc, char** argv)
     testLinkedClockIsSmooth();
     testLinkedTempoChangeKeepsTheBeat();
     testNoteMapsAndMissingSamples();
+    testLockedBeatAndFourBarCopy();
 
     if (failures == 0)
         std::printf ("All plug-in tests passed.\n");

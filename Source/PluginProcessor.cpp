@@ -408,6 +408,22 @@ bool FaseGrooveDrumsProcessor::makeUserPattern()
     return false;
 }
 
+void FaseGrooveDrumsProcessor::mirrorUserStepIfCopy (int lane, int index, char oldSymbol, int oldVelocity, int oldChance, int oldRoll)
+{
+    if (steps() != 32 || index < 0 || index >= 32)
+        return;
+    const int pair = index + 32;
+    if (userGrid[(size_t) lane][(size_t) pair].load() != oldSymbol
+        || userVelocity[(size_t) lane][(size_t) pair].load() != oldVelocity
+        || userChance[(size_t) lane][(size_t) pair].load() != oldChance
+        || userRoll[(size_t) lane][(size_t) pair].load() != oldRoll)
+        return;
+    userGrid[(size_t) lane][(size_t) pair] = userGrid[(size_t) lane][(size_t) index].load();
+    userVelocity[(size_t) lane][(size_t) pair] = userVelocity[(size_t) lane][(size_t) index].load();
+    userChance[(size_t) lane][(size_t) pair] = userChance[(size_t) lane][(size_t) index].load();
+    userRoll[(size_t) lane][(size_t) pair] = userRoll[(size_t) lane][(size_t) index].load();
+}
+
 void FaseGrooveDrumsProcessor::editStep (int lane, int step, char symbol)
 {
     if (! juce::isPositiveAndBelow (lane, fgd::numLanes) || ! juce::isPositiveAndBelow (step, steps()))
@@ -416,12 +432,17 @@ void FaseGrooveDrumsProcessor::editStep (int lane, int step, char symbol)
     // The first edit of a preset (or random beat) copies it into the user pattern.
     makeUserPattern();
     const int at = baseStep (step);
+    const char oldSymbol = userGrid[(size_t) lane][(size_t) at].load();
+    const int oldVelocity = userVelocity[(size_t) lane][(size_t) at].load();
+    const int oldChance = userChance[(size_t) lane][(size_t) at].load();
+    const int oldRoll = userRoll[(size_t) lane][(size_t) at].load();
     userGrid[(size_t) lane][(size_t) at] = fgd::isHit (symbol) ? symbol : '.';
     if (! fgd::isHit (symbol))
     {
         userVelocity[(size_t) lane][(size_t) at] = 0;
         resetStepExtras (lane, at);
     }
+    mirrorUserStepIfCopy (lane, at, oldSymbol, oldVelocity, oldChance, oldRoll);
 }
 
 void FaseGrooveDrumsProcessor::clearLane (int lane)
@@ -461,9 +482,14 @@ void FaseGrooveDrumsProcessor::randomizeSegment (int part)
     for (int l = 0; l < fgd::numLanes; ++l)
         for (int i = part * size; i < (part + 1) * size; ++i)
         {
+            const char oldSymbol = userGrid[(size_t) l][(size_t) i].load();
+            const int oldVelocity = userVelocity[(size_t) l][(size_t) i].load();
+            const int oldChance = userChance[(size_t) l][(size_t) i].load();
+            const int oldRoll = userRoll[(size_t) l][(size_t) i].load();
             userGrid[(size_t) l][(size_t) i] = fresh.lanes[(size_t) l][(size_t) i];
             userVelocity[(size_t) l][(size_t) i] = 0;
             resetStepExtras (l, i);
+            mirrorUserStepIfCopy (l, i, oldSymbol, oldVelocity, oldChance, oldRoll);
         }
 }
 
@@ -478,9 +504,14 @@ void FaseGrooveDrumsProcessor::randomizeLane (int lane)
     for (int i = 0; i < steps(); ++i)
         if (! isSegmentLocked (i / size))
         {
+            const char oldSymbol = userGrid[(size_t) lane][(size_t) i].load();
+            const int oldVelocity = userVelocity[(size_t) lane][(size_t) i].load();
+            const int oldChance = userChance[(size_t) lane][(size_t) i].load();
+            const int oldRoll = userRoll[(size_t) lane][(size_t) i].load();
             userGrid[(size_t) lane][(size_t) i] = line[(size_t) (i % (int) line.size())];
             userVelocity[(size_t) lane][(size_t) i] = 0;
             resetStepExtras (lane, i);
+            mirrorUserStepIfCopy (lane, i, oldSymbol, oldVelocity, oldChance, oldRoll);
         }
 }
 
@@ -497,7 +528,13 @@ void FaseGrooveDrumsProcessor::setStepVelocity (int lane, int step, int level)
     if (! juce::isPositiveAndBelow (lane, fgd::numLanes) || ! juce::isPositiveAndBelow (step, steps()))
         return;
     makeUserPattern();
-    userVelocity[(size_t) lane][(size_t) baseStep (step)] = juce::jlimit (0, 127, level);
+    const int at = baseStep (step);
+    const char oldSymbol = userGrid[(size_t) lane][(size_t) at].load();
+    const int oldVelocity = userVelocity[(size_t) lane][(size_t) at].load();
+    const int oldChance = userChance[(size_t) lane][(size_t) at].load();
+    const int oldRoll = userRoll[(size_t) lane][(size_t) at].load();
+    userVelocity[(size_t) lane][(size_t) at] = juce::jlimit (0, 127, level);
+    mirrorUserStepIfCopy (lane, at, oldSymbol, oldVelocity, oldChance, oldRoll);
 }
 
 void FaseGrooveDrumsProcessor::resetStepVelocities (int lane)
@@ -510,11 +547,11 @@ void FaseGrooveDrumsProcessor::resetStepVelocities (int lane)
 
 int FaseGrooveDrumsProcessor::effectiveVelocity (int lane, int step) const
 {
+    // A level set by hand is the number on the bar (100 = the Velocity control). Automatic
+    // levels are what the engine plays before humanize, including the accent groove.
     if (const int set = stepVelocity (lane, step); set > 0)
         return set;
-    const char symbol = stepSymbol (lane, step);
-    const double level = symbol == 'X' ? 1.0 : symbol == 'f' ? 0.9 : symbol == 'g' ? 0.42 : 0.8;
-    return juce::jlimit (1, 127, juce::roundToInt (100.0 * level));
+    return fgd::GrooveEngine::previewStepVelocity (currentSettings(), lane, step, stepSymbol (lane, step));
 }
 
 int FaseGrooveDrumsProcessor::stepChance (int lane, int step) const
@@ -531,7 +568,13 @@ void FaseGrooveDrumsProcessor::setStepChance (int lane, int step, int percent)
     if (! juce::isPositiveAndBelow (lane, fgd::numLanes) || ! juce::isPositiveAndBelow (step, steps()))
         return;
     makeUserPattern();
-    userChance[(size_t) lane][(size_t) baseStep (step)] = percent >= 100 ? 0 : juce::jlimit (1, 99, percent);
+    const int at = baseStep (step);
+    const char oldSymbol = userGrid[(size_t) lane][(size_t) at].load();
+    const int oldVelocity = userVelocity[(size_t) lane][(size_t) at].load();
+    const int oldChance = userChance[(size_t) lane][(size_t) at].load();
+    const int oldRoll = userRoll[(size_t) lane][(size_t) at].load();
+    userChance[(size_t) lane][(size_t) at] = percent >= 100 ? 0 : juce::jlimit (1, 99, percent);
+    mirrorUserStepIfCopy (lane, at, oldSymbol, oldVelocity, oldChance, oldRoll);
 }
 
 int FaseGrooveDrumsProcessor::stepRoll (int lane, int step) const
@@ -547,7 +590,13 @@ void FaseGrooveDrumsProcessor::setStepRoll (int lane, int step, int hits)
     if (! juce::isPositiveAndBelow (lane, fgd::numLanes) || lane == (int) fgd::Lane::kick || ! juce::isPositiveAndBelow (step, steps()))
         return;
     makeUserPattern();
-    userRoll[(size_t) lane][(size_t) baseStep (step)] = hits <= 1 ? 0 : juce::jmin (4, hits);
+    const int at = baseStep (step);
+    const char oldSymbol = userGrid[(size_t) lane][(size_t) at].load();
+    const int oldVelocity = userVelocity[(size_t) lane][(size_t) at].load();
+    const int oldChance = userChance[(size_t) lane][(size_t) at].load();
+    const int oldRoll = userRoll[(size_t) lane][(size_t) at].load();
+    userRoll[(size_t) lane][(size_t) at] = hits <= 1 ? 0 : juce::jmin (4, hits);
+    mirrorUserStepIfCopy (lane, at, oldSymbol, oldVelocity, oldChance, oldRoll);
 }
 
 char FaseGrooveDrumsProcessor::customFillSymbol (int lane, int step) const
@@ -1089,11 +1138,55 @@ void FaseGrooveDrumsProcessor::rollNewBeat()
     if (seed == (std::uint32_t) juce::roundToInt (raw (ParamIDs::riffSeed)))
         seed = seed % 99999 + 1;
 
-    // Locked parts stay: the new beat goes around them, in the user pattern.
+    // Locked parts stay. One new beat fills the rest: a different beat per part
+    // would not be a groove.
     if (std::any_of (segmentLocked.begin(), segmentLocked.end(), [] (bool b) { return b; }))
     {
+        const auto settings = currentSettings();
+        const int n = steps();
+        const int size = n / fgd::numSegments;
+        const bool wasUser = juce::roundToInt (raw (ParamIDs::pattern)) == fgd::userPatternIndex();
+        const auto base = wasUser ? fgd::DrumPattern() : fgd::GrooveEngine::basePattern (settings);
+        std::array<std::array<char, fgd::userPatternLength>, fgd::numLanes> sym {};
+        std::array<std::array<int, fgd::userPatternLength>, fgd::numLanes> vel {}, chance {}, roll {};
         for (int part = 0; part < fgd::numSegments; ++part)
-            randomizeSegment (part);
+        {
+            if (! isSegmentLocked (part))
+                continue;
+            for (int l = 0; l < fgd::numLanes; ++l)
+                for (int i = part * size; i < (part + 1) * size && i < n; ++i)
+                {
+                    sym[(size_t) l][(size_t) i] = wasUser ? userGrid[(size_t) l][(size_t) i].load()
+                                                          : (i < base.length() ? base.lanes[(size_t) l][(size_t) i] : '.');
+                    vel[(size_t) l][(size_t) i] = wasUser ? userVelocity[(size_t) l][(size_t) i].load() : 0;
+                    chance[(size_t) l][(size_t) i] = wasUser ? userChance[(size_t) l][(size_t) i].load() : 0;
+                    roll[(size_t) l][(size_t) i] = wasUser ? userRoll[(size_t) l][(size_t) i].load() : 0;
+                }
+        }
+
+        auto fresh = fgd::makeRandomPattern (seed, settings.density, settings.randomGenre);
+        setParameterFromUI (ParamIDs::riffSeed, (float) seed);
+        setUserPattern (fresh);
+        for (int part = 0; part < fgd::numSegments; ++part)
+        {
+            if (! isSegmentLocked (part))
+                continue;
+            for (int l = 0; l < fgd::numLanes; ++l)
+                for (int i = part * size; i < (part + 1) * size && i < n; ++i)
+                {
+                    userGrid[(size_t) l][(size_t) i] = sym[(size_t) l][(size_t) i];
+                    userVelocity[(size_t) l][(size_t) i] = vel[(size_t) l][(size_t) i];
+                    userChance[(size_t) l][(size_t) i] = chance[(size_t) l][(size_t) i];
+                    userRoll[(size_t) l][(size_t) i] = roll[(size_t) l][(size_t) i];
+                    if (n == 32)
+                    {
+                        userGrid[(size_t) l][(size_t) (i + 32)] = sym[(size_t) l][(size_t) i];
+                        userVelocity[(size_t) l][(size_t) (i + 32)] = vel[(size_t) l][(size_t) i];
+                        userChance[(size_t) l][(size_t) (i + 32)] = chance[(size_t) l][(size_t) i];
+                        userRoll[(size_t) l][(size_t) (i + 32)] = roll[(size_t) l][(size_t) i];
+                    }
+                }
+        }
         return;
     }
 
