@@ -4,6 +4,13 @@
 
 All notable changes to **Fase Groove Drums**.
 
+## [0.19.0] - 2026-10-22
+
+- Random beats for piano house, soulful, deep and funky keep four on the floor, the clap on 2 and 4, and an offbeat open hat. Deep plays the rim with the clap.
+- Jackin' random beats: offbeat open hat, swung 16th hats at 62%, syncopated percussion.
+- Garage / two-step random beats skip the kick more often. The shuffle is unchanged.
+- Twenty seeds of every genre are checked for a different rhythm, not only a different velocity.
+
 ## [0.18.0] - 2026-10-22
 
 - Turnarounds and Mix fills follow the genre: garage ghosts into the one, afro congas, a late snare in neo soul, and a single hat lift (or none) in chill. House keeps its previous moves.
