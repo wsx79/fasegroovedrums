@@ -4,6 +4,13 @@
 
 Tutte le modifiche importanti di **Fase Groove Drums**.
 
+## [0.19.0] - 2026-10-22
+
+- Beat casuali di piano house, soulful, deep e funky: quattro sul pavimento, clap su 2 e 4, open hat in levare. Nel deep il rim sta insieme al clap.
+- Beat casuali jackin': open hat in levare, charleston in sedicesimi con swing al 62%, percussioni sincopate.
+- I beat garage / two-step saltano la cassa più spesso. Lo shuffle resta.
+- Venti seed per genere: il ritmo cambia, non solo la velocity.
+
 ## [0.18.0] - 2026-10-22
 
 - Variazioni e fill Mix seguono il genere: ghost garage verso l'uno, conga afro, rullante in ritardo nel neo soul, un solo hat lift (o nessuno) nel chill. L'house tiene le mosse di prima.

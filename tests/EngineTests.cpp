@@ -1174,6 +1174,226 @@ static void testStyleCoherence()
     }
 }
 
+static std::string hitMask (const DrumPattern& p)
+{
+    std::string k;
+    for (const auto& line : p.lanes)
+        for (char c : line)
+            k += isHit (c) ? 'x' : '.';
+    return k;
+}
+
+static int hitDistance (const DrumPattern& a, const DrumPattern& b)
+{
+    const auto ka = hitMask (a), kb = hitMask (b);
+    int d = 0;
+    for (size_t i = 0; i < ka.size(); ++i)
+        d += ka[i] != kb[i] ? 1 : 0;
+    return d;
+}
+
+static bool onBeats (const DrumPattern& p, Lane lane, std::initializer_list<int> steps)
+{
+    for (int s : steps)
+        if (! isHit (p[lane][(size_t) s]))
+            return false;
+    return true;
+}
+
+/** Headless audit: 20 seeds per genre through makeRandomPattern (NEW BEAT), the engine
+    regenerate path, and makeVariation. Diversity is the rhythm, not velocity or humanize. */
+static void testGenreAudit()
+{
+    constexpr int nSeeds = 20;
+    constexpr float density = 0.5f;
+    for (int g = 0; g < (int) grooveCategories().size(); ++g)
+    {
+        std::set<std::string> uniq;
+        int distSum = 0, varied = 0;
+        int four = 0, skip = 0, clap = 0, openOff = 0, oddHat = 0, perc = 0;
+        int tribal = 0, t332 = 0, kickSync = 0, snareSync = 0, snare = 0, tamb = 0;
+        int backLate = 0;
+        double swingSum = 0;
+        int swingN = 0;
+        DrumPattern prev;
+        bool havePrev = false;
+
+        for (int seed = 1; seed <= nSeeds; ++seed)
+        {
+            const auto p = makeRandomPattern ((std::uint32_t) seed, density, g);
+            uniq.insert (hitMask (p));
+            if (havePrev)
+                distSum += hitDistance (prev, p);
+            prev = p;
+            havePrev = true;
+            varied += hitMask (makeVariation (p, (std::uint32_t) seed * 17u + 3u)) != hitMask (p) ? 1 : 0;
+
+            four += onBeats (p, Lane::kick, { 0, 4, 8, 12, 16, 20, 24, 28 }) ? 1 : 0;
+            int kickBeats = 0;
+            for (int s : { 0, 4, 8, 12 })
+                kickBeats += isHit (p[Lane::kick][(size_t) s]) ? 1 : 0;
+            skip += (kickBeats >= 1 && kickBeats <= 2) ? 1 : 0;
+            clap += onBeats (p, Lane::clap, { 4, 12 }) ? 1 : 0;
+            int opens = 0, odds = 0;
+            for (int s : { 2, 6, 10, 14 })
+                opens += isHit (p[Lane::openHat][(size_t) s]) ? 1 : 0;
+            openOff += opens >= 3 ? 1 : 0;
+            for (int i = 1; i < 16; i += 2)
+                odds += isHit (p[Lane::closedHat][(size_t) i]) || isHit (p[Lane::openHat][(size_t) i]) ? 1 : 0;
+            oddHat += odds >= 2 ? 1 : 0;
+            bool percHit = false, syncKick = false, syncSnare = false;
+            for (int i = 0; i < 16; ++i)
+            {
+                const bool off = i % 4 != 0;
+                if (off && isHit (p[Lane::kick][(size_t) i]))
+                    syncKick = true;
+                if (off && isHit (p[Lane::snare][(size_t) i]))
+                    syncSnare = true;
+                for (Lane l : { Lane::conga, Lane::cowbell, Lane::rim, Lane::tom, Lane::shaker, Lane::tambourine })
+                    if (off && isHit (p[l][(size_t) i]))
+                        percHit = true;
+            }
+            perc += percHit ? 1 : 0;
+            kickSync += syncKick ? 1 : 0;
+            snareSync += syncSnare ? 1 : 0;
+            int lines = 0;
+            for (Lane l : { Lane::conga, Lane::tom, Lane::shaker, Lane::rim, Lane::cowbell })
+                lines += std::any_of (p[l].begin(), p[l].end(), isHit) ? 1 : 0;
+            tribal += lines >= 2 ? 1 : 0;
+            auto dotted = [] (const std::string& line)
+            {
+                int n = 0;
+                for (int s : { 0, 3, 6, 9, 12 })
+                    if (s < (int) line.size() && isHit (line[(size_t) s]))
+                        ++n;
+                return n >= 4;
+            };
+            t332 += (dotted (p[Lane::conga]) || dotted (p[Lane::shaker]) || dotted (p[Lane::rim])) ? 1 : 0;
+            snare += std::any_of (p[Lane::snare].begin(), p[Lane::snare].end(), isHit) ? 1 : 0;
+            tamb += std::any_of (p[Lane::tambourine].begin(), p[Lane::tambourine].end(), isHit) ? 1 : 0;
+
+            DrumSettings set;
+            set.pattern = randomPatternIndex();
+            set.riffSeed = (std::uint32_t) seed;
+            set.density = density;
+            set.randomGenre = g;
+            set.swing = genreSwing (g);
+            set.humanize = 0.0f;
+            set.accentGroove = 0.85f;
+            set.genreFeel = true;
+            const auto ev = GrooveEngine::renderClip (set, 8.0);
+            if (seed == 1)
+            {
+                std::printf ("%s", grooveCategories()[(size_t) g]);
+                for (int l = 0; l < numLanes; ++l)
+                    if (std::any_of (p.lanes[(size_t) l].begin(), p.lanes[(size_t) l].end(), isHit))
+                        std::printf ("\n  %s %s", laneShortName (l), p.lanes[(size_t) l].c_str());
+                std::printf ("\n  vel");
+                int shown = 0;
+                for (const auto& e : ev)
+                    if (e.isNoteOn() && shown < 8)
+                    {
+                        std::printf (" %s@%.3f=%d", laneShortName (e.lane), e.ppq, e.velocity);
+                        ++shown;
+                    }
+                std::printf ("\n");
+            }
+            for (int l = 0; l < numLanes; ++l)
+            {
+                int ons = 0, expect = 0;
+                for (const auto& e : ev)
+                    if (e.isNoteOn() && e.lane == l)
+                        ++ons;
+                for (int i = 0; i < p.length(); ++i)
+                {
+                    const char c = p.lanes[(size_t) l][(size_t) i];
+                    if (! isHit (c))
+                        continue;
+                    // One hi-hat: a closed hat on the open hat's step does not sound.
+                    if (l == (int) Lane::closedHat && isHit (p[Lane::openHat][(size_t) i]))
+                        continue;
+                    expect += (c == 'f' && l != (int) Lane::kick) ? 2 : 1;
+                }
+                CHECK (ons == expect);
+            }
+            for (const auto& e : ev)
+            {
+                if (! e.isNoteOn())
+                    continue;
+                const int step = (int) std::floor (e.ppq / stepLength + 1.0e-6);
+                const double straight = step * stepLength;
+                if ((e.lane == (int) Lane::closedHat || e.lane == (int) Lane::openHat) && step % 2 == 1 && step < 32)
+                {
+                    swingSum += (e.ppq - (step - 1) * stepLength) / (2.0 * stepLength) * 100.0;
+                    ++swingN;
+                }
+                if ((e.lane == (int) Lane::snare || e.lane == (int) Lane::clap || e.lane == (int) Lane::rim)
+                    && e.ppq > straight + 0.008)
+                    ++backLate;
+            }
+        }
+
+        const int meanDist = distSum / (nSeeds - 1);
+        const double swingHeard = swingN ? swingSum / swingN : 0.0;
+        std::printf ("  %s uniq %d/%d dist %d var %d swing %.1f%% four %d skip %d clap %d open %d\n",
+                     grooveCategories()[(size_t) g], (int) uniq.size(), nSeeds, meanDist, varied, swingHeard,
+                     four, skip, clap, openOff);
+        CHECK ((int) uniq.size() >= 16);
+        CHECK (meanDist >= 12);
+        CHECK (varied >= 12);
+
+        const char* name = grooveCategories()[(size_t) g];
+        if (std::string (name) == "Piano House" || name == std::string ("Soulful") || name == std::string ("Deep"))
+        {
+            CHECK (four == nSeeds && clap >= 18 && openOff >= 16);
+        }
+        else if (std::string (name) == "Jackin'")
+        {
+            CHECK (four == nSeeds && clap == nSeeds && openOff >= 16 && oddHat >= 16 && perc >= 14);
+            CHECK (swingHeard >= 56.0 && swingHeard <= 62.5);
+        }
+        else if (std::string (name) == "Jackin' Piano")
+        {
+            CHECK (four == nSeeds && clap >= 18);
+            CHECK (swingHeard >= 56.0 && swingHeard <= 62.5);
+        }
+        else if (std::string (name) == "Garage & UK")
+        {
+            CHECK (skip >= 16);
+            CHECK (swingHeard >= 60.0);
+        }
+        else if (std::string (name) == "Afro & Latin")
+        {
+            CHECK (tribal >= 16 && t332 >= 14);
+        }
+        else if (std::string (name) == "Neo Soul & Broken")
+        {
+            CHECK (four == 0 && kickSync >= 18 && snareSync >= 14 && backLate >= 20);
+        }
+        else if (std::string (name) == "Chill & Pads")
+        {
+            CHECK (backLate >= 10);
+        }
+        else if (std::string (name) == "Funky & Disco")
+        {
+            CHECK (four == nSeeds && openOff >= 16 && snare >= 12);
+        }
+        else if (std::string (name) == "'90s Piano House")
+        {
+            CHECK (four == nSeeds && clap >= 18 && openOff >= 16 && snare >= 12);
+        }
+        else if (std::string (name) == "Gospel")
+        {
+            CHECK (four == nSeeds && clap >= 18 && snare >= 12 && tamb >= 12);
+        }
+        else if (std::string (name) == "Dance Stabs")
+        {
+            CHECK (four == nSeeds && openOff >= 16 && clap >= 18);
+            CHECK (swingHeard < 54.0);
+        }
+    }
+}
+
 int main()
 {
     testPreviewVelocityMatchesPlayback();
@@ -1201,6 +1421,7 @@ int main()
     testRandomBeats();
     testFillsAndVariations();
     testStyleCoherence();
+    testGenreAudit();
     testUserPatternAndFlams();
     testArrangement();
 
