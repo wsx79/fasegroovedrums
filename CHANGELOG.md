@@ -4,6 +4,14 @@
 
 All notable changes to **Fase Groove Drums**.
 
+## [0.18.0] - 2026-10-22
+
+- Turnarounds and Mix fills follow the genre: garage ghosts into the one, afro congas, a late snare in neo soul, and a single hat lift (or none) in chill. House keeps its previous moves.
+- Random beats: Garage, Neo Soul and Chill have their own layer weights. Chill no longer gains the busy 16th shaker filler.
+- Build-up and drop keep the kick and hats of two-step, broken beat and chill.
+- The accent groove follows the genre: house on the offbeat, jackin' and garage on the swung 16th, afro flatter, neo soul on the downbeat with softer hats, chill gentler. A hand-written grid stays on the house curve.
+- Preset patterns are unchanged.
+
 ## [0.17.0] - 2026-10-22
 
 - Jackin' Piano no longer grows a 909 snare turnaround at the end of a phrase. That turnaround stays on Jackin' only.

@@ -4,6 +4,14 @@
 
 Tutte le modifiche importanti di **Fase Groove Drums**.
 
+## [0.18.0] - 2026-10-22
+
+- Variazioni e fill Mix seguono il genere: ghost garage verso l'uno, conga afro, rullante in ritardo nel neo soul, un solo hat lift (o nessuno) nel chill. L'house tiene le mosse di prima.
+- Beat casuali: Garage, Neo Soul e Chill hanno i propri pesi. Il chill non riceve più lo shaker fitto in sedicesimi.
+- Build-up e drop conservano cassa e hi-hat di two-step, broken beat e chill.
+- L'accent groove segue il genere: house sul levare, jackin' e garage sul sedicesimo in swing, afro più piatto, neo soul sul battere con hi-hat più morbidi, chill più gentile. Una griglia scritta a mano resta sulla curva house.
+- I pattern dei preset non cambiano.
+
 ## [0.17.0] - 2026-10-22
 
 - Jackin' Piano non aggiunge più il turnaround di rullante 909 a fine frase. Quel turnaround resta solo su Jackin'.
