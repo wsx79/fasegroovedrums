@@ -250,6 +250,29 @@ int GrooveEngine::loopLengthInSteps (const DrumSettings& s) noexcept
     return steps;
 }
 
+int GrooveEngine::previewStepVelocity (const DrumSettings& s, int lane, int step, char symbol) noexcept
+{
+    if (lane < 0 || lane >= numLanes || ! isHit (symbol))
+        return 0;
+
+    const int stepInBar = ((step % 16) + 16) % 16;
+    double level = symbol == 'g' ? ghostLevel (lane) : symbolLevel (symbol);
+    const auto& groove = s.grooveTemplate;
+    if (groove.active && lane != (int) Lane::kick)
+        level *= std::clamp ((double) groove.level[(size_t) stepInBar], 0.2, 1.6);
+    else if (followsAccentGroove (lane) && symbol != 'g' && ! groove.active)
+    {
+        const double a = std::clamp ((double) s.accentGroove, 0.0, 1.0);
+        const double shape = 1.0 - a * (1.0 - accentProfile (lane, stepInBar % 4));
+        level *= symbol == 'X' ? std::max (shape, 0.9) : shape * (1.0 + 0.25 * a);
+    }
+    else if (lane == (int) Lane::openHat && symbol == 'x' && ! groove.active)
+        level *= stepInBar % 4 == 2 ? 1.0 : 1.0 - 0.15 * std::clamp ((double) s.accentGroove, 0.0, 1.0);
+
+    level *= (double) s.levels[(size_t) lane] * sectionVelocityScale (s.section);
+    return std::clamp ((int) std::lround ((double) s.velocity * level), 1, 127);
+}
+
 FillStyle GrooveEngine::effectiveFillStyle (FillStyle style, long long bar) noexcept
 {
     if (style != FillStyle::mix)
@@ -265,9 +288,12 @@ bool GrooveEngine::samePattern (const DrumSettings& a, const DrumSettings& b) no
 {
     const bool usesSeed = a.pattern == randomPatternIndex();
     const bool usesUser = a.pattern == userPatternIndex();
+    // riffSeed feeds every turnaround (prepare), not only the random beat. Leaving it out
+    // kept a stale variation on the audio thread after the seed changed, so playback and export differed.
     return a.pattern == b.pattern && a.section == b.section && a.segmentOrder == b.segmentOrder
         && a.sectionVariation == b.sectionVariation && a.grooveBars == b.grooveBars
-        && (! usesSeed || (a.riffSeed == b.riffSeed && a.density == b.density && a.randomGenre == b.randomGenre))
+        && a.riffSeed == b.riffSeed
+        && (! usesSeed || (a.density == b.density && a.randomGenre == b.randomGenre))
         && (! usesUser || a.user == b.user);
 }
 
@@ -396,7 +422,8 @@ void GrooveEngine::collectStep (long long step, const DrumSettings& s, const Pre
         return std::clamp ((int) std::lround (v), 1, 127);
     };
 
-    const bool jackin = pattern.category.rfind ("Jackin", 0) == 0;
+    // Exact genre: "Jackin' Piano" also begins with "Jackin" and must not grow a 909 turnaround.
+    const bool jackin = pattern.category == "Jackin'";
     const bool hasSnare = std::any_of (pattern.lanes[(size_t) Lane::snare].begin(), pattern.lanes[(size_t) Lane::snare].end(), isHit);
     // Jackin': the clap lands a hair before the 909 snare under it, so the two flam.
     const double jackFlam = jackin && hasSnare ? -0.006 * tempo / 60.0 : 0.0;

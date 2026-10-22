@@ -325,6 +325,9 @@ public:
 private:
     void setUserPattern (const fgd::DrumPattern&);
     void resetStepExtras (int lane, int index) { userChance[(size_t) lane][(size_t) index] = 0; userRoll[(size_t) lane][(size_t) index] = 0; }
+    /** A 2-bar groove is stored twice so 4-bar mode plays it again. Keep that copy in step
+        with an edit, unless the second half was already changed on its own. */
+    void mirrorUserStepIfCopy (int lane, int index, char oldSymbol, int oldVelocity, int oldChance, int oldRoll);
     struct LoopAnalysis;
     std::unique_ptr<LoopAnalysis> analyseLoop (const juce::File&) const;
     void renderGuideAudio (const std::vector<fgd::NoteEvent>&, double beats, juce::AudioBuffer<float>&, double sampleRate, int onlyLane) const;

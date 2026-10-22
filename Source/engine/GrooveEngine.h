@@ -148,6 +148,10 @@ public:
     /** The fill style a bar plays ("Mix" picks one per bar). */
     static FillStyle effectiveFillStyle (FillStyle style, long long bar) noexcept;
 
+    /** Velocity a written step plays at before humanize (accent groove, ghosts, lane level, section).
+        `step` is its place in the groove (the beat position, not a hand-set velocity). 0 if it is a rest. */
+    static int previewStepVelocity (const DrumSettings& s, int lane, int step, char symbol) noexcept;
+
 private:
     struct PendingOn { double ppq; int note; int velocity; double duration; int lane; std::size_t order = 0; };
 

@@ -965,8 +965,104 @@ static void testMidiChokeMapsAndBassSpace()
     CHECK (countHits (applySection (soulful, Section::drop)[Lane::openHat]) == 8);
 }
 
+static void testJackinPianoDoesNotGrowA909Turnaround()
+{
+    int piano = -1, jack = -1;
+    for (size_t i = 0; i < drumPatterns().size(); ++i)
+    {
+        if (drumPatterns()[i].name == "Jackin' Piano Bounce") piano = (int) i;
+        if (drumPatterns()[i].name == "Chicago 909") jack = (int) i;
+    }
+    CHECK (piano >= 0 && jack >= 0);
+
+    auto inJackWindow = [] (const DrumSettings& s, int note)
+    {
+        int n = 0;
+        for (const auto& e : GrooveEngine::renderClip (s, 16.0))
+            if (e.isNoteOn() && e.note == note && e.ppq > 15.15 && e.ppq < 15.65)
+                ++n;
+        return n;
+    };
+
+    int pianoExtras = 0, jackExtras = 0;
+    for (std::uint32_t seed = 1; seed <= 40; ++seed)
+    {
+        auto s = straight();
+        s.humanize = 1.0f;
+        s.humanizeSeed = seed;
+        s.pattern = piano;
+        pianoExtras += inJackWindow (s, 39);
+        s.pattern = jack;
+        jackExtras += inJackWindow (s, 38);
+    }
+    CHECK (pianoExtras == 0);   // Jackin' Piano keeps its own clap; no 909 pickup
+    CHECK (jackExtras > 0);     // Jackin' still turns the phrase around
+}
+
+static void testBeatSeedRefreshesTurnarounds()
+{
+    auto a = straight();
+    a.pattern = 0;
+    a.variationEvery = 4;
+    a.riffSeed = 1;
+    GrooveEngine::Prepared first;
+    GrooveEngine::prepare (first, a);
+
+    DrumSettings b = a;
+    bool differ = false;
+    for (std::uint32_t seed = 2; seed < 30 && ! differ; ++seed)
+    {
+        b.riffSeed = seed;
+        GrooveEngine::Prepared other;
+        GrooveEngine::prepare (other, b);
+        differ = other.variations[0].lanes != first.variations[0].lanes;
+    }
+    CHECK (differ);
+    CHECK (! GrooveEngine::samePattern (a, b));
+
+    // A pattern prepared for the old seed must not be reused after the seed changes.
+    GrooveEngine live;
+    live.setPrepared (&first);
+    std::vector<NoteEvent> played, fresh;
+    live.render (0.0, 16.0, b, played);
+    GrooveEngine again;
+    again.render (0.0, 16.0, b, fresh);
+    CHECK (played.size() == fresh.size());
+    for (size_t i = 0; i < std::min (played.size(), fresh.size()); ++i)
+        CHECK (played[i].note == fresh[i].note && played[i].velocity == fresh[i].velocity
+               && std::abs (played[i].ppq - fresh[i].ppq) < 1.0e-9);
+}
+
+static void testPreviewVelocityMatchesPlayback()
+{
+    auto s = straight();
+    s.pattern = userPatternIndex();
+    s.accentGroove = 0.85f;
+    s.user[(size_t) Lane::closedHat][0] = 'x';
+    s.user[(size_t) Lane::closedHat][1] = 'g';
+    s.user[(size_t) Lane::closedHat][2] = 'X';
+    s.user[(size_t) Lane::openHat][6] = 'x';
+
+    const int offbeat = GrooveEngine::previewStepVelocity (s, (int) Lane::closedHat, 2, 'X');
+    const int downbeat = GrooveEngine::previewStepVelocity (s, (int) Lane::closedHat, 0, 'x');
+    const int ghost = GrooveEngine::previewStepVelocity (s, (int) Lane::closedHat, 1, 'g');
+    CHECK (offbeat > downbeat && downbeat > ghost);
+    CHECK (GrooveEngine::previewStepVelocity (s, (int) Lane::kick, 0, '.') == 0);
+
+    for (const auto& e : GrooveEngine::renderClip (s, 4.0))
+        if (e.isNoteOn())
+        {
+            const int step = (int) std::lround (e.ppq / stepLength);
+            const char symbol = s.user[(size_t) e.lane][(size_t) step];
+            CHECK (e.velocity == GrooveEngine::previewStepVelocity (s, e.lane, step, symbol));
+        }
+}
+
 int main()
 {
+    testPreviewVelocityMatchesPlayback();
+    testBeatSeedRefreshesTurnarounds();
+    testJackinPianoDoesNotGrowA909Turnaround();
     testSongPhrasesAndSeams();
     testMidiChokeMapsAndBassSpace();
     testEarlyTemplateHitsAcrossBlocks();
