@@ -1210,7 +1210,7 @@ static void testGenreAudit()
     {
         std::set<std::string> uniq;
         int distSum = 0, varied = 0;
-        int four = 0, skip = 0, clap = 0, openOff = 0, oddHat = 0, perc = 0;
+        int four = 0, skip = 0, clap = 0, openOff = 0, offHat = 0, oddHat = 0, perc = 0;
         int tribal = 0, t332 = 0, kickSync = 0, snareSync = 0, snare = 0, tamb = 0;
         int backLate = 0;
         double swingSum = 0;
@@ -1234,10 +1234,14 @@ static void testGenreAudit()
                 kickBeats += isHit (p[Lane::kick][(size_t) s]) ? 1 : 0;
             skip += (kickBeats >= 1 && kickBeats <= 2) ? 1 : 0;
             clap += onBeats (p, Lane::clap, { 4, 12 }) ? 1 : 0;
-            int opens = 0, odds = 0;
+            int opens = 0, odds = 0, offs = 0;
             for (int s : { 2, 6, 10, 14 })
+            {
                 opens += isHit (p[Lane::openHat][(size_t) s]) ? 1 : 0;
+                offs += isHit (p[Lane::openHat][(size_t) s]) || isHit (p[Lane::closedHat][(size_t) s]) ? 1 : 0;
+            }
             openOff += opens >= 3 ? 1 : 0;
+            offHat += offs >= 3 ? 1 : 0;
             for (int i = 1; i < 16; i += 2)
                 odds += isHit (p[Lane::closedHat][(size_t) i]) || isHit (p[Lane::openHat][(size_t) i]) ? 1 : 0;
             oddHat += odds >= 2 ? 1 : 0;
@@ -1343,13 +1347,20 @@ static void testGenreAudit()
         CHECK (varied >= 12);
 
         const char* name = grooveCategories()[(size_t) g];
-        if (std::string (name) == "Piano House" || name == std::string ("Soulful") || name == std::string ("Deep"))
+        if (std::string (name) == "Piano House" || name == std::string ("Soulful"))
         {
             CHECK (four == nSeeds && clap >= 18 && openOff >= 16);
         }
+        else if (std::string (name) == "Deep")
+        {
+            // The offbeat hat always, open or (as often in deep house) closed.
+            CHECK (four == nSeeds && clap >= 18 && offHat >= 18 && openOff >= 6 && openOff <= 18);
+        }
         else if (std::string (name) == "Jackin'")
         {
-            CHECK (four == nSeeds && clap == nSeeds && openOff >= 16 && oddHat >= 16 && perc >= 14);
+            // The offbeat hat always: mostly the 909 open hat, else the closed hat with its swung ghosts.
+            CHECK (four == nSeeds && clap == nSeeds && offHat == nSeeds && openOff >= 10 && openOff < nSeeds
+                   && oddHat >= 16 && perc >= 14);
             CHECK (swingHeard >= 56.0 && swingHeard <= 62.5);
         }
         else if (std::string (name) == "Jackin' Piano")
@@ -1394,6 +1405,127 @@ static void testGenreAudit()
     }
 }
 
+/** NEW BEAT, heard as MIDI: for every genre, many seeds through the engine. Same seed = the same
+    note stream; other seeds = other onsets (not only other velocities), on more than one drum;
+    no beat dominates; and the genre's frame (four on the floor, two-step, broken kick, backbeat)
+    holds on every seed. */
+static void testRandomBeatDiversityInMidi()
+{
+    constexpr int nSeeds = 48;
+    const int numGenres = (int) grooveCategories().size();
+    for (int g = 0; g < numGenres; ++g)
+    {
+        const std::string name = grooveCategories()[(size_t) g];
+        std::map<std::string, int> beats;                  // onsets only (lane + 16th), no velocity
+        std::array<std::set<std::string>, numLanes> laneLines;
+        int sameAsPrevious = 0, fourFloor = 0, backbeat = 0, velocityOnly = 0;
+        std::string previous;
+
+        for (int seed = 1; seed <= nSeeds; ++seed)
+        {
+            DrumSettings set;
+            set.pattern = randomPatternIndex();
+            set.riffSeed = (std::uint32_t) (seed * 7919);
+            set.density = (float) (seed % 4) / 3.0f;
+            set.randomGenre = g;
+            set.swing = genreSwing (g);
+            set.humanize = 0.0f;
+            const auto ev = GrooveEngine::renderClip (set, 8.0);
+            CHECK (wellFormed (ev));
+
+            // Same seed, same MIDI (times, notes and velocities).
+            const auto again = GrooveEngine::renderClip (set, 8.0);
+            bool identical = again.size() == ev.size();
+            for (size_t i = 0; identical && i < ev.size(); ++i)
+                identical = ev[i].ppq == again[i].ppq && ev[i].note == again[i].note && ev[i].velocity == again[i].velocity;
+            CHECK (identical);
+
+            std::array<std::string, numLanes> lines;
+            for (auto& l : lines)
+                l.assign (32, '.');
+            for (const auto& e : ev)
+                if (e.isNoteOn())
+                {
+                    const int step = std::clamp ((int) std::lround (e.ppq / stepLength - 0.4), 0, 31);   // swing and pocket land late
+                    lines[(size_t) e.lane][(size_t) step] = 'x';
+                }
+            std::string beat;
+            for (int l = 0; l < numLanes; ++l)
+            {
+                beat += lines[(size_t) l];
+                laneLines[(size_t) l].insert (lines[(size_t) l]);
+            }
+            sameAsPrevious += beat == previous ? 1 : 0;
+            if (beats.count (beat) > 0)
+                ++velocityOnly;   // (at most other velocities: the same onsets as a beat before)
+            ++beats[beat];
+            previous = beat;
+
+            const auto& kick = lines[(size_t) Lane::kick];
+            fourFloor += kick[0] == 'x' && kick[4] == 'x' && kick[8] == 'x' && kick[12] == 'x' && kick[16] == 'x'
+                      && kick[20] == 'x' && kick[24] == 'x' && kick[28] == 'x' ? 1 : 0;
+            bool back = true;
+            // (a broken beat may push or drag its second backbeat)
+            const std::vector<int> backbeats = name == "Neo Soul & Broken" ? std::vector<int> { 4, 20 } : std::vector<int> { 4, 12, 20, 28 };
+            for (int at : backbeats)
+                back = back && (lines[(size_t) Lane::snare][(size_t) at] == 'x' || lines[(size_t) Lane::clap][(size_t) at] == 'x'
+                                || lines[(size_t) Lane::rim][(size_t) at] == 'x');
+            const bool halfTime = lines[(size_t) Lane::snare][8] == 'x' || lines[(size_t) Lane::clap][8] == 'x'
+                               || lines[(size_t) Lane::rim][8] == 'x';
+            backbeat += back || halfTime ? 1 : 0;
+        }
+
+        int top = 0, lanesThatMove = 0;
+        for (const auto& b : beats)
+            top = std::max (top, b.second);
+        for (const auto& l : laneLines)
+            lanesThatMove += l.size() >= 3 ? 1 : 0;
+        std::printf ("  %s: %d different beats of %d, the commonest %d, %d drums move, %d repeats in a row\n",
+                     name.c_str(), (int) beats.size(), nSeeds, top, lanesThatMove, sameAsPrevious);
+
+        CHECK ((int) beats.size() * 10 >= nSeeds * 7);   // at least 70% of the seeds: other onsets
+        CHECK (top * 10 <= nSeeds);                      // no beat comes back on more than 10% of the seeds
+        CHECK (sameAsPrevious <= 1);
+        CHECK (velocityOnly * 10 <= nSeeds * 3);
+        CHECK (lanesThatMove >= 4);                      // more than the hats change
+        if (name == "Afro & Latin")
+            CHECK (backbeat * 2 >= nSeeds);              // with the clave the clap often gives way
+        else
+            CHECK (backbeat >= nSeeds - 2);
+
+        if (name == "Garage & UK")
+            CHECK (fourFloor <= nSeeds / 4);
+        else if (name == "Neo Soul & Broken")
+            CHECK (fourFloor == 0);
+        else if (name == "Chill & Pads")
+            CHECK (fourFloor < nSeeds && fourFloor >= nSeeds / 3);
+        else
+            CHECK (fourFloor == nSeeds);
+    }
+}
+
+/** A section that takes the backbeat out (intro, break, outro) keeps it out: the jackin'
+    turnaround doesn't bring the clap or the snare back at the end of its phrases. */
+static void testJackinTurnaroundRespectsSections()
+{
+    for (size_t i = 0; i < drumPatterns().size(); ++i)
+    {
+        if (drumPatterns()[i].category != "Jackin'")
+            continue;
+        for (auto section : { Section::intro, Section::breakdown, Section::outro })
+        {
+            DrumSettings s;
+            s.pattern = (int) i;
+            s.section = section;
+            s.humanize = 1.0f;
+            int backbeat = 0;
+            for (const auto& e : GrooveEngine::renderClip (s, 64.0))
+                backbeat += e.isNoteOn() && (e.lane == (int) Lane::snare || e.lane == (int) Lane::clap) ? 1 : 0;
+            CHECK (backbeat == 0);
+        }
+    }
+}
+
 int main()
 {
     testPreviewVelocityMatchesPlayback();
@@ -1422,6 +1554,8 @@ int main()
     testFillsAndVariations();
     testStyleCoherence();
     testGenreAudit();
+    testRandomBeatDiversityInMidi();
+    testJackinTurnaroundRespectsSections();
     testUserPatternAndFlams();
     testArrangement();
 

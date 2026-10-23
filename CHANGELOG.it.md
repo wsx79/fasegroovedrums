@@ -4,6 +4,11 @@
 
 Tutte le modifiche importanti di **Fase Groove Drums**.
 
+## [0.20.0] - 2026-10-23
+
+- NUOVO BEAT più vario in Dance, Neo Soul, Deep e Jackin' (ora suona anche la variante jackin' con hat chiuso); ogni genere mantiene il suo ritmo.
+- Corretto: con Humanize il giro jackin' rimetteva clap e rullante in intro, break, build-up e outro; le variazioni di sezione potevano togliere l'hat in levare; i parametri si leggono senza allocare nel thread audio.
+
 ## [0.19.0] - 2026-10-22
 
 - Beat casuali di piano house, soulful, deep e funky: quattro sul pavimento, clap su 2 e 4, open hat in levare. Nel deep il rim sta insieme al clap.

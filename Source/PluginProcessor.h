@@ -90,6 +90,8 @@ public:
     /** Sets a parameter from the UI, notifying the host. */
     void setParameterFromUI (const juce::String& id, float plainValue);
     float raw (const juce::String& id) const;
+    /** The same without building a String or searching the tree: what the audio thread uses. */
+    float raw (const char* id) const;
 
     //==============================================================================
     // The grid (message thread). Steps are as displayed (two bars); edits go into the user
@@ -296,6 +298,18 @@ public:
     float editorScale = 0.0f;   // 0: as big as suits the screen (the first time)
 
     juce::AudioProcessorValueTreeState apvts;
+
+private:
+    // Every parameter's value, looked up once (in the constructor): reading them on the audio
+    // thread then never allocates a String nor searches the parameter tree.
+    struct CachedParam { const char* id; std::atomic<float>* value; };
+    std::vector<CachedParam> cachedParams;
+    enum LaneParam { laneNoteParam = 0, laneLevelParam, laneMuteParam, lanePushParam, laneSwingParam, laneVolumeParam, numLaneParams };
+    std::array<std::array<std::atomic<float>*, fgd::numLanes>, numLaneParams> laneParams {};
+    std::array<std::atomic<float>*, fgd::numSegments> segmentParams {};
+    void cacheParameters();
+    float rawLane (LaneParam kind, int lane) const noexcept;
+public:
 
     //==============================================================================
     /** Plays one hit of a drum now (the pads), through the guide kit and the MIDI out. */

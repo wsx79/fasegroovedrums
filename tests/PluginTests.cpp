@@ -124,6 +124,34 @@ namespace
     }
 
     //==============================================================================
+    /** The audio thread reads the parameters through pointers looked up once: they must follow
+        every change exactly as the parameter tree does. */
+    void testCachedParameterReads()
+    {
+        FaseGrooveDrumsProcessor p;
+        p.setParameterFromUI (ParamIDs::swing, 0.7f);
+        p.setParameterFromUI (ParamIDs::tempo, 131.0f);
+        p.setParameterFromUI (ParamIDs::note (3), 61.0f);
+        p.setParameterFromUI (ParamIDs::level (2), 0.5f);
+        p.setParameterFromUI (ParamIDs::mute (5), 1.0f);
+        p.setParameterFromUI (ParamIDs::push (4), -12.0f);
+        p.setParameterFromUI (ParamIDs::laneSwing (6), 1.5f);
+        p.setParameterFromUI (ParamIDs::segment (1), 3.0f);
+        for (const char* id : { ParamIDs::pattern, ParamIDs::swing, ParamIDs::tempo, ParamIDs::genre, ParamIDs::volume,
+                                ParamIDs::bassSpace, ParamIDs::genreFeel, ParamIDs::midiChannel })
+            CHECK (std::abs (p.raw (id) - value (p, id)) < 1.0e-6f);
+        const auto s = p.currentSettings();
+        CHECK (std::abs (s.swing - 0.7f) < 1.0e-4f);
+        CHECK (s.notes[3] == 61);
+        CHECK (std::abs (s.levels[2] - 0.5f) < 1.0e-4f);
+        CHECK (s.muted[5] && ! s.muted[4]);
+        CHECK (std::abs (s.laneShift[4] + 12.0f) < 1.0e-4f);
+        CHECK (std::abs (s.laneSwing[6] - 1.5f) < 1.0e-4f);
+        CHECK (s.segmentOrder[1] == 3);
+        for (int l = 0; l < fgd::numLanes; ++l)
+            CHECK (s.notes[(size_t) l] == juce::roundToInt (value (p, ParamIDs::note (l))));
+    }
+
     void testOldPresetDefaults()
     {
         FaseGrooveDrumsProcessor p, fresh;
@@ -1199,6 +1227,7 @@ int main (int argc, char** argv)
 
     testFamilyPresets();
     testOldPresetDefaults();
+    testCachedParameterReads();
     testStateRoundTrip();
     testGridEditing();
     testStyles();

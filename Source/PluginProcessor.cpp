@@ -2,6 +2,8 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 #include "PluginProcessor.h"
+
+#include <cstring>
 #include "FamilySoundProfiles.h"
 
 #include <algorithm>
@@ -204,6 +206,7 @@ FaseGrooveDrumsProcessor::FaseGrooveDrumsProcessor()
     : AudioProcessor (BusesProperties().withOutput ("Output", juce::AudioChannelSet::stereo(), true)),
       apvts (*this, nullptr, "FaseGrooveDrums", createLayout())
 {
+    cacheParameters();
     for (auto& lane : userGrid)
         for (auto& c : lane)
             c = '.';
@@ -277,6 +280,7 @@ void FaseGrooveDrumsProcessor::prepareToPlay (double sampleRate, int samplesPerB
     outputGain.setCurrentAndTargetValue (juce::Decibels::decibelsToGain (raw (ParamIDs::volume)));
     // Room for the largest blocks (offline rendering too): no growing on the audio thread.
     events.reserve ((size_t) juce::jmax (8192, samplesPerBlock / 2));
+    outMidi.ensureSize (8192 * 8);   // room for a busy block (it is swapped with the host's buffer, which grows once too)
 }
 
 juce::AudioProcessorEditor* FaseGrooveDrumsProcessor::createEditor()
@@ -289,6 +293,41 @@ float FaseGrooveDrumsProcessor::raw (const juce::String& id) const
     if (auto* v = apvts.getRawParameterValue (id))
         return v->load();
     return 0.0f;
+}
+
+void FaseGrooveDrumsProcessor::cacheParameters()
+{
+    using namespace ParamIDs;
+    for (const char* id : { pattern, swing, velocity, humanize, humanizeSeed, accents, fills, fillStyle, crash, variation,
+                            section, tempoSync, tempo, sequencer, riffSeed, density, partLength, genre, midiChannel, sound,
+                            kit, tone, reverb, volume, genreFeel, bassSpace })
+        cachedParams.push_back ({ id, apvts.getRawParameterValue (id) });
+    for (int l = 0; l < fgd::numLanes; ++l)
+    {
+        laneParams[laneNoteParam][(size_t) l]   = apvts.getRawParameterValue (note (l));
+        laneParams[laneLevelParam][(size_t) l]  = apvts.getRawParameterValue (level (l));
+        laneParams[laneMuteParam][(size_t) l]   = apvts.getRawParameterValue (mute (l));
+        laneParams[lanePushParam][(size_t) l]   = apvts.getRawParameterValue (push (l));
+        laneParams[laneSwingParam][(size_t) l]  = apvts.getRawParameterValue (laneSwing (l));
+        laneParams[laneVolumeParam][(size_t) l] = apvts.getRawParameterValue (laneVolume (l));
+    }
+    for (int i = 0; i < fgd::numSegments; ++i)
+        segmentParams[(size_t) i] = apvts.getRawParameterValue (segment (i));
+}
+
+float FaseGrooveDrumsProcessor::raw (const char* id) const
+{
+    for (const auto& p : cachedParams)
+        if (p.id == id || std::strcmp (p.id, id) == 0)
+            return p.value != nullptr ? p.value->load() : 0.0f;
+    jassertfalse;   // not cached: add it to cacheParameters() (the lookup below allocates)
+    return raw (juce::String (id));
+}
+
+float FaseGrooveDrumsProcessor::rawLane (LaneParam kind, int lane) const noexcept
+{
+    const auto* v = laneParams[(size_t) kind][(size_t) juce::jlimit (0, fgd::numLanes - 1, lane)];
+    return v != nullptr ? v->load() : 0.0f;
 }
 
 void FaseGrooveDrumsProcessor::setParameterFromUI (const juce::String& id, float plainValue)
@@ -325,11 +364,11 @@ fgd::DrumSettings FaseGrooveDrumsProcessor::currentSettings() const
 
     for (int l = 0; l < fgd::numLanes; ++l)
     {
-        s.notes[(size_t) l] = juce::roundToInt (raw (ParamIDs::note (l)));
-        s.levels[(size_t) l] = raw (ParamIDs::level (l));
-        s.muted[(size_t) l] = raw (ParamIDs::mute (l)) > 0.5f;
-        s.laneShift[(size_t) l] = raw (ParamIDs::push (l));
-        s.laneSwing[(size_t) l] = raw (ParamIDs::laneSwing (l));
+        s.notes[(size_t) l] = juce::roundToInt (rawLane (laneNoteParam, l));
+        s.levels[(size_t) l] = rawLane (laneLevelParam, l);
+        s.muted[(size_t) l] = rawLane (laneMuteParam, l) > 0.5f;
+        s.laneShift[(size_t) l] = rawLane (lanePushParam, l);
+        s.laneSwing[(size_t) l] = rawLane (laneSwingParam, l);
         for (int i = 0; i < fgd::userPatternLength; ++i)
         {
             s.user[(size_t) l][(size_t) i] = userGrid[(size_t) l][(size_t) i].load();
@@ -361,7 +400,8 @@ fgd::DrumPattern FaseGrooveDrumsProcessor::displayedPattern() const
 
 int FaseGrooveDrumsProcessor::segmentAt (int position) const
 {
-    return juce::jlimit (0, fgd::numSegments - 1, juce::roundToInt (raw (ParamIDs::segment (juce::jlimit (0, fgd::numSegments - 1, position)))));
+    const auto* v = segmentParams[(size_t) juce::jlimit (0, fgd::numSegments - 1, position)];
+    return juce::jlimit (0, fgd::numSegments - 1, juce::roundToInt (v != nullptr ? v->load() : 0.0f));
 }
 
 void FaseGrooveDrumsProcessor::setSegmentAt (int position, int part)
@@ -1500,7 +1540,7 @@ void FaseGrooveDrumsProcessor::processBlock (juce::AudioBuffer<float>& buffer, j
         std::array<float, fgd::numLanes> gains {};
         for (int l = 0; l < fgd::numLanes; ++l)
         {
-            const float db = raw (ParamIDs::laneVolume (l));
+            const float db = rawLane (laneVolumeParam, l);
             gains[(size_t) l] = db <= -47.9f ? 0.0f : juce::Decibels::decibelsToGain (db);
         }
         drums.setKit (juce::roundToInt (raw (ParamIDs::kit)));
@@ -1750,7 +1790,7 @@ void FaseGrooveDrumsProcessor::renderGuideAudio (const std::vector<fgd::NoteEven
     DrumSamples current;
     for (int l = 0; l < fgd::numLanes; ++l)
     {
-        const float db = raw (ParamIDs::laneVolume (l));
+        const float db = rawLane (laneVolumeParam, l);
         gains[(size_t) l] = (onlyLane >= 0 && l != onlyLane) || db <= -47.9f ? 0.0f : juce::Decibels::decibelsToGain (db);
         current[(size_t) l] = std::atomic_load (&samples[(size_t) l]);
     }
