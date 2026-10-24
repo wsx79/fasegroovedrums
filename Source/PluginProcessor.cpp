@@ -5,7 +5,6 @@
 #include "LinkFile.h"
 #include "MidiExport.h"
 
-#include <cstring>
 #include "FamilySoundProfiles.h"
 
 #include <algorithm>
@@ -286,20 +285,10 @@ juce::AudioProcessorEditor* FaseGrooveDrumsProcessor::createEditor()
     return new FaseGrooveDrumsEditor (*this);
 }
 
-float FaseGrooveDrumsProcessor::raw (const juce::String& id) const
-{
-    if (auto* v = apvts.getRawParameterValue (id))
-        return v->load();
-    return 0.0f;
-}
-
 void FaseGrooveDrumsProcessor::cacheParameters()
 {
     using namespace ParamIDs;
-    for (const char* id : { pattern, swing, velocity, humanize, humanizeSeed, accents, fills, fillStyle, crash, variation,
-                            section, tempoSync, tempo, sequencer, riffSeed, density, partLength, genre, midiChannel, sound,
-                            kit, tone, reverb, volume, genreFeel, bassSpace })
-        cachedParams.push_back ({ id, apvts.getRawParameterValue (id) });
+    rawParams.cache (apvts);
     for (int l = 0; l < fgd::numLanes; ++l)
     {
         laneParams[laneNoteParam][(size_t) l]   = apvts.getRawParameterValue (note (l));
@@ -311,20 +300,6 @@ void FaseGrooveDrumsProcessor::cacheParameters()
     }
     for (int i = 0; i < fgd::numSegments; ++i)
         segmentParams[(size_t) i] = apvts.getRawParameterValue (segment (i));
-}
-
-float FaseGrooveDrumsProcessor::raw (const char* id) const
-{
-    // ParamIDs' constants are passed as they are: the pointer usually matches, so the string
-    // compare is only the fallback (a literal may have another address in another unit).
-    for (const auto& p : cachedParams)
-        if (p.id == id)
-            return p.value != nullptr ? p.value->load() : 0.0f;
-    for (const auto& p : cachedParams)
-        if (std::strcmp (p.id, id) == 0)
-            return p.value != nullptr ? p.value->load() : 0.0f;
-    jassertfalse;   // not cached: add it to cacheParameters() (the lookup below allocates)
-    return raw (juce::String (id));
 }
 
 float FaseGrooveDrumsProcessor::rawLane (LaneParam kind, int lane) const noexcept

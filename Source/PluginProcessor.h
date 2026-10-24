@@ -4,6 +4,8 @@
 #pragma once
 
 #include "LinkFile.h"
+#include "RawParameters.h"
+#include "RetireBin.h"
 
 #include "GuideDrums.h"
 #include "engine/GrooveEngine.h"
@@ -91,9 +93,8 @@ public:
 
     /** Sets a parameter from the UI, notifying the host. */
     void setParameterFromUI (const juce::String& id, float plainValue);
-    float raw (const juce::String& id) const;
-    /** The same without building a String or searching the tree: what the audio thread uses. */
-    float raw (const char* id) const;
+    /** A parameter's current value, by its ID (a cached lookup: no String built, safe on any thread). */
+    float raw (juce::StringRef id) const { return rawParams (id); }
 
     //==============================================================================
     // The grid (message thread). Steps are as displayed (two bars); edits go into the user
@@ -304,8 +305,7 @@ public:
 private:
     // Every parameter's value, looked up once (in the constructor): reading them on the audio
     // thread then never allocates a String nor searches the parameter tree.
-    struct CachedParam { const char* id; std::atomic<float>* value; };
-    std::vector<CachedParam> cachedParams;
+    FaseGroove::RawParameters rawParams;
     enum LaneParam { laneNoteParam = 0, laneLevelParam, laneMuteParam, lanePushParam, laneSwingParam, laneVolumeParam, numLaneParams };
     std::array<std::array<std::atomic<float>*, fgd::numLanes>, numLaneParams> laneParams {};
     std::array<std::atomic<float>*, fgd::numSegments> segmentParams {};
@@ -380,13 +380,7 @@ private:
     std::atomic<double> linkAnchor { -1.0 };   // the shared clock while playing, -1 = none
     LinkState localLinkState() const;
     int currentGenre() const;
-    struct LinkTimer : juce::Timer
-    {
-        explicit LinkTimer (FaseGrooveDrumsProcessor& p) : owner (p) {}
-        void timerCallback() override { owner.updateLink(); }
-        FaseGrooveDrumsProcessor& owner;
-    };
-    LinkTimer linkTimer { *this };
+    juce::TimedCallback linkTimer { [this] { updateLink(); } };
     int baseStep (int displayedStep) const;   // the step of the user pattern shown at a displayed step
     /** Makes the groove showing the user pattern (as written: before the A-D order); true if it already was. */
     bool makeUserPattern();
@@ -400,42 +394,13 @@ private:
     juce::MidiFile midiFromEvents (const std::vector<fgd::NoteEvent>&, double beats,
                                    const std::vector<fgd::GrooveEngine::Marker>*, ClipPart, const juce::String& name) const;
 
-    /** Objects replaced while the audio thread may still use them: kept here until nobody else
-        holds them, then freed on the message thread (never on the audio thread, mid-block). */
-    template <typename T>
-    struct RetireBin : private juce::Timer
-    {
-        RetireBin() { startTimer (1000); }
-        ~RetireBin() override { stopTimer(); }
-        void retire (std::shared_ptr<const T> old)
-        {
-            if (old == nullptr)
-                return;
-            const juce::ScopedLock lock (mutex);
-            held.push_back (std::move (old));
-        }
-        void timerCallback() override
-        {
-            const juce::ScopedLock lock (mutex);
-            held.erase (std::remove_if (held.begin(), held.end(), [] (const auto& p) { return p.use_count() <= 1; }), held.end());
-        }
-        juce::CriticalSection mutex;
-        std::vector<std::shared_ptr<const T>> held;
-    };
-
     fgd::GrooveEngine engine;
     // The groove worked out ahead on the message thread (the audio thread only reads it), and the
     // old ones kept until the audio thread has let go of them.
     std::shared_ptr<const fgd::GrooveEngine::Prepared> preparedPattern;
-    RetireBin<fgd::GrooveEngine::Prepared> retiredPatterns;
+    FaseGroove::RetireBin<fgd::GrooveEngine::Prepared> retiredPatterns;   // RetireBin.h
     void preparePattern();
-    struct PatternTimer : juce::Timer
-    {
-        explicit PatternTimer (FaseGrooveDrumsProcessor& p) : owner (p) {}
-        void timerCallback() override { owner.preparePattern(); }
-        FaseGrooveDrumsProcessor& owner;
-    };
-    PatternTimer patternTimer { *this };
+    juce::TimedCallback patternTimer { [this] { preparePattern(); } };
     std::array<juce::String, fgd::numLanes> missingSamples;   // message thread
     double lastLinkAnchor = -1.0, lastLinkBpm = 0.0;           // audio thread: the linked clock as last played
     std::vector<fgd::NoteEvent> events;
@@ -447,7 +412,7 @@ private:
     DrumSamples samples;   // read and swapped with std::atomic_load / std::atomic_store
     std::shared_ptr<const DrumSample> previewSample;   // the file being auditioned (atomic_load / atomic_store)
 
-    RetireBin<DrumSample> sampleBin;   // samples replaced while the audio thread may still play them
+    FaseGroove::RetireBin<DrumSample> sampleBin;   // samples replaced while the audio thread may still play them
     void swapSample (std::shared_ptr<const DrumSample>& slot, std::shared_ptr<const DrumSample> next)
     {
         sampleBin.retire (std::atomic_exchange (&slot, std::move (next)));
