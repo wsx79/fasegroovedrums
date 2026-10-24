@@ -4,6 +4,11 @@
 
 All notable changes to **Fase Groove Drums**.
 
+## [0.21.3] - 2026-10-24
+
+- The overview shows the bars as they play, fills and variations included.
+- The step lights and the playhead follow the sound without lag: the position is carried forward between audio blocks and drawn at 60 Hz, redrawing only what moves.
+
 ## [0.21.2] - 2026-10-24
 
 - Editor widgets and the update overlay now come from the shared FaseGroove module. Look and sound unchanged.

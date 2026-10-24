@@ -4,6 +4,11 @@
 
 Tutte le modifiche importanti di **Fase Groove Drums**.
 
+## [0.21.3] - 2026-10-24
+
+- La panoramica mostra le battute come suonano, fill e variazioni compresi.
+- Le luci del passo e il playhead seguono il suono senza ritardo: la posizione viene portata avanti tra un blocco audio e l'altro e disegnata a 60 Hz, ridisegnando solo ciò che si muove.
+
 ## [0.21.2] - 2026-10-24
 
 - Widget dell'editor e finestra di aggiornamento ora vengono dal modulo comune FaseGroove. Aspetto e suono invariati.

@@ -376,6 +376,43 @@ fgd::DrumPattern FaseGrooveDrumsProcessor::displayedPattern() const
     return fgd::applySegmentOrder (fgd::GrooveEngine::basePattern (settings), settings.segmentOrder);
 }
 
+std::vector<fgd::NoteEvent> FaseGrooveDrumsProcessor::playedNotes (long long firstStep, int numSteps) const
+{
+    auto settings = currentSettings();
+    settings.tempo = lastBpm.load();   // as processBlock plays it
+    fgd::GrooveEngine renderer;
+    const auto ready = std::atomic_load (&preparedPattern);
+    renderer.setPrepared (ready.get());
+    std::vector<fgd::NoteEvent> events, played;
+    const double start = (double) firstStep * fgd::stepLength;
+    // From a beat earlier: a hit pushed ahead of the window's first step still belongs to it.
+    renderer.render (start - 1.0, start + numSteps * fgd::stepLength, settings, events);
+    for (const auto& e : events)
+    {
+        if (! e.isNoteOn())
+            continue;
+        const auto step = stepOf (e.ppq);
+        if (step >= firstStep && step < firstStep + numSteps)
+            played.push_back (e);
+    }
+    return played;
+}
+
+fgd::DrumPattern FaseGrooveDrumsProcessor::playedPattern (long long firstStep, int numSteps) const
+{
+    fgd::DrumPattern shown;
+    for (auto& lane : shown.lanes)
+        lane.assign ((size_t) juce::jmax (0, numSteps), '.');
+    for (const auto& e : playedNotes (firstStep, numSteps))
+    {
+        auto& cell = shown.lanes[(size_t) juce::jlimit (0, fgd::numLanes - 1, e.lane)][(size_t) (stepOf (e.ppq) - firstStep)];
+        const char symbol = e.velocity >= 105 ? 'X' : e.velocity < 55 ? 'g' : 'x';
+        if (cell == '.' || symbol == 'X' || (symbol == 'x' && cell == 'g'))
+            cell = symbol;   // the loudest hit of the step
+    }
+    return shown;
+}
+
 int FaseGrooveDrumsProcessor::segmentAt (int position) const
 {
     const auto* v = segmentParams[(size_t) juce::jlimit (0, fgd::numSegments - 1, position)];
@@ -1468,6 +1505,8 @@ void FaseGrooveDrumsProcessor::processBlock (juce::AudioBuffer<float>& buffer, j
         const int n = fgd::GrooveEngine::patternLength (settings);
         uiStep = (int) (((step % n) + n) % n);
         uiPpq = startPpq;
+        uiSteps = n;
+        playClock.publish (startPpq, blockBeats + linkCorrection, numSamples / juce::jmax (1.0, getSampleRate()));
     }
     else
     {
@@ -1475,6 +1514,7 @@ void FaseGrooveDrumsProcessor::processBlock (juce::AudioBuffer<float>& buffer, j
             engine.allNotesOff (startPpq, events);
         uiStep = -1;
         uiPpq = -1.0;
+        playClock.stop();
     }
     wasRunning = running;
 

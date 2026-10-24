@@ -49,6 +49,7 @@ public:
 
     /** Re-reads the groove and the playhead (editor timer). */
     void refresh();
+    void setPlayStep (int step);   // repaints the two columns that change
     /** The drums' lights (they flash on the hits) and the drum picked in the kit panel. */
     void setLights (const std::array<float, fgd::numLanes>& l, int selected) { lights = l; selectedLane = selected; }
     std::function<void (int lane)> onSelectLane;
@@ -100,6 +101,7 @@ public:
     void mouseExit (const juce::MouseEvent&) override;
 
     void refresh();
+    void setPlayStep (int step);   // repaints the two columns that change
     void setLane (int lane);
     int getLane() const noexcept { return lane; }
 
@@ -377,8 +379,8 @@ private:
 };
 
 //==============================================================================
-/** The groove at a glance, on the main window: every drum's hits and the playhead, only to
-    look at. A click opens the editor. */
+/** The groove at a glance, on the main window: every drum's hits in the bars playing (their
+    variation or fill too) and the playhead, only to look at. A click opens the editor. */
 class GrooveOverview : public juce::Component, public juce::SettableTooltipClient
 {
 public:
@@ -448,6 +450,12 @@ public:
     static constexpr int designWidth = 1180, designHeight = 716;
 
     void timerCallback() override;
+    /** The step lights and the playhead, 60 times a second from the processor's PlayClock; only
+        what changes is repainted. */
+    void showPlayPosition();
+    juce::TimedCallback playTimer { [this] { showPlayPosition(); } };
+    int shownSegment = -2;
+    long long shownWindow = -2;
 
 private:
 
