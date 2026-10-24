@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.22)
 
-project(FaseGrooveDrums VERSION 0.21.1 LANGUAGES C CXX)
+project(FaseGrooveDrums VERSION 0.21.2 LANGUAGES C CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -83,7 +83,9 @@ if(FGD_BUILD_PLUGIN)
         # The family's shared module, vendored by fasegroove/scripts/sync.sh (do not edit here).
         ThirdParty/fasegroove-common/Branding.cpp
         ThirdParty/fasegroove-common/Localisation.cpp
-        ThirdParty/fasegroove-common/Updater.cpp)
+        ThirdParty/fasegroove-common/Updater.cpp
+        ThirdParty/fasegroove-common/EditorWidgets.cpp
+        ThirdParty/fasegroove-common/UpdateOverlay.cpp)
     target_include_directories(FaseGrooveDrums PUBLIC ThirdParty/fasegroove-common)
 
     target_compile_definitions(FaseGrooveDrums PUBLIC

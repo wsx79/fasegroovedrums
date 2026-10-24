@@ -4,6 +4,10 @@
 
 Tutte le modifiche importanti di **Fase Groove Drums**.
 
+## [0.21.2] - 2026-10-24
+
+- Widget dell'editor e finestra di aggiornamento ora vengono dal modulo comune FaseGroove. Aspetto e suono invariati.
+
 ## [0.21.1] - 2026-10-24
 
 - Interno più leggero: parametri letti da un'unica tabella condivisa, timer con TimedCallback di JUCE (modulo comune FaseGroove). Suono invariato.

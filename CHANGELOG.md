@@ -4,6 +4,10 @@
 
 All notable changes to **Fase Groove Drums**.
 
+## [0.21.2] - 2026-10-24
+
+- Editor widgets and the update overlay now come from the shared FaseGroove module. Look and sound unchanged.
+
 ## [0.21.1] - 2026-10-24
 
 - Lighter internals: parameters read through one shared table, timers on JUCE's TimedCallback (shared FaseGroove module). Sound unchanged.
