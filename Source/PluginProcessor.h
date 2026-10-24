@@ -397,11 +397,34 @@ private:
     juce::MidiFile midiFromEvents (const std::vector<fgd::NoteEvent>&, double beats,
                                    const std::vector<fgd::GrooveEngine::Marker>*, ClipPart, const juce::String& name) const;
 
+    /** Objects replaced while the audio thread may still use them: kept here until nobody else
+        holds them, then freed on the message thread (never on the audio thread, mid-block). */
+    template <typename T>
+    struct RetireBin : private juce::Timer
+    {
+        RetireBin() { startTimer (1000); }
+        ~RetireBin() override { stopTimer(); }
+        void retire (std::shared_ptr<const T> old)
+        {
+            if (old == nullptr)
+                return;
+            const juce::ScopedLock lock (mutex);
+            held.push_back (std::move (old));
+        }
+        void timerCallback() override
+        {
+            const juce::ScopedLock lock (mutex);
+            held.erase (std::remove_if (held.begin(), held.end(), [] (const auto& p) { return p.use_count() <= 1; }), held.end());
+        }
+        juce::CriticalSection mutex;
+        std::vector<std::shared_ptr<const T>> held;
+    };
+
     fgd::GrooveEngine engine;
     // The groove worked out ahead on the message thread (the audio thread only reads it), and the
     // old ones kept until the audio thread has let go of them.
     std::shared_ptr<const fgd::GrooveEngine::Prepared> preparedPattern;
-    std::vector<std::shared_ptr<const fgd::GrooveEngine::Prepared>> retiredPatterns;
+    RetireBin<fgd::GrooveEngine::Prepared> retiredPatterns;
     void preparePattern();
     struct PatternTimer : juce::Timer
     {
@@ -421,28 +444,7 @@ private:
     DrumSamples samples;   // read and swapped with std::atomic_load / std::atomic_store
     std::shared_ptr<const DrumSample> previewSample;   // the file being auditioned (atomic_load / atomic_store)
 
-    /** A sample replaced while the audio thread may still play it: kept here until nobody else
-        holds it, then freed on the message thread (never on the audio thread, mid-block). */
-    struct SampleBin : private juce::Timer
-    {
-        SampleBin() { startTimer (1000); }
-        ~SampleBin() override { stopTimer(); }
-        void retire (std::shared_ptr<const DrumSample> old)
-        {
-            if (old == nullptr)
-                return;
-            const juce::ScopedLock lock (mutex);
-            held.push_back (std::move (old));
-        }
-        void timerCallback() override
-        {
-            const juce::ScopedLock lock (mutex);
-            held.erase (std::remove_if (held.begin(), held.end(), [] (const auto& p) { return p.use_count() <= 1; }), held.end());
-        }
-        juce::CriticalSection mutex;
-        std::vector<std::shared_ptr<const DrumSample>> held;
-    };
-    SampleBin sampleBin;
+    RetireBin<DrumSample> sampleBin;   // samples replaced while the audio thread may still play them
     void swapSample (std::shared_ptr<const DrumSample>& slot, std::shared_ptr<const DrumSample> next)
     {
         sampleBin.retire (std::atomic_exchange (&slot, std::move (next)));

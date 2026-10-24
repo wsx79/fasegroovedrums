@@ -240,9 +240,6 @@ void FaseGrooveDrumsProcessor::preparePattern()
 {
     // The groove (and its turnarounds) for the settings as they are now, built here so the audio
     // thread never has to; the one it replaces is freed once the audio thread lets go of it.
-    retiredPatterns.erase (std::remove_if (retiredPatterns.begin(), retiredPatterns.end(),
-                                           [] (const auto& p) { return p.use_count() <= 1; }),
-                           retiredPatterns.end());
     const auto settings = currentSettings();
     const auto current = std::atomic_load (&preparedPattern);
     if (current != nullptr && fgd::GrooveEngine::samePattern (current->key, settings))
@@ -250,8 +247,7 @@ void FaseGrooveDrumsProcessor::preparePattern()
     auto next = std::make_shared<fgd::GrooveEngine::Prepared>();
     fgd::GrooveEngine::prepare (*next, settings);
     std::atomic_store (&preparedPattern, std::shared_ptr<const fgd::GrooveEngine::Prepared> (std::move (next)));
-    if (current != nullptr)
-        retiredPatterns.push_back (current);
+    retiredPatterns.retire (current);
 }
 
 void FaseGrooveDrumsProcessor::applyNoteMap (int map)
@@ -317,8 +313,13 @@ void FaseGrooveDrumsProcessor::cacheParameters()
 
 float FaseGrooveDrumsProcessor::raw (const char* id) const
 {
+    // ParamIDs' constants are passed as they are: the pointer usually matches, so the string
+    // compare is only the fallback (a literal may have another address in another unit).
     for (const auto& p : cachedParams)
-        if (p.id == id || std::strcmp (p.id, id) == 0)
+        if (p.id == id)
+            return p.value != nullptr ? p.value->load() : 0.0f;
+    for (const auto& p : cachedParams)
+        if (std::strcmp (p.id, id) == 0)
             return p.value != nullptr ? p.value->load() : 0.0f;
     jassertfalse;   // not cached: add it to cacheParameters() (the lookup below allocates)
     return raw (juce::String (id));
@@ -1247,12 +1248,9 @@ void FaseGrooveDrumsProcessor::totalRandom()
         rollNewBeat();
     else
     {
-        juce::Array<int> grooves;
-        for (size_t i = 0; i < fgd::drumPatterns().size(); ++i)
-            if (fgd::drumPatterns()[i].category == fgd::grooveCategories()[(size_t) genre])
-                grooves.add ((int) i);
-        if (! grooves.isEmpty())
-            setParameterFromUI (ParamIDs::pattern, (float) grooves[r.nextInt (grooves.size())]);
+        const auto& grooves = fgd::presetsByGenre()[(size_t) genre];
+        if (! grooves.empty())
+            setParameterFromUI (ParamIDs::pattern, (float) grooves[(size_t) r.nextInt ((int) grooves.size())]);
     }
 
     setParameterFromUI (ParamIDs::density, 0.25f + 0.6f * r.nextFloat());
@@ -2001,14 +1999,9 @@ void FaseGrooveDrumsProcessor::updateLink()
                 if (theirs >= 0 && theirs != currentGenre())
                 {
                     const int pattern = juce::roundToInt (raw (ParamIDs::pattern));
-                    const auto& presets = fgd::drumPatterns();
-                    if (juce::isPositiveAndBelow (pattern, (int) presets.size()))
-                        for (size_t i = 0; i < presets.size(); ++i)
-                            if (presets[i].category == fgd::grooveCategories()[(size_t) theirs])
-                            {
-                                setParameterFromUI (ParamIDs::pattern, (float) i);
-                                break;
-                            }
+                    const auto& grooves = fgd::presetsByGenre()[(size_t) theirs];
+                    if (juce::isPositiveAndBelow (pattern, (int) fgd::drumPatterns().size()) && ! grooves.empty())
+                        setParameterFromUI (ParamIDs::pattern, (float) grooves.front());
                     setParameterFromUI (ParamIDs::genre, (float) theirs);
                 }
                 if (xml->hasAttribute ("swing"))
@@ -2056,7 +2049,7 @@ void FaseGrooveDrumsProcessor::updateLink()
     xml.setAttribute ("anchor", juce::String (now.anchor, 3));
     file.getParentDirectory().createDirectory();
     if (xml.writeTo (file))
-        linkSeenText = file.loadFileAsString();
+        linkSeenText = xml.toString();   // what was just written: no need to read it back
     linkShared = now;
 }
 

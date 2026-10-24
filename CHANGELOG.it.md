@@ -4,6 +4,10 @@
 
 Tutte le modifiche importanti di **Fase Groove Drums**.
 
+## [0.20.1] - 2026-10-24
+
+- Editor più leggero: icone e logo in cache, ridisegni, colori e tooltip solo quando cambia qualcosa, preset indicizzati per genere. I campioni sostituiti vengono liberati tramite un unico contenitore. Il suono non cambia.
+
 ## [0.20.0] - 2026-10-23
 
 - NUOVO BEAT più vario in Dance, Neo Soul, Deep e Jackin' (ora suona anche la variante jackin' con hat chiuso); ogni genere mantiene il suo ritmo.

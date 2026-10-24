@@ -4,6 +4,10 @@
 
 All notable changes to **Fase Groove Drums**.
 
+## [0.20.1] - 2026-10-24
+
+- Lighter editor: icons and logo cached, repaints, colours and tooltips only when something changes, presets indexed by genre. Replaced samples are freed through one shared bin. No change to the sound.
+
 ## [0.20.0] - 2026-10-23
 
 - NEW BEAT more varied in Dance, Neo Soul, Deep and Jackin' (the jackin' closed-hat variant now plays); every genre keeps its rhythm.

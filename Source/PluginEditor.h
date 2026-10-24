@@ -663,6 +663,10 @@ private:
     juce::String lastSnapshot;
     int snapshotTicks = 0;
     int uiTicks = 0;
+    int miniMixerKey = -1;                 // mutes + language last drawn by the mini mixer
+    fgd::DrumSettings browserKey;          // the settings the groove browser last showed
+    bool browserKeyValid = false;
+    int browserKeyLanguage = -1;
 
 public:
     /** As in Fase Groove Piano: while a clip is dragged the window shrinks to a small strip, so

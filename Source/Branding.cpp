@@ -30,6 +30,17 @@ namespace
                                  .translated (0.21f * area.getCentreY(), 0.0f));
         g.fillPath (path);
     }
+
+    /** The parsed app icon, kept so a repaint does not re-parse the SVG.
+        Deleted (and rebuilt on demand) when JUCE shuts down. */
+    struct IconCache final : private juce::DeletedAtShutdown
+    {
+        std::unique_ptr<juce::Drawable> icon = Branding::createIcon();
+
+        ~IconCache() override { clearSingletonInstance(); }
+
+        JUCE_DECLARE_SINGLETON_SINGLETHREADED_INLINE (IconCache, false)
+    };
 }
 
 namespace Branding
@@ -61,7 +72,7 @@ namespace Branding
     void drawFullLogo (juce::Graphics& g, juce::Rectangle<float> area)
     {
         auto iconArea = area.removeFromLeft (area.getHeight());
-        if (auto icon = createIcon())
+        if (auto* icon = IconCache::getInstance()->icon.get())
             icon->drawWithin (g, iconArea, juce::RectanglePlacement::centred, 1.0f);
 
         area.removeFromLeft (area.getHeight() * 0.18f);
