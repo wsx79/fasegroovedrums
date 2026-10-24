@@ -6,36 +6,21 @@
 
 #include <array>
 #include "../Source/PluginProcessor.h"
-#include "../Source/Localisation.h"
+#include "Localisation.h"
 #include "../Source/PluginEditor.h"
-#include "../Source/Updater.h"
+#include "Updater.h"
 #include "../Source/GuideDrums.h"
 
 #include <cstdio>
 #include "FamilyAudioEvidence.h"
-#include "../Source/FamilySoundProfiles.h"
+#include "TestSupport.h"
+#include "TestPlayHead.h"
+#include "FamilySoundProfiles.h"
 #include <set>
 
 namespace
 {
-    int failures = 0;
-
-    #define CHECK(cond) \
-        do { if (! (cond)) { ++failures; std::printf ("FAILED %s:%d  %s\n", __FILE__, __LINE__, #cond); } } while (false)
-
-    struct PlayHead : juce::AudioPlayHead
-    {
-        double ppq = 0.0, bpm = 124.0;
-        bool playing = true;
-        juce::Optional<PositionInfo> getPosition() const override
-        {
-            PositionInfo p;
-            p.setBpm (bpm);
-            p.setPpqPosition (ppq);
-            p.setIsPlaying (playing);
-            return p;
-        }
-    };
+    using FaseGrooveTests::PlayHead;
 
     float value (FaseGrooveDrumsProcessor& p, const juce::String& id)
     {

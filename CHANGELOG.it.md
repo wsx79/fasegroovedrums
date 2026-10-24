@@ -4,6 +4,13 @@
 
 Tutte le modifiche importanti di **Fase Groove Drums**.
 
+## [0.21.0] - 2026-10-24
+
+- I groove Afro House hanno sempre una parte di snare.
+- In italiano il pulsante SNARE non viene più tradotto.
+- Le luci della griglia seguono di nuovo il suono (erano in ritardo dalla 0.20.1).
+- Il codice comune FaseGroove ora viene dal modulo comune; i progetti salvati non cambiano.
+
 ## [0.20.1] - 2026-10-24
 
 - Editor più leggero: icone e logo in cache, ridisegni, colori e tooltip solo quando cambia qualcosa, preset indicizzati per genere. I campioni sostituiti vengono liberati tramite un unico contenitore. Il suono non cambia.

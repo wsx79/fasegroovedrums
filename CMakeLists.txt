@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.22)
 
-project(FaseGrooveDrums VERSION 0.20.1 LANGUAGES C CXX)
+project(FaseGrooveDrums VERSION 0.21.0 LANGUAGES C CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -26,6 +26,7 @@ set_target_properties(fgd_engine PROPERTIES POSITION_INDEPENDENT_CODE ON)
 if(FGD_BUILD_TESTS)
     enable_testing()
     add_executable(fgd_engine_tests tests/EngineTests.cpp)
+    target_include_directories(fgd_engine_tests PRIVATE ThirdParty/fasegroove-common)
     target_link_libraries(fgd_engine_tests PRIVATE fgd_engine)
     add_test(NAME engine COMMAND fgd_engine_tests)
 endif()
@@ -78,9 +79,12 @@ if(FGD_BUILD_PLUGIN)
     target_sources(FaseGrooveDrums PRIVATE
         Source/PluginProcessor.cpp
         Source/PluginEditor.cpp
-        Source/Branding.cpp
-        Source/Localisation.cpp
-        Source/Updater.cpp)
+        Source/Product.cpp
+        # The family's shared module, vendored by fasegroove/scripts/sync.sh (do not edit here).
+        ThirdParty/fasegroove-common/Branding.cpp
+        ThirdParty/fasegroove-common/Localisation.cpp
+        ThirdParty/fasegroove-common/Updater.cpp)
+    target_include_directories(FaseGrooveDrums PUBLIC ThirdParty/fasegroove-common)
 
     target_compile_definitions(FaseGrooveDrums PUBLIC
         JUCE_WEB_BROWSER=0

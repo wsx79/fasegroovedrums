@@ -3,6 +3,8 @@
 
 #pragma once
 
+#include "LinkFile.h"
+
 #include "GuideDrums.h"
 #include "engine/GrooveEngine.h"
 
@@ -374,6 +376,7 @@ private:
     };
     LinkState linkShared;                      // what the link file says (or what we wrote)
     juce::String linkSeenText;
+    FaseGroove::PolledFile linkPolled;   // message thread (LinkFile.h)
     std::atomic<double> linkAnchor { -1.0 };   // the shared clock while playing, -1 = none
     LinkState localLinkState() const;
     int currentGenre() const;

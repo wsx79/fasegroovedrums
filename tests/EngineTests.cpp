@@ -14,10 +14,8 @@
 
 using namespace fgd;
 
-static int failures = 0;
+#include "TestSupport.h"
 
-#define CHECK(cond) \
-    do { if (! (cond)) { std::printf ("FAILED %s:%d: %s\n", __FILE__, __LINE__, #cond); ++failures; } } while (false)
 
 namespace
 {
@@ -1418,7 +1416,7 @@ static void testRandomBeatDiversityInMidi()
         const std::string name = grooveCategories()[(size_t) g];
         std::map<std::string, int> beats;                  // onsets only (lane + 16th), no velocity
         std::array<std::set<std::string>, numLanes> laneLines;
-        int sameAsPrevious = 0, fourFloor = 0, backbeat = 0, velocityOnly = 0;
+        int sameAsPrevious = 0, fourFloor = 0, backbeat = 0, velocityOnly = 0, withSnare = 0;
         std::string previous;
 
         for (int seed = 1; seed <= nSeeds; ++seed)
@@ -1473,6 +1471,7 @@ static void testRandomBeatDiversityInMidi()
             const bool halfTime = lines[(size_t) Lane::snare][8] == 'x' || lines[(size_t) Lane::clap][8] == 'x'
                                || lines[(size_t) Lane::rim][8] == 'x';
             backbeat += back || halfTime ? 1 : 0;
+            withSnare += lines[(size_t) Lane::snare].find ('x') != std::string::npos ? 1 : 0;
         }
 
         int top = 0, lanesThatMove = 0;
@@ -1489,7 +1488,14 @@ static void testRandomBeatDiversityInMidi()
         CHECK (velocityOnly * 10 <= nSeeds * 3);
         CHECK (lanesThatMove >= 4);                      // more than the hats change
         if (name == "Afro & Latin")
+        {
             CHECK (backbeat * 2 >= nSeeds);              // with the clave the clap often gives way
+            CHECK (withSnare == nSeeds);                 // the snare always has a part (sparse, ghosted)
+            CHECK (laneLines[(size_t) Lane::snare].size() >= 4);   // and it varies with the seed
+            for (const auto& preset : drumPatterns())
+                if (std::string (preset.category) == name)
+                    CHECK (countHits (preset[Lane::snare]) > 0);
+        }
         else
             CHECK (backbeat >= nSeeds - 2);
 

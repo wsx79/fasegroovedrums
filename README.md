@@ -173,7 +173,9 @@ Source/engine/GrooveEngine.*  the sequencer: swing, humanize, fills, crashes -> 
 Source/GuideDrums.h           the synthesized guide kits
 Source/PluginProcessor.*      parameters, tempo sync, MIDI in/out, clip export, user grid
 Source/PluginEditor.*         user interface, grid and credits page
-Source/Branding.*             logo, name, links
+Source/Product.cpp            name, links and texts of this product for the shared module
+ThirdParty/fasegroove-common/ shared family module (updater, translations, logo, theme), copied from
+                              the fasegroove repo by its scripts/sync.sh: edit it there
 tests/EngineTests.cpp         engine tests (no JUCE dependency)
 tests/PluginTests.cpp         plug-in tests: state, grid, styles, MIDI export, DAW transport
 ```

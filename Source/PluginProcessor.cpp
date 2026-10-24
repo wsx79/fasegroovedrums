@@ -2,6 +2,8 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 #include "PluginProcessor.h"
+#include "LinkFile.h"
+#include "MidiExport.h"
 
 #include <cstring>
 #include "FamilySoundProfiles.h"
@@ -1706,16 +1708,7 @@ juce::MidiFile FaseGrooveDrumsProcessor::midiFromEvents (const std::vector<fgd::
 
 bool FaseGrooveDrumsProcessor::writeMidiFileSafely (const juce::MidiFile& midi, const juce::File& target)
 {
-    juce::TemporaryFile temp (target);
-    {
-        juce::FileOutputStream out (temp.getFile());
-        if (! out.openedOk() || ! midi.writeTo (out))
-            return false;
-        out.flush();
-        if (out.getStatus().failed())
-            return false;
-    }
-    return temp.overwriteTargetFileWithTemporary();
+    return FaseGroove::writeMidiFileSafely (midi, target);
 }
 
 juce::MidiFile FaseGrooveDrumsProcessor::createMidiClip (int bars, ClipPart part) const
@@ -1989,7 +1982,7 @@ void FaseGrooveDrumsProcessor::updateLink()
 
     // Someone else changed it: take what changed.
     if (file.existsAsFile())
-        if (const auto text = file.loadFileAsString(); text != linkSeenText)
+        if (const auto text = linkPolled.read (file); text != linkSeenText)
         {
             linkSeenText = text;
             if (auto xml = juce::parseXML (text); xml != nullptr && xml->getStringAttribute ("instance") != me)

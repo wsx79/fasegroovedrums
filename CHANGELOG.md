@@ -4,6 +4,13 @@
 
 All notable changes to **Fase Groove Drums**.
 
+## [0.21.0] - 2026-10-24
+
+- Afro House grooves always have a snare part.
+- In Italian the SNARE button is no longer translated.
+- The grid lights follow the sound again (they lagged since 0.20.1).
+- Shared FaseGroove code now comes from the common module; no change to saved projects.
+
 ## [0.20.1] - 2026-10-24
 
 - Lighter editor: icons and logo cached, repaints, colours and tooltips only when something changes, presets indexed by genre. Replaced samples are freed through one shared bin. No change to the sound.
