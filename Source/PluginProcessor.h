@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include "LinkClient.h"
 #include "LinkFile.h"
 #include "PlayClock.h"
 #include "RawParameters.h"
@@ -57,7 +58,8 @@ namespace ParamIDs
     inline juce::String laneSwing (int lane) { return "laneSwing" + juce::String (lane + 1); }   // the share of the swing a drum takes
 }
 
-class FaseGrooveDrumsProcessor : public juce::AudioProcessor
+class FaseGrooveDrumsProcessor : public juce::AudioProcessor,
+                                 private FaseGroove::LinkClient::Product
 {
 public:
     FaseGrooveDrumsProcessor();
@@ -381,25 +383,14 @@ private:
     void setTemplate (const juce::String& name, const std::array<float, 16>& timing, const std::array<float, 16>& level);
 
     std::atomic<bool> linkOn { false };
-    // What the linked plug-ins share: genre, swing, tempo, DAW sync and the play button's clock
-    // (anchor: the system time, in high-resolution ms, at which that clock was at beat 0).
-    struct LinkState
-    {
-        int genre = -2;
-        float swing = -1.0f, bpm = -1.0f;
-        bool sync = false, playing = false, paused = false;
-        double anchor = -1.0;
-        bool sameAs (const LinkState& o) const noexcept
-        {
-            return genre == o.genre && std::abs (swing - o.swing) < 0.001f && std::abs (bpm - o.bpm) < 0.01f && sync == o.sync
-                && playing == o.playing && paused == o.paused && std::abs (anchor - o.anchor) < 1.0;
-        }
-    };
-    LinkState linkShared;                      // what the link file says (or what we wrote)
-    juce::String linkSeenText;
-    FaseGroove::PolledFile linkPolled;   // message thread (LinkFile.h)
+    using LinkState = FaseGroove::LinkState;
     std::atomic<double> linkAnchor { -1.0 };   // the shared clock while playing, -1 = none
-    LinkState localLinkState() const;
+    // Link.xml (LinkClient.h); the audio thread keeps the beat on a tempo change here.
+    FaseGroove::LinkClient link { *this, previewOn, previewFromStart, linkAnchor, false };
+    LinkState localLinkState() const override;
+    juce::String linkGenreName (int genre) const override;
+    void followLinkedGroove (const juce::XmlElement& theirs) override;
+    void setLinkedParameter (const char* id, float plainValue) override { setParameterFromUI (id, plainValue); }
     int currentGenre() const;
     juce::TimedCallback linkTimer { [this] { updateLink(); } };
     int baseStep (int displayedStep) const;   // the step of the user pattern shown at a displayed step

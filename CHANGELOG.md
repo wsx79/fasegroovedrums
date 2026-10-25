@@ -4,6 +4,11 @@
 
 All notable changes to **Fase Groove Drums**.
 
+## [0.21.5] - 2026-10-25
+
+- Changing the language keeps the selected item of every menu.
+- Link between FaseGroove plugins from the shared module (same Link.xml protocol).
+
 ## [0.21.4] - 2026-10-25
 
 - Safer updates: the download is checked (SHA-256, archive paths, size and time limits) and the installed version stays intact if anything fails. Same notice and buttons.
