@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.22)
 
-project(FaseGrooveDrums VERSION 0.21.3 LANGUAGES C CXX)
+project(FaseGrooveDrums VERSION 0.21.4 LANGUAGES C CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -100,6 +100,7 @@ if(FGD_BUILD_PLUGIN)
         PRIVATE
             fgd_engine
             juce::juce_audio_utils
+            juce::juce_cryptography   # the updater checks downloads (SHA-256)
         PUBLIC
             juce::juce_recommended_config_flags
             juce::juce_recommended_lto_flags
@@ -109,7 +110,7 @@ if(FGD_BUILD_PLUGIN)
     if(FGD_BUILD_TESTS)
         juce_add_console_app(fgd_plugin_tests PRODUCT_NAME "Fase Groove Drums Tests")
         target_sources(fgd_plugin_tests PRIVATE tests/PluginTests.cpp)
-        target_link_libraries(fgd_plugin_tests PRIVATE FaseGrooveDrums juce::juce_audio_utils)
+        target_link_libraries(fgd_plugin_tests PRIVATE FaseGrooveDrums juce::juce_audio_utils juce::juce_cryptography)
         add_test(NAME plugin COMMAND fgd_plugin_tests)
     endif()
 endif()

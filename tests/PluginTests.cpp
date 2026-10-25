@@ -14,6 +14,7 @@
 #include <cstdio>
 #include "FamilyAudioEvidence.h"
 #include "TestSupport.h"
+#include "TestUpdater.h"
 #include "TestPlayHead.h"
 #include "FamilySoundProfiles.h"
 #include <set>
@@ -1263,6 +1264,7 @@ int main (int argc, char** argv)
     testV020();
     testTranslations();
     testUpdater();
+    FaseGrooveTests::checkUpdaterSafeguards();
     testGenreSwing();
     testV080();
     testGuideVoices();
