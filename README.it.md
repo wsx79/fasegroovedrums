@@ -80,7 +80,7 @@ Le versioni di sviluppo sono in **[Actions](https://github.com/wsx79/fasegrooved
 |---|---|---|
 | Windows 10/11 (64 bit) | `FaseGrooveDrums-Windows-Setup.exe` (installer, consigliato) | VST3 + Standalone |
 | Windows 10/11 (64 bit) | `FaseGrooveDrums-Windows.zip` | VST3 + Standalone (installazione manuale) |
-| macOS 10.13+ (Intel e Apple Silicon) | `FaseGrooveDrums-macOS.zip` | VST3 + AU + Standalone |
+| macOS 11+ (Intel e Apple Silicon) | `FaseGrooveDrums-macOS.zip` | VST3 + AU + Standalone |
 | Linux | `FaseGrooveDrums-Linux.zip` | VST3 + Standalone |
 
 Per installarlo segui la [guida](docs/GUIDA.md#1-installazione).
