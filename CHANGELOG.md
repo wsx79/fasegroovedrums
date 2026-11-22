@@ -4,11 +4,11 @@
 
 All notable changes to **Fase Groove Drums**.
 
-## Unreleased
+## [0.21.8] — 2026-11-22
 
 - The guide drum synth uses an interpolated sine table instead of computing a sine every sample: same sound, less CPU.
 
-## [0.21.7] — 2026-11-01
+## 0.21.7 — 2026-11-01
 
 - Fix macOS builds incorrectly requiring the runner OS (macOS 26, or 15 for Arranger). Apply the macOS 11 deployment target before compiler initialization, including existing CMake caches.
 - Verify both Intel and Apple Silicon deployment targets and bundle metadata before signing; align the documented minimum to macOS 11+.
