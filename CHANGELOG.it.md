@@ -4,6 +4,10 @@
 
 Tutte le modifiche importanti di **Fase Groove Drums**.
 
+## Non ancora rilasciato
+
+- Il synth guida della batteria usa una tabella di seno interpolata invece di calcolare un seno a ogni campione: stesso suono, meno CPU.
+
 ## [0.21.7] — 2026-11-01
 
 - Corregge le build macOS che richiedevano il sistema del runner (macOS 26, oppure 15 per Arranger). Applica il target macOS 11 prima dell’inizializzazione dei compilatori, anche con cache CMake esistenti.
