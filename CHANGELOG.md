@@ -4,7 +4,12 @@
 
 All notable changes to **Fase Groove Drums**.
 
-## [0.21.8] — 2026-11-22
+## [0.21.9] — 2026-11-23
+
+- Afro House: the clap can come from the first kick (on all four beats with a soft snare, on 1 and 3 with a rim on 2 and 4, or an accent on the one every other bar); a soft kick push into beat 3; the congas play three drums (tumba before beats 3 and 1, quinto on the soft offbeats).
+- New kit **Afro Organic**: deep round kick without the click, woody snare, clap with its room, soft airy hats.
+
+## 0.21.8 — 2026-11-22
 
 - The guide drum synth uses an interpolated sine table instead of computing a sine every sample: same sound, less CPU.
 

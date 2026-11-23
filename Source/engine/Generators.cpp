@@ -490,6 +490,20 @@ DrumPattern makeRandomPattern (std::uint32_t seed, float density, int genre)
             setBar (Lane::snare, accent.pick ({ ".... .... x... ....", ".... ..g. x... ..g.", "...g ..x. ...g x...",
                                                 ".g.. x... .g.. ..x.", "..g. .... ..x. .g..", ".... g..x .... g.x.",
                                                 "...x .... ..g. x..g", ".... .... x..g ..g." }));
+
+        // From the first kick: the clap (or snap) on all four beats with a soft snare on 2 and 4, on 1 and 3
+        // with a dry rim on 2 and 4, or an accent on the one every other bar over the backbeat.
+        switch (accent.nextInt (5))
+        {
+            case 0:  setBar (Lane::clap, "x... x... x... x..."); setBar (Lane::snare, ".... g... .... g..."); break;
+            case 1:  setBar (Lane::clap, "x... .... x... ...."); if (! std::any_of (p[Lane::rim].begin(), p[Lane::rim].end(), isHit)) setBar (Lane::rim, ".... x... .... x..."); break;
+            case 2:  setLoop (Lane::clap, "X... x... .... x... .... x... .... x..."); break;
+            default: break;
+        }
+        // The rolling afro kick: a soft push into beat 3.
+        if (accent.chance (0.3f))
+            for (int bar = 0; bar < randomBeatLength; bar += 16)
+                p[Lane::kick][(size_t) (bar + 7)] = 'g';
     }
     else if (genre == deep && accent.chance (0.5f))
     {

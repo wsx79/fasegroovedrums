@@ -4,7 +4,12 @@
 
 Tutte le modifiche importanti di **Fase Groove Drums**.
 
-## [0.21.8] — 2026-11-22
+## [0.21.9] — 2026-11-23
+
+- Afro House: il clap può partire dal primo kick (su tutti e quattro i tempi con uno snare leggero, sull'1 e sul 3 con il rim sul 2 e sul 4, o un accento sull'uno ogni due battute); una leggera spinta del kick verso il 3; le congas suonano tre tamburi (tumba prima del 3 e dell'1, quinto sui controtempi leggeri).
+- Nuovo kit **Afro Organic**: kick profondo e rotondo senza click, snare legnoso, clap con la sua stanza, hat morbidi e ariosi.
+
+## 0.21.8 — 2026-11-22
 
 - Il synth guida della batteria usa una tabella di seno interpolata invece di calcolare un seno a ogni campione: stesso suono, meno CPU.
 
