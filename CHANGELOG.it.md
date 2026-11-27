@@ -4,7 +4,7 @@
 
 Tutte le modifiche importanti di **Fase Groove Drums**.
 
-## Non ancora rilasciato
+## [0.21.10] — 2026-11-27
 
 - Hi-hat: un hi-hat chiuso sullo stesso step di uno aperto (entro 40 ms) non viene suonato, e un aperto strozza un chiuso partito un attimo prima: un hi-hat non suona mai entrambi.
 

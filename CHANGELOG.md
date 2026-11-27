@@ -4,7 +4,7 @@
 
 All notable changes to **Fase Groove Drums**.
 
-## Unreleased
+## [0.21.10] — 2026-11-27
 
 - Hi-hat: a closed hat on the same step as an open one (within 40 ms) is not played, and an open hat chokes a closed one that started a moment before it: one hi-hat never sounds both.
 
