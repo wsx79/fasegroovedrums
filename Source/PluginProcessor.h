@@ -374,6 +374,7 @@ private:
 
     // The user pattern, readable from the audio thread without locks.
     std::array<std::array<std::atomic<char>, fgd::userPatternLength>, fgd::numLanes> userGrid;
+    std::atomic<int> userGenre { -1 };   // the genre of the groove the user pattern was copied from (-1: drawn from scratch)
     std::array<std::array<std::atomic<int>, fgd::userPatternLength>, fgd::numLanes> userVelocity;   // 0 = automatic
     std::array<std::array<std::atomic<int>, fgd::userPatternLength>, fgd::numLanes> userChance, userRoll;   // 0 = always / one hit
     std::array<std::array<std::atomic<char>, 16>, fgd::numLanes> customFill;

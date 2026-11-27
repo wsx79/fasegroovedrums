@@ -3238,8 +3238,9 @@ FaseGrooveDrumsEditor::FaseGrooveDrumsEditor (FaseGrooveDrumsProcessor& p)
         if (const auto* display = juce::Desktop::getInstance().getDisplays().getPrimaryDisplay())
             scale = juce::jmin ((float) display->userArea.getWidth() * 0.9f / (float) designWidth,
                                 (float) display->userArea.getHeight() * 0.88f / (float) designHeight);
+        scale = juce::jlimit (0.6f, 1.25f, scale);   // the first size is capped; a size you chose comes back as it was
     }
-    scale = juce::jlimit (0.6f, 1.25f, scale);
+    scale = juce::jlimit (0.55f, 2.0f, scale);
     setResizable (true, true);
     setResizeLimits ((int) (designWidth * 0.55f), (int) (designHeight * 0.55f), designWidth * 2, designHeight * 2);
     getConstrainer()->setFixedAspectRatio ((double) designWidth / (double) designHeight);

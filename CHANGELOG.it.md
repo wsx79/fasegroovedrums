@@ -4,6 +4,15 @@
 
 Tutte le modifiche importanti di **Fase Groove Drums**.
 
+## [0.21.11] — 2026-11-27
+
+- Un preset modificato tiene il suo genere: pocket, accenti, conghe, fill e regole di sezione restano (il build-up di un Two-Step non diventa più cassa in quattro). Il genere si salva nel progetto e nei file groove.
+- Afro e Latin: la tumba è la Low Conga (64, era High Timbale) e suona più grave anche con i campioni; conghe e clave suonano negli intro, negli outro e dalla prima battuta della main; BASS SPACE tiene le loro spinte di cassa.
+- Humanize tiene l'accento swing sulla "a" (jackin', garage); jackin' tiene cowbell e tom dalla prima battuta.
+- Export audio: un loop suona le stesse battute dell'export MIDI, con la coda riportata all'inizio; gli stem degli hi-hat tengono lo strozzamento, così gli stem sommano al mix.
+- Una dimensione della finestra sopra 1,25 torna come l'hai lasciata; gli inviluppi del kit guida costano molta meno CPU; nessuna allocazione sul thread audio per il MIDI in uscita.
+- Le note di rilascio elencano solo questa versione, con l'installer Windows.
+
 ## [0.21.10] — 2026-11-27
 
 - Hi-hat: un hi-hat chiuso sullo stesso step di uno aperto (entro 40 ms) non viene suonato, e un aperto strozza un chiuso partito un attimo prima: un hi-hat non suona mai entrambi.
