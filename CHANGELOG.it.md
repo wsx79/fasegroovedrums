@@ -4,6 +4,10 @@
 
 Tutte le modifiche importanti di **Fase Groove Drums**.
 
+## Non ancora rilasciato
+
+- Hi-hat: un hi-hat chiuso sullo stesso step di uno aperto (entro 40 ms) non viene suonato, e un aperto strozza un chiuso partito un attimo prima: un hi-hat non suona mai entrambi.
+
 ## [0.21.9] — 2026-11-23
 
 - Afro House: il clap può partire dal primo kick (su tutti e quattro i tempi con uno snare leggero, sull'1 e sul 3 con il rim sul 2 e sul 4, o un accento sull'uno ogni due battute); una leggera spinta del kick verso il 3; le congas suonano tre tamburi (tumba prima del 3 e dell'1, quinto sui controtempi leggeri).

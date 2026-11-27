@@ -4,6 +4,10 @@
 
 All notable changes to **Fase Groove Drums**.
 
+## Unreleased
+
+- Hi-hat: a closed hat on the same step as an open one (within 40 ms) is not played, and an open hat chokes a closed one that started a moment before it: one hi-hat never sounds both.
+
 ## [0.21.9] — 2026-11-23
 
 - Afro House: the clap can come from the first kick (on all four beats with a soft snare, on 1 and 3 with a rim on 2 and 4, or an accent on the one every other bar); a soft kick push into beat 3; the congas play three drums (tumba before beats 3 and 1, quinto on the soft offbeats).
