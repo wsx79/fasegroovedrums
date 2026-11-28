@@ -4,7 +4,7 @@
 
 Tutte le modifiche importanti di **Fase Groove Drums**.
 
-## [0.21.11] — 2026-11-27
+## [0.22.0] — 2026-11-28
 
 - Un preset modificato tiene il suo genere: pocket, accenti, conghe, fill e regole di sezione restano (il build-up di un Two-Step non diventa più cassa in quattro). Il genere si salva nel progetto e nei file groove.
 - Afro e Latin: la tumba è la Low Conga (64, era High Timbale) e suona più grave anche con i campioni; conghe e clave suonano negli intro, negli outro e dalla prima battuta della main; BASS SPACE tiene le loro spinte di cassa.
@@ -17,6 +17,9 @@ Tutte le modifiche importanti di **Fase Groove Drums**.
 - Caricare un file groove svuota le lane che non ha e prende la sua lunghezza; i campioni MP3 si caricano anche su Linux; il riverbero sfuma e riparte pulito quando lo rialzi; un pad suonato a mano dura 150 ms in un campionatore.
 - La griglia ridisegna solo ciò che cambia; una modifica alle impostazioni è pronta già dal blocco successivo (il thread audio non costruisce mai un groove).
 - Le build di rilascio controllano che tag, versione e changelog coincidano; i plugin vengono validati con pluginval; tutte le intestazioni del changelog hanno la stessa forma.
+- Con il LINK, un groove Latin House resta Latin House quando Piano o Guitar mandano Afro & Latin (saltava al primo groove Afro al loro play, swing o tempo).
+- La griglia segue tutto ciò che mostra (luci, batteria selezionata, note, campioni, velocity, chance e roll cambiati da altri pannelli).
+- STYLE e RESET preparano il groove una volta sola, non una per impostazione.
 
 ## [0.21.10] — 2026-11-27
 

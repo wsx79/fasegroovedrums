@@ -51,7 +51,21 @@ public:
     void refresh();
     void setPlayStep (int step);   // repaints the two columns that change
     /** The drums' lights (they flash on the hits) and the drum picked in the kit panel. */
-    void setLights (const std::array<float, fgd::numLanes>& l, int selected) { lights = l; selectedLane = selected; }
+    void setLights (const std::array<float, fgd::numLanes>& l, int selected)
+    {
+        // a light that moved repaints its lane's header; another selected lane repaints the grid
+        for (int lane = 0; lane < fgd::numLanes; ++lane)
+            if (std::abs (l[(size_t) lane] - lights[(size_t) lane]) > 1.0f / 64.0f)
+            {
+                lights[(size_t) lane] = l[(size_t) lane];
+                repaint (headerBounds (lane).getSmallestIntegerContainer().expanded (1));
+            }
+        if (selected != selectedLane)
+        {
+            selectedLane = selected;
+            repaint();
+        }
+    }
     std::function<void (int lane)> onSelectLane;
 
     static constexpr int headerWidth = 112;
@@ -76,6 +90,7 @@ private:
     fgd::DrumPattern pattern;
     std::array<bool, fgd::numLanes> muted {};
     std::array<float, fgd::numLanes> lights {};
+    std::uint64_t shownSignature = 0;   // everything paint reads, as last drawn
     int playStep = -1, selectedLane = -1;
     int hoverLane = -1, hoverStep = -1;
     bool hoverDice = false;

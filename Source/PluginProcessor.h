@@ -415,6 +415,14 @@ private:
     std::shared_ptr<const fgd::GrooveEngine::Prepared> preparedPattern;
     FaseGroove::RetireBin<fgd::GrooveEngine::Prepared> retiredPatterns;   // RetireBin.h
     void preparePattern();
+    // A run of parameter changes (STYLE, RESET): the groove is prepared once, when the last one is made.
+    int batchedChanges = 0;
+    struct BatchedChanges
+    {
+        explicit BatchedChanges (FaseGrooveDrumsProcessor& p) : owner (p) { ++owner.batchedChanges; }
+        ~BatchedChanges() { if (--owner.batchedChanges == 0 && juce::MessageManager::existsAndIsCurrentThread()) owner.preparePattern(); }
+        FaseGrooveDrumsProcessor& owner;
+    };
     juce::TimedCallback patternTimer { [this] { preparePattern(); } };
     std::array<juce::String, fgd::numLanes> missingSamples;   // message thread
     double lastLinkAnchor = -1.0, lastLinkBpm = 0.0;           // audio thread: the linked clock as last played

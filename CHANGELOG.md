@@ -4,7 +4,7 @@
 
 All notable changes to **Fase Groove Drums**.
 
-## [0.21.11] — 2026-11-27
+## [0.22.0] — 2026-11-28
 
 - An edited preset keeps its genre: pocket, accents, congas, fills and section rules stay (a Two-Step build-up no longer turns four-on-the-floor). The genre is saved with the project and in groove files.
 - Afro and Latin: the tumba is the Low Conga (64, it was High Timbale) and sounds lower with samples too; congas and clave play in intros, outros and from the first bar of the main; BASS SPACE keeps their kick pushes.
@@ -17,6 +17,9 @@ All notable changes to **Fase Groove Drums**.
 - Loading a groove file clears the lanes it does not have and takes its length; MP3 samples load on Linux too; the reverb fades out and starts clean when turned up again; a pad played by hand rings 150 ms in a sampler.
 - The grid redraws only what changed; a settings change is ready for the very next block (the audio thread never builds a groove).
 - Release builds check that the tag matches the version and the changelog; plug-ins are validated with pluginval; every changelog heading has the same form.
+- With LINK, a Latin House groove stays Latin House when Piano or Guitar send Afro & Latin (it jumped to the first Afro groove on their play, swing or tempo).
+- The grid follows everything it shows (lights, selected drum, notes, samples, velocity, chance and roll changed from other panels).
+- STYLE and RESET prepare the groove once, not once per setting.
 
 ## [0.21.10] — 2026-11-27
 

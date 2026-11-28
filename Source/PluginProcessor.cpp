@@ -318,7 +318,7 @@ void FaseGrooveDrumsProcessor::setParameterFromUI (const juce::String& id, float
         p->endChangeGesture();
     }    // a change made here (the message thread) is ready for the very next audio block: the audio thread
     // never builds a groove, and a stale one would play until the next timer tick
-    if (juce::MessageManager::existsAndIsCurrentThread())
+    if (batchedChanges == 0 && juce::MessageManager::existsAndIsCurrentThread())
         preparePattern();
 }
 
@@ -1302,6 +1302,7 @@ juce::StringArray FaseGrooveDrumsProcessor::styleNames()
 
 void FaseGrooveDrumsProcessor::applyStyle (int index)
 {
+    const BatchedChanges batch (*this);   // one groove prepared at the end, not one per parameter
     if (! juce::isPositiveAndBelow (index, (int) std::size (styles)))
         return;
 
@@ -1348,6 +1349,7 @@ void FaseGrooveDrumsProcessor::applyStyle (int index)
 
 void FaseGrooveDrumsProcessor::resetToDefaults()
 {
+    const BatchedChanges batch (*this);   // one groove prepared at the end, not one per parameter
     for (auto* p : getParameters())
         if (auto* ranged = dynamic_cast<juce::RangedAudioParameter*> (p))
         {
@@ -2057,7 +2059,9 @@ void FaseGrooveDrumsProcessor::followLinkedGroove (const juce::XmlElement& xml)
 {
     // Their genre: the first groove of it (unless this one already is), and the dice's genre.
     const int theirs = fgd::categoryIndex (xml.getStringAttribute ("genre").toStdString());
-    if (theirs >= 0 && theirs != currentGenre())
+    // Latin House links as Afro & Latin (Piano and Guitar know no Latin House): their Afro & Latin is ours too
+    const bool sameFamily = theirs == fgd::categoryIndex ("Afro & Latin") && currentGenre() == fgd::categoryIndex ("Latin House");
+    if (theirs >= 0 && theirs != currentGenre() && ! sameFamily)
     {
         const int pattern = juce::roundToInt (raw (ParamIDs::pattern));
         const auto& grooves = fgd::presetsByGenre()[(size_t) theirs];

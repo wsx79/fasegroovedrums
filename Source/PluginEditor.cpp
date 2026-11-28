@@ -51,18 +51,28 @@ DrumGrid::DrumGrid (FaseGrooveDrumsProcessor& p) : processor (p)
 
 void DrumGrid::refresh()
 {
-    // 30 times a second: the whole grid is redrawn only when the groove or a mute changed; the
-    // playhead moves with setPlayStep, which repaints its two columns.
+    // 30 times a second: the whole grid is redrawn only when something it draws changed (the groove, a
+    // mute, a lane's note or sample, the steps' velocity, chance and roll); the playhead moves with
+    // setPlayStep, which repaints its two columns, and the lights with setLights.
     auto next = processor.displayedPattern();
-    bool changed = next.lanes != pattern.lanes;
+    std::uint64_t h = 1469598103934665603ULL;
+    auto mix = [&h] (std::uint64_t v) { h = (h ^ v) * 1099511628211ULL; };
+    for (const auto& lane : next.lanes)
+        for (char c : lane) mix ((std::uint64_t) (unsigned char) c);
+    const int steps = processor.steps();
     for (int l = 0; l < fgd::numLanes; ++l)
     {
         const bool m = processor.isLaneMuted (l);
-        changed = changed || muted[(size_t) l] != m;
         muted[(size_t) l] = m;
+        mix (m ? 1u : 2u);
+        mix ((std::uint64_t) processor.laneNote (l));
+        mix ((std::uint64_t) processor.samplePath (l).hashCode64());
+        for (int st = 0; st < steps; ++st)
+            mix (((std::uint64_t) processor.stepVelocity (l, st) << 16) ^ ((std::uint64_t) processor.stepChance (l, st) << 8) ^ (std::uint64_t) processor.stepRoll (l, st));
     }
-    if (changed)
+    if (h != shownSignature)
     {
+        shownSignature = h;
         pattern = std::move (next);
         playStep = processor.displayStep();
         repaint();
