@@ -327,6 +327,7 @@ fgd::DrumSettings FaseGrooveDrumsProcessor::currentSettings() const
 {
     fgd::DrumSettings s;
     s.pattern = juce::roundToInt (raw (ParamIDs::pattern));
+    s.userGenre = userGenre.load();   // once, not per lane and step
     s.grooveBars = juce::roundToInt (raw (ParamIDs::partLength)) == 1 ? 4 : 2;
     s.swing = raw (ParamIDs::swing);
     s.velocity = juce::roundToInt (raw (ParamIDs::velocity));
@@ -354,7 +355,6 @@ fgd::DrumSettings FaseGrooveDrumsProcessor::currentSettings() const
         for (int i = 0; i < fgd::userPatternLength; ++i)
         {
             s.user[(size_t) l][(size_t) i] = userGrid[(size_t) l][(size_t) i].load();
-    s.userGenre = userGenre.load();
             s.userVelocity[(size_t) l][(size_t) i] = (unsigned char) juce::jlimit (0, 127, userVelocity[(size_t) l][(size_t) i].load());
             s.userChance[(size_t) l][(size_t) i] = (unsigned char) juce::jlimit (0, 100, userChance[(size_t) l][(size_t) i].load());
             s.userRoll[(size_t) l][(size_t) i] = (unsigned char) juce::jlimit (0, 4, userRoll[(size_t) l][(size_t) i].load());

@@ -20,6 +20,7 @@ All notable changes to **Fase Groove Drums**.
 - With LINK, a Latin House groove stays Latin House when Piano or Guitar send Afro & Latin (it jumped to the first Afro groove on their play, swing or tempo).
 - The grid follows everything it shows (lights, selected drum, notes, samples, velocity, chance and roll changed from other panels).
 - STYLE and RESET prepare the groove once, not once per setting.
+- The user groove's genre is read once per block, not once per lane and step.
 
 ## [0.21.10] — 2026-11-27
 
