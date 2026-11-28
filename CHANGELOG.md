@@ -4,6 +4,10 @@
 
 All notable changes to **Fase Groove Drums**.
 
+## [0.23.0] — 2026-11-28
+
+- Notes ending in a host's count-in or pre-roll (before beat 0) get their note-off: they hung, and through MIDI out they held external samplers too.
+
 ## [0.22.0] — 2026-11-28
 
 - An edited preset keeps its genre: pocket, accents, congas, fills and section rules stay (a Two-Step build-up no longer turns four-on-the-floor). The genre is saved with the project and in groove files.

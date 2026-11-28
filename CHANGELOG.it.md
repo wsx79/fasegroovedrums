@@ -4,6 +4,10 @@
 
 Tutte le modifiche importanti di **Fase Groove Drums**.
 
+## [0.23.0] — 2026-11-28
+
+- Le note che finiscono nel count-in o nel pre-roll dell'host (prima del beat 0) ricevono il note-off: restavano appese, e tramite il MIDI out bloccavano anche i campionatori esterni.
+
 ## [0.22.0] — 2026-11-28
 
 - Un preset modificato tiene il suo genere: pocket, accenti, conghe, fill e regole di sezione restano (il build-up di un Two-Step non diventa più cassa in quattro). Il genere si salva nel progetto e nei file groove.
