@@ -37,9 +37,6 @@ int noteMapNote (int map, int lane) noexcept;
     neighbours too (e.g. 35 = kick, 40 = snare, 44 = closed hat, 41..50 = toms). */
 int laneForGeneralMidiNote (int note) noexcept;
 
-/** Name of a General MIDI drum note ("Acoustic Bass Drum", "Hand Clap" ...), or "". */
-const char* generalMidiDrumName (int note) noexcept;
-
 //==============================================================================
 /** A drum groove: one line per lane, one character per 16th step:
       'X' accent   'x' hit   'g' ghost note (very soft)   'f' flam (a soft grace note just before)   '.' rest
@@ -66,6 +63,9 @@ void normalisePattern (DrumPattern&, int minimumLength = 16);
 const std::vector<DrumPattern>& drumPatterns();
 
 /** Genre headings of the groove menu, in display order. */
+/** Name of a General MIDI drum note ("Acoustic Bass Drum", "Hand Clap" ...), or "". */
+const char* generalMidiDrumName (int note) noexcept;
+
 const std::vector<const char*>& grooveCategories();
 int categoryIndex (const std::string& category) noexcept;   // -1 when unknown
 
@@ -88,3 +88,4 @@ constexpr int randomBeatLength = 32;    // a random beat: two bars
 void fitPattern (DrumPattern&, int length);
 
 } // namespace fgd
+

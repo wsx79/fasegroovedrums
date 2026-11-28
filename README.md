@@ -33,9 +33,9 @@ then **drag it into your DAW as a MIDI clip** and play it with your own drums.
 
 ## Features
 
-- 🥁 **70 grooves in 13 genres**, the same as Fase Groove Piano: Piano House, Soulful, Deep,
+- 🥁 **78 grooves in 14 genres**, the 13 of Fase Groove Piano plus Latin House: Piano House, Soulful, Deep,
   Gospel, Jackin', Jackin' Piano, Garage & UK, Afro & Latin, Funky & Disco, '90s Piano House,
-  Neo Soul & Broken, Chill & Pads, Dance Stabs.
+  Neo Soul & Broken, Chill & Pads, Dance Stabs, Latin House.
 - 🎲 **NEW BEAT:** a random but musical beat in the genre you choose, from bare to busy (Density).
 - 🎚️ **STYLE:** one-click setups by genre (groove, swing, feel, fills, kit) and **RESET**.
 - ✏️ **Editable grid:** 13 drums × 32 steps (two bars). Hit, accent, ghost note and flam; drag to

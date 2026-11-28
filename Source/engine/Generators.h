@@ -33,10 +33,6 @@ bool sectionAllowsFills (Section section) noexcept;
     density 0..1 goes from a bare kick-clap-hat to busy 16ths and percussion. Same seed = same beat. */
 DrumPattern makeRandomPattern (std::uint32_t seed, float density, int genre);
 
-/** A new two-bar line for one drum only, in the style of a genre (density as above). Never empty:
-    a drum the genre rarely uses gets a light, fitting part. Same seed = same line. */
-std::string makeRandomLane (Lane lane, std::uint32_t seed, float density, int genre);
-
 /** A variation of a groove for the turnaround bar. House keeps its open-hat lift, kick pick-up,
     clap flam, snare drag and tom; garage, afro, neo soul and chill use their own moves.
     Same seed = same variation. */
@@ -71,7 +67,14 @@ struct ArrangementPart
     int endFill = -1;              // fill on its last bar: -1 as set in the Song panel, -2 none, else a fill style
 };
 
+/** A new two-bar line for one drum only, in the style of a genre (density as above). Never empty:
+    a drum the genre rarely uses gets a light, fitting part. Same seed = same line. */
+std::string makeRandomLane (Lane lane, std::uint32_t seed, float density, int genre);
+
+
 /** Intro 8 | Main 16 | Break 8 | Build-up 4 | Drop 16 | Outro 8 */
 const std::vector<ArrangementPart>& defaultArrangement();
 
+
 } // namespace fgd
+

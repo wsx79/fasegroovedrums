@@ -73,20 +73,6 @@ int laneForGeneralMidiNote (int note) noexcept
     }
 }
 
-const char* generalMidiDrumName (int note) noexcept
-{
-    static const char* names[] {
-        "Acoustic Bass Drum", "Bass Drum 1", "Side Stick", "Acoustic Snare", "Hand Clap", "Electric Snare",
-        "Low Floor Tom", "Closed Hi-Hat", "High Floor Tom", "Pedal Hi-Hat", "Low Tom", "Open Hi-Hat",
-        "Low-Mid Tom", "Hi-Mid Tom", "Crash Cymbal 1", "High Tom", "Ride Cymbal 1", "Chinese Cymbal",
-        "Ride Bell", "Tambourine", "Splash Cymbal", "Cowbell", "Crash Cymbal 2", "Vibraslap",
-        "Ride Cymbal 2", "Hi Bongo", "Low Bongo", "Mute Hi Conga", "Open Hi Conga", "Low Conga",
-        "High Timbale", "Low Timbale", "High Agogo", "Low Agogo", "Cabasa", "Maracas",
-        "Short Whistle", "Long Whistle", "Short Guiro", "Long Guiro", "Claves", "Hi Wood Block",
-        "Low Wood Block", "Mute Cuica", "Open Cuica", "Mute Triangle", "Open Triangle", "Shaker" };
-    return note >= 35 && note <= 82 ? names[note - 35] : "";
-}
-
 //==============================================================================
 void normalisePattern (DrumPattern& p, int minimumLength)
 {
@@ -304,17 +290,17 @@ const std::vector<DrumPattern>& drumPatterns()
                 { { K, "X... .... ..X. ...x" }, { S, ".... X... .... X..g" }, { CH, "x.xx x.x. x.xx x.x." },
                   { OH, ".... .... .... ..x." } }),
 
-        // ---- Afro & Latin: the clave, shakers, toms and congas talking ----
-        groove ("Afro House", "Afro & Latin",
+        // ---- Afro House (and, moved to their own genre, the Latin House grooves): percussion talking ----
+        groove ("Latin Afro Clave", "Latin House",
                 { { K, fourFloor }, { R, "x... ..x. .... x... .... x... x... ...." }, { SH, "xxxx xxxx xxxx xxxx" },
                   { TM, "..x. .xx. .... ...." }, { CG, "..xx g... ..xx g..g" }, { S, ".... ..g. x... ..g." } }),
-        groove ("Afro Son Clave", "Afro & Latin",
+        groove ("Afro Son Clave", "Latin House",
                 { { K, fourFloor }, { C, ".... x... .... x..." }, { R, "x... ..x. .... x... .... x... x... ...." },
                   { SH, "..xx ..x. ..xx ..x." }, { CG, ".... ..x. .... x.x." }, { S, ".g.. .... .g.. ..x." } }),
         groove ("Afro Toms", "Afro & Latin",
                 { { K, fourFloor }, { C, ".... x... .... x..." }, { SH, "g.gx g.xx ..xx g.xx" }, { TM, "xx.x x.xx .... ...." },
                   { OH, "..x. ..x. ..x. ..x." }, { S, ".... g... .... x..g" } }),
-        groove ("Latin House", "Afro & Latin",
+        groove ("Latin House", "Latin House",
                 { { K, fourFloor }, { C, backbeat }, { CB, "x..x ..x. ..x. x..." }, { CG, ".... ..x. .... x.x." },
                   { CH, "..x. ..x. ..x. ..x." }, { SH, "g.xg xgxg g.xg xgxg" }, { S, "...g .... ...g ..g." } }),
         groove ("Tribal House", "Afro & Latin",
@@ -389,15 +375,60 @@ const std::vector<DrumPattern>& drumPatterns()
         groove ("Hands Up", "Dance Stabs",
                 { { K, fourFloor }, { S, ".... X... .... X... .... X... ..X. XXXX" }, { C, backbeat }, { OH, offbeats },
                   { CH, "xxxx xxxx xxxx xxxx" }, { CR, crashBar1 } }),
+
+        // ---- Afro House (appended: earlier pattern numbers in saved projects stay the same) ----
+        // Modern afro house: a round four-on-the-floor kick, the open hat on the offbeats, a lightly
+        // shuffled shaker and a syncopated tom/rim loop. The backbeat stays understated: a snap,
+        // a clap on 4 only or every other bar, a syncopated clap, never the house clap on 2 and 4.
+        groove ("Afro Groove", "Afro & Latin",
+                { { K, "X... X... X... X... X... X... X... X..x" }, { C, ".... x... .... x..." }, { S, ".... g... .... g..." }, { OH, "..x. ..x. ..x. ..x." }, { SH, "gxXx gxXx gxXx gxXx" },
+                  { TM, "x..x ..x. ..x. x... x..x ..x. ..x. .x.x" }, { R, ".... .... .... .... .... ..x. .... ...." } }),
+        groove ("Afro Rim Roll", "Afro & Latin",
+                { { K, fourFloor }, { R, "..x. .x.. x..x .x.. ..x. .x.. x... .x.x" }, { CH, "g.x. g.x. g.x. g.xx" },
+                  { OH, offbeats }, { TM, ".... .... .... ..x. .... .... ..x. x..." } }),
+        groove ("Afro Tresillo", "Afro & Latin",
+                { { K, "X... X... X... X... X..x ..x. X... X..." }, { C, ".... x... .... ...." }, { S, "...g ..x. ...g ..x." }, { OH, offbeats },
+                  { SH, "gxXx gxXx gxXx gxXx" }, { TM, ".... .... ..x. x..x" }, { CG, "..g. .x.. ..g. .x.." } }),
+        groove ("Afro Bongos", "Afro & Latin",
+                { { K, "X... X... X... X..x" }, { C, ".... .... .... x..." }, { R, ".... x... .... ...." }, { S, ".... ...g .... ..g." }, { OH, offbeats },
+                  { SH, "g.Xx g.Xx g.Xx g.XX" }, { CG, "x.gx .x.g x.gx ..x. x.gx .x.g x.gx .xx." } }),
+        groove ("Afro Tom Loop", "Afro & Latin",
+                { { K, fourFloor }, { C, ".... .... .... x... .... x... .... x..g" }, { OH, offbeats }, { SH, "ggXg ggXg ggXg ggXx" },
+                  { TM, "..x. ..x. .x.. x..x ..x. ..x. .x.. x..." }, { CG, ".... ...x .... .x.. .... ...x ..g. .x.." } }),
+        groove ("Afro Shuffle", "Afro & Latin",
+                { { K, fourFloor }, { S, ".... x... .... x..g" }, { CH, "x.xg x.xg x.xg x.xx" }, { OH, "..g. ..x. ..g. ..x." },
+                  { CG, "...x ..x. .x.. x..x" }, { R, "..x. .... .... .x.." } }),
+
+        // ---- Latin House additions: cascara on the ride, tumbao congas, timbale toms ----
+        groove ("Latin Cascara", "Latin House",
+                { { K, fourFloor }, { C, backbeat }, { RD, "x.x. xx.x .xx. x.x." }, { CB, "x... x... x... x..." },
+                  { CG, "..g. x.Xx ..g. x.Xx" }, { SH, "..x. ..x. ..x. ..x." } }),
+        groove ("Latin Timbales", "Latin House",
+                { { K, fourFloor }, { C, backbeat }, { R, "x..x ..x. ..x. x... .... x... x... ...." }, { CB, "x.x. x.x. x.x. x.x." },
+                  { TM, ".... .... .... ..xx .... .... .... xxXX" }, { CG, ".... ..x. .... x.x." } }),
     };
     return patterns;
+}
+
+const char* generalMidiDrumName (int note) noexcept
+{
+    static const char* names[] {
+        "Acoustic Bass Drum", "Bass Drum 1", "Side Stick", "Acoustic Snare", "Hand Clap", "Electric Snare",
+        "Low Floor Tom", "Closed Hi-Hat", "High Floor Tom", "Pedal Hi-Hat", "Low Tom", "Open Hi-Hat",
+        "Low-Mid Tom", "Hi-Mid Tom", "Crash Cymbal 1", "High Tom", "Ride Cymbal 1", "Chinese Cymbal",
+        "Ride Bell", "Tambourine", "Splash Cymbal", "Cowbell", "Crash Cymbal 2", "Vibraslap",
+        "Ride Cymbal 2", "Hi Bongo", "Low Bongo", "Mute Hi Conga", "Open Hi Conga", "Low Conga",
+        "High Timbale", "Low Timbale", "High Agogo", "Low Agogo", "Cabasa", "Maracas",
+        "Short Whistle", "Long Whistle", "Short Guiro", "Long Guiro", "Claves", "Hi Wood Block",
+        "Low Wood Block", "Mute Cuica", "Open Cuica", "Mute Triangle", "Open Triangle", "Shaker" };
+    return note >= 35 && note <= 82 ? names[note - 35] : "";
 }
 
 const std::vector<const char*>& grooveCategories()
 {
     static const std::vector<const char*> categories { "Piano House", "Soulful", "Deep", "Gospel", "Jackin'", "Jackin' Piano", "Garage & UK",
-                                                       "Afro & Latin", "Funky & Disco", "'90s Piano House", "Neo Soul & Broken",
-                                                       "Chill & Pads", "Dance Stabs" };
+                                                       "Afro & Latin" /* the name the family LINK knows; Latin House has its own genre */, "Funky & Disco", "'90s Piano House", "Neo Soul & Broken",
+                                                       "Chill & Pads", "Dance Stabs", "Latin House" };
     return categories;
 }
 
@@ -428,7 +459,8 @@ float genreSwing (int category) noexcept
 {
     // In 16th shuffle: 50 + swing*100/6. 0.36 is 56%, 0.6 is 60%, 0.72 is 62%. Chicago jack sits
     // at 62%; soulful and disco play almost straight.
-    static const float swing[] { 0.45f, 0.2f, 0.5f, 0.3f, 0.72f, 0.6f, 0.75f, 0.35f, 0.3f, 0.45f, 0.9f, 0.3f, 0.1f };
+    // Afro house shuffles its 16ths (60%, the swung shaker); Latin house stays almost straight.
+    static const float swing[] { 0.45f, 0.2f, 0.5f, 0.3f, 0.72f, 0.6f, 0.75f, 0.6f, 0.3f, 0.45f, 0.9f, 0.3f, 0.1f, 0.25f };
     return category >= 0 && category < (int) std::size (swing) ? swing[category] : 0.2f;
 }
 
@@ -443,3 +475,4 @@ int userPatternIndex() noexcept
 }
 
 } // namespace fgd
+

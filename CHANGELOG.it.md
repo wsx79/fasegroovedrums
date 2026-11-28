@@ -12,6 +12,11 @@ Tutte le modifiche importanti di **Fase Groove Drums**.
 - Export audio: un loop suona le stesse battute dell'export MIDI, con la coda riportata all'inizio; gli stem degli hi-hat tengono lo strozzamento, così gli stem sommano al mix.
 - Una dimensione della finestra sopra 1,25 torna come l'hai lasciata; gli inviluppi del kit guida costano molta meno CPU; nessuna allocazione sul thread audio per il MIDI in uscita.
 - Le note di rilascio elencano solo questa versione, con l'installer Windows.
+- Afro House e Latin House da Fase Groove Arranger: Latin House è un genere a sé (14 generi), otto groove nuovi (Afro Groove, Rim Roll, Tresillo, Bongos, Tom Loop, Shuffle, Latin Cascara, Latin Timbales) e i beat Afro riscritti (clap o rim dal primo kick). Il genere Afro & Latin tiene il nome, così il LINK con Piano e Guitar funziona come prima (Latin House si collega come Afro & Latin); i progetti tengono il loro groove Random o User.
+- L'hi-hat aperto prende il posto del chiuso solo quando suona davvero (se lo toglie la probabilità o l'umanizzazione, il chiuso resta).
+- Caricare un file groove svuota le lane che non ha e prende la sua lunghezza; i campioni MP3 si caricano anche su Linux; il riverbero sfuma e riparte pulito quando lo rialzi; un pad suonato a mano dura 150 ms in un campionatore.
+- La griglia ridisegna solo ciò che cambia; una modifica alle impostazioni è pronta già dal blocco successivo (il thread audio non costruisce mai un groove).
+- Le build di rilascio controllano che tag, versione e changelog coincidano; i plugin vengono validati con pluginval; tutte le intestazioni del changelog hanno la stessa forma.
 
 ## [0.21.10] — 2026-11-27
 
@@ -22,16 +27,16 @@ Tutte le modifiche importanti di **Fase Groove Drums**.
 - Afro House: il clap può partire dal primo kick (su tutti e quattro i tempi con uno snare leggero, sull'1 e sul 3 con il rim sul 2 e sul 4, o un accento sull'uno ogni due battute); una leggera spinta del kick verso il 3; le congas suonano tre tamburi (tumba prima del 3 e dell'1, quinto sui controtempi leggeri).
 - Nuovo kit **Afro Organic**: kick profondo e rotondo senza click, snare legnoso, clap con la sua stanza, hat morbidi e ariosi.
 
-## 0.21.8 — 2026-11-22
+## [0.21.8] — 2026-11-22
 
 - Il synth guida della batteria usa una tabella di seno interpolata invece di calcolare un seno a ogni campione: stesso suono, meno CPU.
 
-## 0.21.7 — 2026-11-01
+## [0.21.7] — 2026-11-01
 
 - Corregge le build macOS che richiedevano il sistema del runner (macOS 26, oppure 15 per Arranger). Applica il target macOS 11 prima dell’inizializzazione dei compilatori, anche con cache CMake esistenti.
 - Verifica il minimo di sistema di entrambe le architetture Intel e Apple Silicon e i metadati dei bundle prima della firma; allinea la documentazione a macOS 11+.
 
-## 0.21.6 — 2026-10-26
+## [0.21.6] — 2026-10-26
 
 - SHA e inventario completo del modulo comune verificati offline e contro la fonte canonica in CI; Lead incluso nel sync/check predefinito.
 - Cataloghi verificati contro chiavi duplicate, anche su più righe; gli override intenzionali prodotto/comune restano supportati.

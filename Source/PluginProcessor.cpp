@@ -63,12 +63,13 @@ namespace
         { "Jackin'",           "Chicago 909",          0.20f, 4, fgd::FillStyle::hatLift,   0, 1 },
         { "Jackin' Piano",     "Jackin' Piano Bounce", 0.20f, 4, fgd::FillStyle::mix,       0, 1 },
         { "Garage & UK",       "Two-Step",             0.25f, 4, fgd::FillStyle::dropOut,   1, 1 },
-        { "Afro & Latin",      "Afro House",           0.30f, 4, fgd::FillStyle::congaRun,  0, 2 },
+        { "Afro & Latin",      "Afro Groove",          0.30f, 4, fgd::FillStyle::congaRun,  0, 2 },   // the modern afro groove (the old "Afro House" clave groove is Latin House now)
         { "Funky & Disco",     "Disco Classic",        0.30f, 3, fgd::FillStyle::tomRun,    2, 0 },
         { "'90s Piano House",  "90s Italo",            0.10f, 4, fgd::FillStyle::snareRoll, 0, 1 },
         { "Neo Soul & Broken", "Neo Soul Pocket",      0.40f, 0, fgd::FillStyle::snareRoll, 3, 2 },
         { "Chill & Pads",      "Chill House",          0.30f, 0, fgd::FillStyle::hatLift,   3, 2 },
         { "Dance Stabs",       "Dance Floor",          0.05f, 4, fgd::FillStyle::snareRoll, 0, 1 },
+        { "Latin House",       "Latin House",          0.30f, 4, fgd::FillStyle::congaRun,  0, 2 },   // (the style menu is not saved: the family entries after it may move)
         // Explicit ecosystem presets, appended so legacy indexes remain stable.
         { fgfamily::names[0], "", 0,0, fgd::FillStyle::mix,0,0 },
         { fgfamily::names[1], "", 0,0, fgd::FillStyle::mix,0,0 },
@@ -315,7 +316,10 @@ void FaseGrooveDrumsProcessor::setParameterFromUI (const juce::String& id, float
         p->beginChangeGesture();
         p->setValueNotifyingHost (p->convertTo0to1 (plainValue));
         p->endChangeGesture();
-    }
+    }    // a change made here (the message thread) is ready for the very next audio block: the audio thread
+    // never builds a groove, and a stale one would play until the next timer tick
+    if (juce::MessageManager::existsAndIsCurrentThread())
+        preparePattern();
 }
 
 //==============================================================================
@@ -1505,8 +1509,10 @@ void FaseGrooveDrumsProcessor::processBlock (juce::AudioBuffer<float>& buffer, j
 
         const auto ready = std::atomic_load (&preparedPattern);   // the message thread keeps it alive
         engine.setPrepared (ready.get());
+        engine.setRealtime (! isNonRealtime());
         engine.render (startPpq, startPpq + blockBeats + linkCorrection, settings, events);
         engine.setPrepared (nullptr);
+        engine.setRealtime (false);
         expectedNextPpq = internalPpq = startPpq + blockBeats + linkCorrection;
 
         const auto step = (long long) std::floor (startPpq / fgd::stepLength);
@@ -1543,19 +1549,38 @@ void FaseGrooveDrumsProcessor::processBlock (juce::AudioBuffer<float>& buffer, j
         }
     }
 
-    // A pad played by hand.
+    // A pad played by hand: its note-off 150 ms later (at the end of the block it was a 1 ms note,
+    // which a sampler in gate mode cut to a click).
+    if (auditionOffNote >= 0)
+    {
+        if (auditionOffIn < numSamples)
+        {
+            outMidi.addEvent (juce::MidiMessage::noteOff (auditionOffChannel, auditionOffNote), juce::jmax (0, auditionOffIn));
+            auditionOffNote = -1;
+        }
+        else
+            auditionOffIn -= numSamples;
+    }
     if (const int request = auditionRequest.exchange (-1); request >= 0)
     {
         const int lane = request / 128, note = settings.notes[(size_t) juce::jlimit (0, fgd::numLanes - 1, lane)];
+        if (auditionOffNote >= 0)
+            outMidi.addEvent (juce::MidiMessage::noteOff (auditionOffChannel, auditionOffNote), 0);
         outMidi.addEvent (juce::MidiMessage::noteOn (channel, note, (juce::uint8) (request % 128)), 0);
-        outMidi.addEvent (juce::MidiMessage::noteOff (channel, note), juce::jmax (0, numSamples - 1));
+        auditionOffNote = note;
+        auditionOffChannel = channel;
+        auditionOffIn = (int) (0.15 * getSampleRate());
         laneFlash[(size_t) juce::jlimit (0, fgd::numLanes - 1, lane)] = (float) (request % 128) / 127.0f;
     }
 
     // ---- The guide kit ----
     const bool soundOn = raw (ParamIDs::sound) > 0.5f;
     if (soundWasOn && ! soundOn)
+    {
         drums.allNotesOff();
+        reverbFx.reset();
+        reverbFadeLeft = 0;
+    }
     soundWasOn = soundOn;
 
     if (soundOn)
@@ -1574,19 +1599,29 @@ void FaseGrooveDrumsProcessor::processBlock (juce::AudioBuffer<float>& buffer, j
         drums.render (buffer, outMidi, settings.notes, gains, current);
 
         const float amount = raw (ParamIDs::reverb);
-        if (amount > 0.001f)
+        // Turned down to zero, the reverb's wet level glides out (20 ms) and the reverb is then cleared,
+        // so turning it up again never brings back an old tail.
+        const bool reverbOn = amount > 0.001f;
+        if (reverbOn)
+            reverbFadeLeft = (int) (0.02 * getSampleRate());
+        if (reverbOn || reverbFadeLeft > 0)
         {
             juce::Reverb::Parameters rp;
             rp.roomSize = 0.45f;
             rp.damping = 0.5f;
             rp.width = 1.0f;
-            rp.wetLevel = amount * 0.4f;
-            rp.dryLevel = 1.0f - amount * 0.25f;
+            rp.wetLevel = reverbOn ? amount * 0.4f : 0.0f;
+            rp.dryLevel = reverbOn ? 1.0f - amount * 0.25f : 1.0f;
             reverbFx.setParameters (rp);
             if (buffer.getNumChannels() > 1)
                 reverbFx.processStereo (buffer.getWritePointer (0), buffer.getWritePointer (1), numSamples);
             else
                 reverbFx.processMono (buffer.getWritePointer (0), numSamples);
+            if (! reverbOn && (reverbFadeLeft -= numSamples) <= 0)
+            {
+                reverbFadeLeft = 0;
+                reverbFx.reset();
+            }
         }
 
         outputGain.setTargetValue (juce::Decibels::decibelsToGain (raw (ParamIDs::volume)));
@@ -2012,6 +2047,9 @@ void FaseGrooveDrumsProcessor::updateLink()
 
 juce::String FaseGrooveDrumsProcessor::linkGenreName (int genre) const
 {
+    // Piano and Guitar know Afro & Latin, not Latin House: a Latin House groove links as Afro & Latin.
+    if (genre == fgd::categoryIndex ("Latin House"))
+        genre = fgd::categoryIndex ("Afro & Latin");
     return fgd::grooveCategories()[(size_t) juce::jlimit (0, (int) fgd::grooveCategories().size() - 1, genre)];
 }
 
@@ -2110,6 +2148,7 @@ juce::ValueTree FaseGrooveDrumsProcessor::stateTree() const
         state.removeChild (state.getChildWithName (name), nullptr);
     for (auto& child : { grid, song, sounds, fill, groove, link })
         state.appendChild (child, nullptr);
+    state.setProperty ("grooveCount", (int) fgd::drumPatterns().size(), nullptr);   // see applyStateTree
     return state;
 }
 
@@ -2203,9 +2242,25 @@ void FaseGrooveDrumsProcessor::applyStateTree (const juce::ValueTree& source)
         }
     }
 
+    // Random and User come after the factory grooves: a project saved with another number of grooves
+    // (70 until the Afro House and Latin House grooves were added) keeps pointing at them.
+    {
+        const int savedCount = (int) state.getProperty ("grooveCount", 70);
+        const int count = (int) fgd::drumPatterns().size();
+        auto child = state.getChildWithProperty ("id", ParamIDs::pattern);
+        if (savedCount != count && child.isValid())
+        {
+            const int saved = juce::roundToInt ((float) child.getProperty ("value"));
+            if (saved == savedCount)
+                child.setProperty ("value", (float) fgd::randomPatternIndex(), nullptr);
+            else if (saved == savedCount + 1)
+                child.setProperty ("value", (float) fgd::userPatternIndex(), nullptr);
+        }
+    }
     for (const auto* name : { "Grid", "Song", "Samples", "Fill", "Template", "Link" })
         state.removeChild (state.getChildWithName (name), nullptr);
     state.removeProperty ("editorScale", nullptr);
+    state.removeProperty ("grooveCount", nullptr);
     // APVTS retains the current value when a parameter child is absent. Old presets
     // must instead restore defaults for parameters added after that preset was saved.
     for (auto* parameter : getParameters())
@@ -2417,12 +2472,13 @@ bool FaseGrooveDrumsProcessor::loadGroove (const juce::File& file)
         return false;
     userGenre = juce::jlimit (-1, (int) fgd::grooveCategories().size() - 1, xml->getIntAttribute ("genre", -1));
 
-    int l = 0;
+    int l = 0, longest = 0;
     for (auto* lane : xml->getChildWithTagNameIterator ("Lane"))
     {
         if (l >= fgd::numLanes)
             break;
         const auto steps = lane->getStringAttribute ("steps");
+        longest = juce::jmax (longest, steps.length());
         const auto levels = lane->getStringAttribute ("velocity");
         const auto chances = lane->getStringAttribute ("chance");
         const auto rolls = lane->getStringAttribute ("roll");
@@ -2438,6 +2494,18 @@ bool FaseGrooveDrumsProcessor::loadGroove (const juce::File& file)
         }
         ++l;
     }
+    // a lane the file does not have (an older groove) is empty, not what the grid held before
+    for (; l < fgd::numLanes; ++l)
+        for (int i = 0; i < gridSteps; ++i)
+        {
+            userGrid[(size_t) l][(size_t) i] = '.';
+            userVelocity[(size_t) l][(size_t) i] = 0;
+            userChance[(size_t) l][(size_t) i] = 0;
+            userRoll[(size_t) l][(size_t) i] = 0;
+        }
+    // the groove's own length: four bars when the file holds more than two
+    if (longest > 0)
+        setParameterFromUI (ParamIDs::partLength, longest > 32 ? 1.0f : 0.0f);
     for (int i = 0; i < fgd::numSegments; ++i)
         setSegmentAt (i, i);
     setParameterFromUI (ParamIDs::pattern, (float) fgd::userPatternIndex());

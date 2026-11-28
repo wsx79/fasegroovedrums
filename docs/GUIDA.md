@@ -26,7 +26,7 @@ il groove suona con il kit guida.
 
 ## 2. Il groove
 
-- **GROOVE:** 70 groove in 13 generi (gli stessi di Fase Groove Piano). **Random beat** è il beat
+- **GROOVE:** 78 groove in 14 generi (i 13 di Fase Groove Piano, più Latin House). **Random beat** è il beat
   di NEW BEAT, **User pattern** quello modificato sulla griglia.
 - **NEW BEAT:** un nuovo beat casuale nel genere scelto in **NEW BEAT GENRE**. **DENSITY** va da
   cassa-clap-hat essenziali a 16esimi pieni con percussioni.

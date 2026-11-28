@@ -51,11 +51,24 @@ DrumGrid::DrumGrid (FaseGrooveDrumsProcessor& p) : processor (p)
 
 void DrumGrid::refresh()
 {
-    pattern = processor.displayedPattern();
+    // 30 times a second: the whole grid is redrawn only when the groove or a mute changed; the
+    // playhead moves with setPlayStep, which repaints its two columns.
+    auto next = processor.displayedPattern();
+    bool changed = next.lanes != pattern.lanes;
     for (int l = 0; l < fgd::numLanes; ++l)
-        muted[(size_t) l] = processor.isLaneMuted (l);
-    playStep = processor.displayStep();
-    repaint();
+    {
+        const bool m = processor.isLaneMuted (l);
+        changed = changed || muted[(size_t) l] != m;
+        muted[(size_t) l] = m;
+    }
+    if (changed)
+    {
+        pattern = std::move (next);
+        playStep = processor.displayStep();
+        repaint();
+    }
+    else
+        setPlayStep (processor.displayStep());
 }
 
 void DrumGrid::setPlayStep (int step)
@@ -3858,11 +3871,13 @@ void FaseGrooveDrumsEditor::timerCallback()
     templateButton.setToggleState (processor.hasGrooveTemplate(), juce::dontSendNotification);
     mainTemplate.setToggleState (processor.hasGrooveTemplate(), juce::dontSendNotification);
 
-    const auto shown = processor.displayedPattern();
     const int step = processor.displayStep();
-    if (slowTick)
+    if (slowTick)   // the groove is resolved only when the cards refresh, not on every tick
+    {
+        const auto shown = processor.displayedPattern();
         for (auto& card : partCards)
             card->refresh (shown, step);
+    }
     refreshKitPanel();
 
     // The groove's name on its button.

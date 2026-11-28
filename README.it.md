@@ -33,9 +33,9 @@ interno, poi **trascinalo nella DAW come clip MIDI** e suonalo con la tua batter
 
 ## Funzioni
 
-- 🥁 **70 groove in 13 generi**, gli stessi di Fase Groove Piano: Piano House, Soulful, Deep,
+- 🥁 **78 groove in 14 generi**, i 13 di Fase Groove Piano più Latin House: Piano House, Soulful, Deep,
   Gospel, Jackin', Jackin' Piano, Garage & UK, Afro & Latin, Funky & Disco, '90s Piano House,
-  Neo Soul & Broken, Chill & Pads, Dance Stabs.
+  Neo Soul & Broken, Chill & Pads, Dance Stabs, Latin House.
 - 🎲 **NEW BEAT:** un beat casuale ma musicale nel genere scelto, da essenziale a pieno (Density).
 - 🎚️ **STYLE:** impostazioni per genere in un clic (groove, swing, feel, fill, kit) e **RESET**.
 - ✏️ **Griglia modificabile:** 13 strumenti × 32 step (due battute). Colpo, accento, ghost note e

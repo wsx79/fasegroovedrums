@@ -12,6 +12,11 @@ All notable changes to **Fase Groove Drums**.
 - Audio export: a loop plays the same bars as the MIDI export, its tail folded onto the start; hi-hat stems keep the choke, so the stems add up to the mix.
 - A window size above 1.25 comes back as you left it; the guide kit's envelopes cost much less CPU; no allocation on the audio thread for the MIDI output.
 - Release notes list only this version, with the Windows installer.
+- Afro House and Latin House from Fase Groove Arranger: Latin House is a genre of its own (14 genres), eight new grooves (Afro Groove, Rim Roll, Tresillo, Bongos, Tom Loop, Shuffle, Latin Cascara, Latin Timbales) and the rewritten Afro beats (clap or rim from the first kick). The Afro & Latin genre keeps its name, so LINK with Piano and Guitar works as before (Latin House links as Afro & Latin); projects keep their Random or User groove.
+- The open hat takes the place of the closed one only when it really plays (left out by its chance or the humanizer, the closed hat stays).
+- Loading a groove file clears the lanes it does not have and takes its length; MP3 samples load on Linux too; the reverb fades out and starts clean when turned up again; a pad played by hand rings 150 ms in a sampler.
+- The grid redraws only what changed; a settings change is ready for the very next block (the audio thread never builds a groove).
+- Release builds check that the tag matches the version and the changelog; plug-ins are validated with pluginval; every changelog heading has the same form.
 
 ## [0.21.10] — 2026-11-27
 
@@ -22,16 +27,16 @@ All notable changes to **Fase Groove Drums**.
 - Afro House: the clap can come from the first kick (on all four beats with a soft snare, on 1 and 3 with a rim on 2 and 4, or an accent on the one every other bar); a soft kick push into beat 3; the congas play three drums (tumba before beats 3 and 1, quinto on the soft offbeats).
 - New kit **Afro Organic**: deep round kick without the click, woody snare, clap with its room, soft airy hats.
 
-## 0.21.8 — 2026-11-22
+## [0.21.8] — 2026-11-22
 
 - The guide drum synth uses an interpolated sine table instead of computing a sine every sample: same sound, less CPU.
 
-## 0.21.7 — 2026-11-01
+## [0.21.7] — 2026-11-01
 
 - Fix macOS builds incorrectly requiring the runner OS (macOS 26, or 15 for Arranger). Apply the macOS 11 deployment target before compiler initialization, including existing CMake caches.
 - Verify both Intel and Apple Silicon deployment targets and bundle metadata before signing; align the documented minimum to macOS 11+.
 
-## 0.21.6 — 2026-10-26
+## [0.21.6] — 2026-10-26
 
 - Pinned shared-module SHA and complete inventory checked offline and against its canonical source in CI; Lead included in default sync/check.
 - Translation catalogs checked for duplicate keys, including multiline entries; intentional common/product overrides remain supported.
